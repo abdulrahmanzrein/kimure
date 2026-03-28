@@ -287,6 +287,7 @@ const I18N = {
     "home.badge4": "Serving Buyers, Sellers, Investors, Farmers & Professionals",
     "home.whatH": "What is Kimure?",
     "home.whatP": "Kimure is an AI-powered brokerage ecosystem that brings together everything you need to navigate property, land, and financial decisions in one place. Whether you are a first-time homebuyer, a seasoned investor, a farmer looking for productive land, or a real estate professional seeking smarter tools — Kimure was built for you.",
+    "home.whatImgAlt": "Contemporary home at dusk — luxury residential real estate",
     "home.pillarsH": "Core Platform Pillars",
     "home.p1t": "Real Estate Brokerage",
     "home.p1d": "Buy, sell, and rent residential, commercial, and investment properties with AI guidance.",
@@ -841,6 +842,7 @@ const I18N = {
     "home.badge4": "Au service des acheteurs, vendeurs, investisseurs, agriculteurs et professionnels",
     "home.whatH": "Qu'est-ce que Kimure ?",
     "home.whatP": "Kimure est un écosystème de courtage propulsé par l'IA qui regroupe tout ce dont vous avez besoin pour naviguer dans les décisions immobilières, foncières et financières en un seul endroit.",
+    "home.whatImgAlt": "Maison contemporaine au crépuscule — résidentiel haut de gamme",
     "home.pillarsH": "Piliers de la plateforme",
     "home.p1t": "Courtage immobilier",
     "home.p1d": "Achetez, vendez et louez des biens résidentiels, commerciaux et d'investissement avec l'IA.",
@@ -1225,6 +1227,23 @@ if (langToggle) {
     applyI18n();
   });
 }
+
+(function () {
+  const heroVideo = document.querySelector(".hero-video");
+  if (!heroVideo || heroVideo.tagName !== "VIDEO") return;
+  function tryPlay() {
+    const p = heroVideo.play();
+    if (p && typeof p.catch === "function") p.catch(function () {});
+  }
+  heroVideo.muted = true;
+  heroVideo.addEventListener("ended", function () {
+    heroVideo.currentTime = 0;
+    tryPlay();
+  });
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) tryPlay();
+  });
+})();
 
 // Count-up stat (only if present)
 function formatCompact(n) {
