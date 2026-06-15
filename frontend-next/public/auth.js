@@ -63,8 +63,102 @@
     return true;
   }
 
+  function checkedValues(form, name) {
+    return Array.prototype.slice.call(form.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
+      return input.value;
+    });
+  }
+
+  function selectedValue(form, name) {
+    var input = form.querySelector('input[name="' + name + '"]:checked');
+    return input ? input.value : "";
+  }
+
+  function budgetRange(value) {
+    var ranges = {
+      under50k: [0, 50000],
+      "50k-150k": [50000, 150000],
+      "150k-500k": [150000, 500000],
+      "500k-1m": [500000, 1000000],
+      "1mplus": [1000000, null]
+    };
+    return ranges[value] || [null, null];
+  }
+
+  function numberValue(form, selector) {
+    var input = form.querySelector(selector);
+    if (!input || input.value === "") return null;
+    var n = Number(input.value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function textValue(form, selector) {
+    var input = form.querySelector(selector);
+    return input && input.value ? input.value.trim() : "";
+  }
+
+  function buildOnboardingPayload(form, userId) {
+    var budget = budgetRange(selectedValue(form, "budget"));
+    var locCountry = textValue(form, "#onb-loc-country");
+    var locCity = textValue(form, "#onb-loc-city");
+
+    return {
+      user_id: userId,
+      intent: selectedValue(form, "goal") || null,
+      budget_min: budget[0],
+      budget_max: budget[1],
+      timeline: selectedValue(form, "timeline") || null,
+      risk_level: null,
+      location_preferences: locCountry || locCity ? [{ country: locCountry, city: locCity }] : [],
+      property_preferences: checkedValues(form, "property_type"),
+      financial_inputs: {
+        available_funds: numberValue(form, "#onb-funds"),
+        monthly_rental_income: numberValue(form, "#onb-rental-income"),
+        return_goals: checkedValues(form, "return_goal")
+      }
+    };
+  }
+
+  async function saveOnboardingProfile(form, button) {
+    var client = getSupabaseClient();
+    if (!client) {
+      explainMissingConfig();
+      return false;
+    }
+
+    setButtonLoading(button, true, "Saving...");
+
+    var userResult = await client.auth.getUser();
+    var user = userResult.data && userResult.data.user ? userResult.data.user : null;
+
+    if (!user && window.KIMURE_AUTH_USER_ID) {
+      user = { id: window.KIMURE_AUTH_USER_ID };
+    }
+
+    if (!user) {
+      setButtonLoading(button, false);
+      alert("Please confirm your email and log in before saving onboarding answers.");
+      return false;
+    }
+
+    var payload = buildOnboardingPayload(form, user.id);
+    var result = await client
+      .from("onboarding_profiles")
+      .upsert(payload, { onConflict: "user_id" });
+
+    setButtonLoading(button, false);
+
+    if (result.error) {
+      alert(result.error.message);
+      return false;
+    }
+
+    return true;
+  }
+
   window.KIMURE_AUTH = {
-    signUpFromOnboarding: signUpFromOnboarding
+    getSupabaseClient: getSupabaseClient,
+    signUpFromOnboarding: signUpFromOnboarding,
+    saveOnboardingProfile: saveOnboardingProfile
   };
 })();
-

@@ -83,7 +83,11 @@
       }
     }
     if (current >= total) {
-      alert("Thank you! Your Smart Onboarding is complete. (Demo — connect to your backend to save data.)");
+      if (window.KIMURE_AUTH) {
+        var saved = await window.KIMURE_AUTH.saveOnboardingProfile(form, nextBtn);
+        if (!saved) return;
+      }
+      alert("Thank you! Your Smart Onboarding is complete.");
       return;
     }
     showStep(current + 1);
