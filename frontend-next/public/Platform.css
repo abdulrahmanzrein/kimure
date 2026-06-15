@@ -1,0 +1,43 @@
+/* Platform page – same style as site, page-specific layout */
+
+.platform-page {
+  padding: 26px 0 60px;
+}
+
+.platform-hero {
+  padding: 26px 0 10px;
+}
+
+.platform-hero-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+.platform-title {
+  margin: 14px 0 10px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.platform-sub {
+  max-width: 760px;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.platform-cta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.platform-grid {
+  margin-top: 26px;
+}
+
+.platform-vision {
+  margin-top: 34px;
+}

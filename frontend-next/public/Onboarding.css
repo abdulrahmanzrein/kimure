@@ -1,0 +1,336 @@
+/* Onboarding landing + registration form wizard */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.onboarding-page {
+  padding: 26px 0 60px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.onboarding-intro h1 {
+  margin: 14px 0 12px;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.onboarding-intro .onb-lead {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.onboarding-intro .onb-cta {
+  margin-top: 24px;
+}
+
+.onb-back-link {
+  display: inline-block;
+  margin-bottom: 18px;
+  font-size: 14px;
+  color: var(--gold);
+  opacity: 0.9;
+}
+.onb-back-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+/* Form page */
+.onb-form-page {
+  padding: 20px 0 60px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.onb-form-head {
+  margin-bottom: 24px;
+}
+.onb-form-head h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.onb-form-head .onb-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.onb-progress-wrap {
+  margin-bottom: 24px;
+}
+.onb-progress-label {
+  font-size: 13px;
+  color: var(--muted2);
+  margin-bottom: 8px;
+}
+.onb-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.theme-light .onb-progress-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+.onb-progress-fill {
+  height: 100%;
+  width: 10%;
+  background: linear-gradient(90deg, var(--gold), rgba(200, 169, 106, 0.95));
+  border-radius: 999px;
+  transition: width 0.25s ease;
+}
+
+.onb-wizard {
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 24px 22px 28px;
+  --onb-pick-mark: #ffffff;
+  --onb-pick-hole: #0b0b0b;
+}
+.theme-light .onb-wizard {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.02);
+  --onb-pick-mark: #0b0b0b;
+  --onb-pick-hole: #f5f5f5;
+}
+
+.onb-form-step {
+  display: none;
+}
+.onb-form-step.is-active {
+  display: block;
+}
+
+.onb-form-step h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.onb-form-step .onb-step-note {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.onb-step-note--tight {
+  margin-top: 8px;
+  margin-bottom: 10px !important;
+}
+.onb-step-tag {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 14px;
+}
+.onb-future-note--after {
+  margin-top: 16px;
+}
+.onb-check a {
+  color: var(--gold);
+  text-decoration: underline;
+}
+.onb-check a:hover {
+  opacity: 0.9;
+}
+
+.onb-field {
+  margin-bottom: 16px;
+}
+.onb-field label,
+.onb-fieldset-legend {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.onb-field input[type="text"],
+.onb-field input[type="email"],
+.onb-field input[type="password"],
+.onb-field input[type="tel"],
+.onb-field input[type="number"] {
+  width: 100%;
+  max-width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  outline: none;
+}
+.theme-light .onb-field input {
+  border-color: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.03);
+}
+.onb-field input:focus {
+  border-color: var(--gold);
+}
+.onb-field-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted2);
+}
+.onb-field-hint--inline {
+  display: inline;
+  font-weight: 400;
+  margin: 0;
+}
+
+.onb-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.onb-check.onb-pick {
+  align-items: center;
+  gap: 12px;
+}
+.onb-pick-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+/* Continue on + all registration choices — solid disk off, bullseye on */
+.onb-pick-group {
+  margin: 0 0 4px;
+}
+.onb-pick-group .onb-pick {
+  margin-bottom: 12px;
+}
+.onb-pick-group .onb-pick:last-child {
+  margin-bottom: 0;
+}
+.onb-pick-ui {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  position: relative;
+  background: var(--onb-pick-mark);
+  border: 2px solid var(--onb-pick-mark);
+}
+.onb-pick-input:checked + .onb-pick-ui {
+  background: var(--onb-pick-hole);
+  border-color: var(--onb-pick-mark);
+}
+.onb-pick-input:checked + .onb-pick-ui::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--onb-pick-mark);
+}
+.onb-pick-input:focus-visible + .onb-pick-ui {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.theme-light .onb-pick-input:focus-visible + .onb-pick-ui {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.22);
+}
+
+.onb-fieldset {
+  border: 0;
+  margin: 0 0 16px;
+  padding: 0;
+}
+.onb-fieldset-legend {
+  margin-bottom: 10px;
+}
+
+.onb-divider {
+  margin: 22px 0 16px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.theme-light .onb-divider {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.onb-ai-list {
+  margin: 0 0 20px;
+  padding-left: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.onb-ai-list li {
+  margin-bottom: 6px;
+  padding-left: 1.2em;
+  position: relative;
+}
+.onb-ai-list li::before {
+  content: "✔";
+  position: absolute;
+  left: 0;
+  color: var(--gold);
+  font-size: 12px;
+}
+
+.onb-future-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.onb-future-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.onb-future-list li {
+  margin-bottom: 6px;
+}
+
+.onb-wizard-nav {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.theme-light .onb-wizard-nav {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+.onb-wizard-nav .onb-back {
+  margin-right: auto;
+}
+
+@media (max-width: 540px) {
+  .onb-wizard {
+    padding: 18px 16px 22px;
+  }
+}

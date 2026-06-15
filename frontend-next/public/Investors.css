@@ -1,0 +1,78 @@
+/* Investors page – same style as site, page-specific layout */
+
+.investors-page {
+  padding: 26px 0 60px;
+}
+
+.investors-hero {
+  padding: 26px 0 10px;
+}
+
+.investors-hero-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+.investors-hero-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+}
+
+.investors-hero-image {
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.theme-light .investors-hero-image {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.investors-hero-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.investors-title {
+  margin: 14px 0 10px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.investors-sub {
+  max-width: 760px;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.investors-cta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.investors-grid {
+  margin-top: 26px;
+}
+
+.investors-vision {
+  margin-top: 34px;
+}
+
+@media (max-width: 780px) {
+  .investors-hero-content {
+    grid-template-columns: 1fr;
+  }
+  .investors-hero-image {
+    order: -1;
+  }
+}

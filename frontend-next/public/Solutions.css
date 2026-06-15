@@ -1,0 +1,125 @@
+/* Solutions page layout – reuses core homepage styles */
+
+.solutions-page{
+  padding:26px 0 60px;
+}
+
+.solutions-hero{
+  padding:26px 0 10px;
+}
+
+.solutions-hero-inner{
+  max-width:1000px;
+  margin:0 auto;
+  padding:0 18px;
+}
+
+.solutions-hero-content{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:32px;
+  align-items:center;
+}
+
+.solutions-hero-image{
+  border-radius:var(--radius);
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.02);
+}
+
+.theme-light .solutions-hero-image{
+  border-color:rgba(0,0,0,.08);
+  background:rgba(0,0,0,.02);
+}
+
+.solutions-hero-image img{
+  display:block;
+  width:100%;
+  height:auto;
+  vertical-align:middle;
+}
+
+.solutions-title{
+  margin:14px 0 10px;
+  line-height:1.1;
+  letter-spacing:-.02em;
+}
+
+.solutions-sub{
+  max-width:760px;
+  margin:0 0 18px;
+  color:var(--muted);
+  font-size:1.05rem;
+}
+
+.solutions-cta{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.solutions-grid{
+  margin-top:26px;
+}
+
+.solutions-detail{
+  margin-top:30px;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:18px;
+}
+
+.solutions-detail-block{
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.02);
+  padding:20px;
+}
+
+.theme-light .solutions-detail-block{
+  border-color:rgba(0,0,0,.08);
+  background:rgba(0,0,0,.02);
+}
+
+.solutions-detail-block h2{
+  margin:0 0 8px;
+  font-size:18px;
+  letter-spacing:-.01em;
+}
+
+.solutions-detail-block p{
+  margin:0 0 10px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.6;
+}
+
+.solutions-detail-block ul{
+  margin:0;
+  padding-left:18px;
+  color:var(--muted2);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.solutions-detail-block li{
+  margin-bottom:4px;
+}
+
+.solutions-cta-final{
+  margin-top:34px;
+}
+
+@media (max-width: 780px){
+  .solutions-hero-content{
+    grid-template-columns:1fr;
+  }
+  .solutions-hero-image{
+    order:-1;
+  }
+  .solutions-detail{
+    grid-template-columns:1fr;
+  }
+}
+
