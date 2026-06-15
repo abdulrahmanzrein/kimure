@@ -110,11 +110,14 @@ Move AI logic out of standalone Gemini Gems and into backend services.
 
 Planned routes:
 
+- `POST /api/ai/chat`
 - `POST /api/ai/scout`
 - `POST /api/ai/analyze`
 - `POST /api/ai/rental`
 - `POST /api/ai/valuate`
 - `POST /api/ai/mortgage`
+- `POST /api/ai/credit-profile`
+- `POST /api/ai/investment-planner`
 
 AI service responsibilities:
 
@@ -123,6 +126,13 @@ AI service responsibilities:
 - Call Gemini API securely from backend
 - Return structured report/card responses
 - Log AI interactions for personalization and CRM intent scoring
+
+Team ownership note:
+
+- JT owns the AI Gateway internals, Gemini logic, AI routing, and structured AI outputs.
+- Abdul's side should not implement Gemini logic directly.
+- Abdul's side should make sure website/backend flows can call the AI Gateway cleanly, pass the correct payloads, and consume/display structured responses.
+- Main integration points are onboarding/smart forms, Buy/Invest/Rent, marketplace/listings, and later dashboard/leads.
 
 ### CRM Dashboards
 
@@ -218,4 +228,3 @@ Near-term backend-first path:
 - Validate incoming request bodies.
 - Add rate limiting before production.
 - Maintain PIPEDA, GDPR, and CASL awareness in data handling.
-
