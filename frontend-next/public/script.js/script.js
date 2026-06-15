@@ -127,6 +127,7 @@ const I18N = {
     "nav.governance": "Governance",
     "nav.onboarding": "Onboarding",
     "nav.earlyAccess": "Login / Sign up",
+    "nav.signOut": "Sign out",
     "hero.title": "The Future of Real Estate, Land & Agriculture — Powered by AI",
     "hero.sub": "Kimure is the world's first unified AI brokerage platform for real estate, rural land, agricultural assets, and financial services. Buy, sell, rent, invest, and finance — intelligently.",
     "hero.explore": "Explore the Platform",
@@ -369,10 +370,13 @@ const I18N = {
     "auth.passwordLabel": "Password",
     "auth.passwordPlaceholder": "Enter your password",
     "auth.loginSubmit": "Log in",
+    "auth.loginErrorInvalid": "Wrong email or password. Please try again.",
+    "auth.loginErrorEmailConfirm": "Please confirm your email before logging in.",
+    "auth.loginErrorGeneric": "Could not log in. Please try again.",
     "auth.signUpIntro": "Create your account with our Smart Onboarding form: email access link, password, profile, goals, and AI matching.",
     "auth.signUpContinue": "Continue to registration",
     "auth.signUpNote": "You’ll verify your email, set your password, and complete steps 1–10.",
-    "auth.loginSuccess": "You’re signed in (demo). Connect your backend for real authentication.",
+    "auth.loginSuccess": "You’re signed in.",
 
     "ab.tag": "About Kimure",
     "ab.title": "The AI Brokerage Layer for Real Estate, Land, and Finance",
@@ -682,6 +686,7 @@ const I18N = {
     "nav.governance": "Gouvernance",
     "nav.onboarding": "Intégration",
     "nav.earlyAccess": "Connexion / Inscription",
+    "nav.signOut": "Déconnexion",
     "hero.title": "L'Avenir de l'Immobilier, des Terres et de l'Agriculture — Propulsé par l'IA",
     "hero.sub": "Kimure est la première plateforme de courtage IA unifiée au monde pour l'immobilier, les terres rurales, les actifs agricoles et les services financiers. Achetez, vendez, louez, investissez et financez — intelligemment.",
     "hero.explore": "Explorer la Plateforme",
@@ -925,10 +930,13 @@ const I18N = {
     "auth.passwordLabel": "Mot de passe",
     "auth.passwordPlaceholder": "Entrez votre mot de passe",
     "auth.loginSubmit": "Se connecter",
+    "auth.loginErrorInvalid": "Courriel ou mot de passe incorrect. Veuillez réessayer.",
+    "auth.loginErrorEmailConfirm": "Veuillez confirmer votre courriel avant de vous connecter.",
+    "auth.loginErrorGeneric": "Connexion impossible. Veuillez réessayer.",
     "auth.signUpIntro": "Créez votre compte avec notre formulaire d’inscription intelligent : lien courriel, mot de passe, profil, objectifs et correspondance IA.",
     "auth.signUpContinue": "Continuer vers l’inscription",
     "auth.signUpNote": "Vous vérifierez votre courriel, définirez votre mot de passe et compléterez les étapes 1 à 10.",
-    "auth.loginSuccess": "Vous êtes connecté (démo). Connectez votre API pour une authentification réelle.",
+    "auth.loginSuccess": "Vous êtes connecté.",
 
     "ab.tag": "À propos de Kimure",
     "ab.title": "La couche de courtage IA pour l’immobilier, les terres et la finance",
@@ -1291,6 +1299,56 @@ if (statCard) animateStat(statCard);
   var panelSignUp = document.getElementById("authPanelSignUp");
   var closeBtn = document.getElementById("earlyAccessClose");
   var closeAfterBtn = document.getElementById("earlyAccessCloseAfter");
+  var loginErrorEl = null;
+
+  function tAuth(key, fallback) {
+    var d = window.KIMURE_I18N_DICT;
+    return d && d[key] != null ? d[key] : fallback;
+  }
+
+  function ensureLoginErrorEl() {
+    if (!loginForm) return null;
+    if (loginErrorEl) return loginErrorEl;
+    var loginSubmitBtn = loginForm.querySelector('button[type="submit"]');
+    loginErrorEl = document.createElement("p");
+    loginErrorEl.id = "loginFormError";
+    loginErrorEl.className = "auth-login-error";
+    loginErrorEl.setAttribute("role", "alert");
+    loginErrorEl.hidden = true;
+    if (loginSubmitBtn) {
+      loginForm.insertBefore(loginErrorEl, loginSubmitBtn);
+    } else {
+      loginForm.appendChild(loginErrorEl);
+    }
+    return loginErrorEl;
+  }
+
+  function showLoginError(message) {
+    var el = ensureLoginErrorEl();
+    if (!el) return;
+    el.textContent = message || "";
+    el.hidden = !message;
+  }
+
+  function formatLoginError(error) {
+    if (!error || !error.message) {
+      return tAuth("auth.loginErrorGeneric", "Could not log in. Please try again.");
+    }
+
+    var msg = error.message.toLowerCase();
+    if (msg.indexOf("invalid login credentials") >= 0 || msg.indexOf("invalid credentials") >= 0) {
+      return tAuth("auth.loginErrorInvalid", "Wrong email or password. Please try again.");
+    }
+    if (msg.indexOf("email not confirmed") >= 0) {
+      return tAuth("auth.loginErrorEmailConfirm", "Please confirm your email before logging in.");
+    }
+
+    return error.message;
+  }
+
+  function clearLoginError() {
+    showLoginError("");
+  }
 
   function showLoginTab() {
     if (tabLogin) {
@@ -1334,6 +1392,7 @@ if (statCard) animateStat(statCard);
     if (loginSuccessEl) loginSuccessEl.hidden = true;
     showLoginTab();
     if (loginForm) loginForm.reset();
+    clearLoginError();
     if (loginEmail) loginEmail.focus();
     document.body.style.overflow = "hidden";
   }
@@ -1347,11 +1406,13 @@ if (statCard) animateStat(statCard);
     if (loginSuccessEl) loginSuccessEl.hidden = true;
     showLoginTab();
     if (loginForm) loginForm.reset();
+    clearLoginError();
   }
 
   document.querySelectorAll(".js-early-access").forEach(function (el) {
     el.addEventListener("click", function (e) {
       e.preventDefault();
+      if (el.classList.contains("is-authenticated")) return;
       openModal();
     });
   });
@@ -1379,13 +1440,141 @@ if (statCard) animateStat(statCard);
   });
 
   if (loginForm && loginEmail && loginPassword && loginSuccessEl && mainEl) {
+    var loginSubmitBtn = loginForm.querySelector('button[type="submit"]');
+
+    loginEmail.addEventListener("input", clearLoginError);
+    loginPassword.addEventListener("input", clearLoginError);
+
     loginForm.addEventListener("submit", function (e) {
       e.preventDefault();
       var email = (loginEmail.value || "").trim();
       var pass = loginPassword.value || "";
-      if (!email || !pass) return;
-      mainEl.hidden = true;
-      loginSuccessEl.hidden = false;
+      clearLoginError();
+
+      if (!email || !pass) {
+        showLoginError(tAuth("auth.loginErrorInvalid", "Wrong email or password. Please try again."));
+        return;
+      }
+
+      if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.signIn) {
+        showLoginError("Auth is not loaded on this page. Check that auth.js is included.");
+        return;
+      }
+
+      if (loginSubmitBtn) {
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.dataset.originalText = loginSubmitBtn.textContent;
+        loginSubmitBtn.textContent = "Logging in...";
+      }
+
+      window.KIMURE_AUTH.signIn(email, pass).then(function (result) {
+        if (loginSubmitBtn) {
+          loginSubmitBtn.disabled = false;
+          loginSubmitBtn.textContent = loginSubmitBtn.dataset.originalText || "Log in";
+        }
+
+        if (result.error) {
+          showLoginError(formatLoginError(result.error));
+          loginPassword.focus();
+          return;
+        }
+
+        clearLoginError();
+        mainEl.hidden = true;
+        loginSuccessEl.hidden = false;
+      });
     });
+  }
+})();
+
+// Auth nav: show who is logged in, hide login CTAs, add Sign out
+(function () {
+  var signOutBtn = null;
+
+  function t(key, fallback) {
+    var d = window.KIMURE_I18N_DICT;
+    return d && d[key] != null ? d[key] : fallback;
+  }
+
+  function getDisplayName(user) {
+    if (!user) return "";
+    if (user.user_metadata && user.user_metadata.full_name) {
+      return user.user_metadata.full_name;
+    }
+    if (user.email) return user.email.split("@")[0];
+    return "Account";
+  }
+
+  function ensureSignOutButton() {
+    var navActions = document.querySelector(".nav-actions");
+    if (!navActions) return null;
+    if (signOutBtn) return signOutBtn;
+
+    signOutBtn = document.createElement("button");
+    signOutBtn.type = "button";
+    signOutBtn.className = "btn btn-outline js-auth-sign-out";
+    signOutBtn.setAttribute("data-i18n", "nav.signOut");
+    signOutBtn.textContent = t("nav.signOut", "Sign out");
+    signOutBtn.hidden = true;
+    navActions.appendChild(signOutBtn);
+
+    signOutBtn.addEventListener("click", function () {
+      if (window.KIMURE_AUTH && window.KIMURE_AUTH.signOut) {
+        window.KIMURE_AUTH.signOut();
+      }
+    });
+
+    return signOutBtn;
+  }
+
+  function updateAuthUI(user) {
+    var loginBtns = document.querySelectorAll(".js-early-access");
+    var outBtn = ensureSignOutButton();
+
+    loginBtns.forEach(function (btn) {
+      if (user) {
+        if (btn.closest(".nav-actions")) {
+          btn.textContent = getDisplayName(user);
+          btn.classList.add("is-authenticated");
+          btn.classList.remove("btn-primary");
+          btn.classList.add("btn-outline");
+          btn.setAttribute("title", user.email || "");
+        } else {
+          btn.hidden = true;
+        }
+      } else {
+        btn.hidden = false;
+        btn.classList.remove("is-authenticated");
+        if (btn.closest(".nav-actions")) {
+          btn.classList.add("btn-primary");
+          btn.classList.remove("btn-outline");
+          var key = btn.getAttribute("data-i18n");
+          btn.textContent = key ? t(key, btn.textContent) : btn.textContent;
+          btn.removeAttribute("title");
+        } else {
+          var heroKey = btn.getAttribute("data-i18n");
+          if (heroKey) btn.textContent = t(heroKey, btn.textContent);
+        }
+      }
+    });
+
+    if (outBtn) {
+      outBtn.hidden = !user;
+      outBtn.textContent = t("nav.signOut", "Sign out");
+    }
+  }
+
+  document.addEventListener("kimure-auth-changed", function (e) {
+    updateAuthUI(e.detail && e.detail.user ? e.detail.user : null);
+  });
+
+  document.addEventListener("kimure-i18n-applied", function () {
+    if (window.KIMURE_AUTH && window.KIMURE_AUTH.getCurrentUser) {
+      window.KIMURE_AUTH.getCurrentUser().then(updateAuthUI);
+    }
+  });
+
+  if (window.KIMURE_AUTH && window.KIMURE_AUTH.getCurrentUser) {
+    window.KIMURE_AUTH.getCurrentUser().then(updateAuthUI);
   }
 })();

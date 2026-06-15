@@ -1,6 +1,10 @@
 (function () {
   "use strict";
 
+  // Tracks the logged-in user in memory. Updated by getCurrentUser, signIn, signOut,
+  // and the auth state listener below.
+  var currentUser = null;
+
   function getSupabaseClient() {
     var cfg = window.KIMURE_SUPABASE_CONFIG;
     if (!window.supabase || !cfg || !cfg.url || !cfg.anonKey) return null;
@@ -156,9 +160,82 @@
     return true;
   }
 
+  // Ask Supabase who is logged in right now.
+  // Supabase checks the stored session token in the browser (localStorage).
+  async function getCurrentUser() {
+    var client = getSupabaseClient();
+    if (!client) return null;
+
+    var result = await client.auth.getUser();
+    if (result.error) {
+      currentUser = null;
+      return null;
+    }
+
+    currentUser = result.data.user;
+    return currentUser;
+  }
+
+  // Log in an existing user with email + password.
+  async function signIn(email, password) {
+    var client = getSupabaseClient();
+    if (!client) {
+      explainMissingConfig();
+      return { user: null, error: { message: "Supabase is not configured." } };
+    }
+
+    var result = await client.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (!result.error) {
+      currentUser = result.data.user;
+    }
+
+    return result;
+  }
+
+  // End the session and clear the stored token.
+  async function signOut() {
+    var client = getSupabaseClient();
+    if (!client) {
+      explainMissingConfig();
+      return { error: { message: "Supabase is not configured." } };
+    }
+
+    var result = await client.auth.signOut();
+    currentUser = null;
+    return result;
+  }
+
+  // Listen for auth changes: login, logout, token refresh, page reload with existing session.
+  // Fires a custom event so other scripts (like script.js) can update the UI.
+  function initAuthListener() {
+    var client = getSupabaseClient();
+    if (!client) return;
+
+    client.auth.onAuthStateChange(function (event, session) {
+      currentUser = session && session.user ? session.user : null;
+      document.dispatchEvent(
+        new CustomEvent("kimure-auth-changed", {
+          detail: { event: event, user: currentUser }
+        })
+      );
+    });
+
+    getCurrentUser();
+  }
+
   window.KIMURE_AUTH = {
     getSupabaseClient: getSupabaseClient,
+    getCurrentUser: getCurrentUser,
+    signIn: signIn,
+    signOut: signOut,
+    initAuthListener: initAuthListener,
     signUpFromOnboarding: signUpFromOnboarding,
     saveOnboardingProfile: saveOnboardingProfile
   };
+
+  initAuthListener();
 })();
