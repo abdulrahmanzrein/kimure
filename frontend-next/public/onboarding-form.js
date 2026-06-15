@@ -73,8 +73,15 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function goNext() {
-    if (current === 1 && !validateStep1()) return;
+  async function goNext() {
+    if (current === 1) {
+      if (!validateStep1()) return;
+      if (window.KIMURE_AUTH && form.dataset.authSignupComplete !== "true") {
+        var signedUp = await window.KIMURE_AUTH.signUpFromOnboarding(form, nextBtn);
+        if (!signedUp) return;
+        form.dataset.authSignupComplete = "true";
+      }
+    }
     if (current >= total) {
       alert("Thank you! Your Smart Onboarding is complete. (Demo — connect to your backend to save data.)");
       return;
