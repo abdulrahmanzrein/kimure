@@ -377,6 +377,13 @@ const I18N = {
     "auth.signUpContinue": "Continue to registration",
     "auth.signUpNote": "You’ll verify your email, set your password, and complete steps 1–10.",
     "auth.loginSuccess": "You’re signed in.",
+    "auth.forgotPassword": "Forgot password?",
+    "auth.resetTitle": "Reset your password",
+    "auth.resetSub": "Enter your email and we’ll send you a reset link.",
+    "auth.resetSubmit": "Send reset link",
+    "auth.resetBack": "Back to login",
+    "auth.resetSuccess": "Password reset email sent. Check your inbox.",
+    "auth.resetErrorGeneric": "Could not send reset email. Please try again.",
 
     "ab.tag": "About Kimure",
     "ab.title": "The AI Brokerage Layer for Real Estate, Land, and Finance",
@@ -937,6 +944,13 @@ const I18N = {
     "auth.signUpContinue": "Continuer vers l’inscription",
     "auth.signUpNote": "Vous vérifierez votre courriel, définirez votre mot de passe et compléterez les étapes 1 à 10.",
     "auth.loginSuccess": "Vous êtes connecté.",
+    "auth.forgotPassword": "Mot de passe oublié ?",
+    "auth.resetTitle": "Réinitialiser votre mot de passe",
+    "auth.resetSub": "Entrez votre courriel et nous vous enverrons un lien de réinitialisation.",
+    "auth.resetSubmit": "Envoyer le lien",
+    "auth.resetBack": "Retour à la connexion",
+    "auth.resetSuccess": "Courriel de réinitialisation envoyé. Vérifiez votre boîte de réception.",
+    "auth.resetErrorGeneric": "Impossible d’envoyer le courriel de réinitialisation. Veuillez réessayer.",
 
     "ab.tag": "À propos de Kimure",
     "ab.title": "La couche de courtage IA pour l’immobilier, les terres et la finance",
@@ -1299,7 +1313,11 @@ if (statCard) animateStat(statCard);
   var panelSignUp = document.getElementById("authPanelSignUp");
   var closeBtn = document.getElementById("earlyAccessClose");
   var closeAfterBtn = document.getElementById("earlyAccessCloseAfter");
+  var authModalTitle = document.getElementById("authModalTitle");
+  var authModalSub = document.querySelector("#authModalMain .early-access-sub");
   var loginErrorEl = null;
+  var resetPanel = null;
+  var forgotLink = null;
 
   function tAuth(key, fallback) {
     var d = window.KIMURE_I18N_DICT;
@@ -1350,6 +1368,138 @@ if (statCard) animateStat(statCard);
     showLoginError("");
   }
 
+  function ensureForgotPasswordLink() {
+    if (!loginForm) return null;
+    if (forgotLink) return forgotLink;
+
+    var loginSubmitBtn = loginForm.querySelector('button[type="submit"]');
+    forgotLink = document.createElement("button");
+    forgotLink.type = "button";
+    forgotLink.className = "auth-forgot-link";
+    forgotLink.setAttribute("data-i18n", "auth.forgotPassword");
+    forgotLink.textContent = tAuth("auth.forgotPassword", "Forgot password?");
+    forgotLink.addEventListener("click", function (e) {
+      e.preventDefault();
+      showResetPasswordView();
+    });
+
+    if (loginSubmitBtn) {
+      loginForm.insertBefore(forgotLink, loginSubmitBtn);
+    } else {
+      loginForm.appendChild(forgotLink);
+    }
+
+    return forgotLink;
+  }
+
+  function ensureResetPanel() {
+    if (!panelLogin) return null;
+    if (resetPanel) return resetPanel;
+
+    resetPanel = document.createElement("div");
+    resetPanel.id = "authResetPanel";
+    resetPanel.className = "auth-reset-panel";
+    resetPanel.hidden = true;
+    resetPanel.innerHTML =
+      '<p class="auth-reset-copy" data-i18n="auth.resetSub">Enter your email and we’ll send you a reset link.</p>' +
+      '<label for="resetEmail" class="early-access-label" data-i18n="auth.emailLabel">Email</label>' +
+      '<input type="email" id="resetEmail" class="early-access-input" autocomplete="username" placeholder="you@example.com" required />' +
+      '<p class="auth-reset-status" id="resetStatus" role="status" hidden></p>' +
+      '<button type="button" class="btn btn-primary early-access-submit js-auth-reset-submit" data-i18n="auth.resetSubmit">Send reset link</button>' +
+      '<button type="button" class="btn btn-outline auth-reset-back js-auth-reset-back" data-i18n="auth.resetBack">Back to login</button>';
+
+    var resetEmail = resetPanel.querySelector("#resetEmail");
+    var resetSubmit = resetPanel.querySelector(".js-auth-reset-submit");
+    var resetBack = resetPanel.querySelector(".js-auth-reset-back");
+
+    if (resetSubmit) {
+      resetSubmit.addEventListener("click", function () {
+        submitPasswordReset(resetEmail, resetSubmit);
+      });
+    }
+
+    if (resetBack) {
+      resetBack.addEventListener("click", function (e) {
+        e.preventDefault();
+        showLoginView();
+      });
+    }
+
+    panelLogin.appendChild(resetPanel);
+    return resetPanel;
+  }
+
+  function setResetStatus(message, type) {
+    var status = document.getElementById("resetStatus");
+    if (!status) return;
+    status.textContent = message || "";
+    status.classList.remove("is-error", "is-success");
+    if (type) status.classList.add(type);
+    status.hidden = !message;
+  }
+
+  function showLoginView() {
+    ensureForgotPasswordLink();
+    if (loginForm) loginForm.hidden = false;
+    if (resetPanel) resetPanel.hidden = true;
+    if (authModalTitle) authModalTitle.textContent = tAuth("auth.title", "Log in or sign up");
+    if (authModalSub) {
+      authModalSub.hidden = false;
+      authModalSub.textContent = tAuth("auth.sub", "Access your Kimure account or start registration.");
+    }
+    setResetStatus("");
+  }
+
+  function showResetPasswordView() {
+    ensureResetPanel();
+    if (loginForm) loginForm.hidden = true;
+    if (resetPanel) resetPanel.hidden = false;
+    clearLoginError();
+    if (authModalTitle) authModalTitle.textContent = tAuth("auth.resetTitle", "Reset your password");
+    if (authModalSub) authModalSub.hidden = true;
+
+    var resetEmail = document.getElementById("resetEmail");
+    if (resetEmail && loginEmail && loginEmail.value.trim()) {
+      resetEmail.value = loginEmail.value.trim();
+    }
+    if (resetEmail) resetEmail.focus();
+  }
+
+  function submitPasswordReset(resetEmailInput, button) {
+    var email = resetEmailInput && resetEmailInput.value ? resetEmailInput.value.trim() : "";
+    setResetStatus("");
+
+    if (!email) {
+      setResetStatus(tAuth("auth.resetErrorGeneric", "Could not send reset email. Please try again."), "is-error");
+      return;
+    }
+
+    if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.requestPasswordReset) {
+      setResetStatus("Auth is not loaded on this page. Check that auth.js is included.", "is-error");
+      return;
+    }
+
+    if (button) {
+      button.disabled = true;
+      button.dataset.originalText = button.textContent;
+      button.textContent = "Sending...";
+    }
+
+    window.KIMURE_AUTH.requestPasswordReset(email).then(function (result) {
+      if (button) {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || tAuth("auth.resetSubmit", "Send reset link");
+      }
+
+      if (result.error) {
+        setResetStatus(result.error.message, "is-error");
+        return;
+      }
+
+      setResetStatus(tAuth("auth.resetSuccess", "Password reset email sent. Check your inbox."), "is-success");
+    });
+  }
+
   function showLoginTab() {
     if (tabLogin) {
       tabLogin.classList.add("is-active");
@@ -1365,6 +1515,7 @@ if (statCard) animateStat(statCard);
     if (panelSignUp) {
       panelSignUp.hidden = true;
     }
+    showLoginView();
   }
 
   function showSignUpTab() {
@@ -1393,6 +1544,7 @@ if (statCard) animateStat(statCard);
     showLoginTab();
     if (loginForm) loginForm.reset();
     clearLoginError();
+    showLoginView();
     if (loginEmail) loginEmail.focus();
     document.body.style.overflow = "hidden";
   }
@@ -1407,7 +1559,10 @@ if (statCard) animateStat(statCard);
     showLoginTab();
     if (loginForm) loginForm.reset();
     clearLoginError();
+    showLoginView();
   }
+
+  ensureForgotPasswordLink();
 
   document.querySelectorAll(".js-early-access").forEach(function (el) {
     el.addEventListener("click", function (e) {

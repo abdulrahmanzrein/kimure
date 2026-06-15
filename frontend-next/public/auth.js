@@ -34,7 +34,7 @@
     var client = getSupabaseClient();
     if (!client) {
       explainMissingConfig();
-      return false;
+      return { ok: false, error: { message: "Supabase is not configured." } };
     }
 
     var email = form.querySelector("#onb-email");
@@ -58,13 +58,55 @@
     setButtonLoading(nextButton, false);
 
     if (result.error) {
-      alert(result.error.message);
-      return false;
+      return { ok: false, error: result.error };
     }
 
-    window.KIMURE_AUTH_USER_ID = result.data && result.data.user ? result.data.user.id : "";
-    alert("Account created. Check Supabase Authentication and the profiles table.");
-    return true;
+    var user = result.data && result.data.user ? result.data.user : null;
+    var session = result.data && result.data.session ? result.data.session : null;
+    var needsEmailConfirmation = !!(user && !session && !user.email_confirmed_at);
+
+    if (user) {
+      window.KIMURE_AUTH_USER_ID = user.id;
+    }
+
+    if (session && user) {
+      currentUser = user;
+    }
+
+    return {
+      ok: true,
+      needsEmailConfirmation: needsEmailConfirmation,
+      email: emailValue,
+      user: user,
+      session: session
+    };
+  }
+
+  async function resendSignupConfirmation(email) {
+    var client = getSupabaseClient();
+    if (!client) {
+      explainMissingConfig();
+      return { error: { message: "Supabase is not configured." } };
+    }
+
+    return client.auth.resend({
+      type: "signup",
+      email: email
+    });
+  }
+
+  async function requestPasswordReset(email) {
+    var client = getSupabaseClient();
+    if (!client) {
+      explainMissingConfig();
+      return { error: { message: "Supabase is not configured." } };
+    }
+
+    var redirectTo = window.location.origin + window.location.pathname;
+
+    return client.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectTo
+    });
   }
 
   function checkedValues(form, name) {
@@ -87,6 +129,70 @@
       "1mplus": [1000000, null]
     };
     return ranges[value] || [null, null];
+  }
+
+  function budgetKeyFromRange(min, max) {
+    var minNum = min == null ? null : Number(min);
+    var maxNum = max == null ? null : Number(max);
+    if (minNum === 0 && maxNum === 50000) return "under50k";
+    if (minNum === 50000 && maxNum === 150000) return "50k-150k";
+    if (minNum === 150000 && maxNum === 500000) return "150k-500k";
+    if (minNum === 500000 && maxNum === 1000000) return "500k-1m";
+    if (minNum === 1000000 && maxNum === null) return "1mplus";
+    return "";
+  }
+
+  function setRadioValue(form, name, value) {
+    if (!value) return;
+    var input = form.querySelector('input[name="' + name + '"][value="' + value + '"]');
+    if (input) input.checked = true;
+  }
+
+  function setCheckboxValues(form, name, values) {
+    if (!Array.isArray(values)) return;
+    values.forEach(function (value) {
+      var input = form.querySelector('input[name="' + name + '"][value="' + value + '"]');
+      if (input) input.checked = true;
+    });
+  }
+
+  function applyOnboardingProfileToForm(form, profile) {
+    if (!form || !profile) return;
+
+    setRadioValue(form, "goal", profile.intent);
+    setRadioValue(form, "budget", budgetKeyFromRange(profile.budget_min, profile.budget_max));
+    setRadioValue(form, "timeline", profile.timeline);
+
+    var loc = profile.location_preferences;
+    if (Array.isArray(loc) && loc[0]) {
+      var country = form.querySelector("#onb-loc-country");
+      var city = form.querySelector("#onb-loc-city");
+      if (country && loc[0].country) country.value = loc[0].country;
+      if (city && loc[0].city) city.value = loc[0].city;
+    }
+
+    setCheckboxValues(form, "property_type", profile.property_preferences);
+
+    var fin = profile.financial_inputs || {};
+    var funds = form.querySelector("#onb-funds");
+    var rental = form.querySelector("#onb-rental-income");
+    if (funds && fin.available_funds != null) funds.value = fin.available_funds;
+    if (rental && fin.monthly_rental_income != null) rental.value = fin.monthly_rental_income;
+    setCheckboxValues(form, "return_goal", fin.return_goals);
+  }
+
+  async function fetchOnboardingProfile(userId) {
+    var client = getSupabaseClient();
+    if (!client || !userId) return null;
+
+    var result = await client
+      .from("onboarding_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (result.error) return null;
+    return result.data;
   }
 
   function numberValue(form, selector) {
@@ -141,8 +247,7 @@
 
     if (!user) {
       setButtonLoading(button, false);
-      alert("Please confirm your email and log in before saving onboarding answers.");
-      return false;
+      return { ok: false, needsLogin: true, message: "Please confirm your email and sign in before saving onboarding answers." };
     }
 
     var payload = buildOnboardingPayload(form, user.id);
@@ -153,11 +258,10 @@
     setButtonLoading(button, false);
 
     if (result.error) {
-      alert(result.error.message);
-      return false;
+      return { ok: false, message: result.error.message };
     }
 
-    return true;
+    return { ok: true };
   }
 
   // Ask Supabase who is logged in right now.
@@ -233,6 +337,10 @@
     signIn: signIn,
     signOut: signOut,
     initAuthListener: initAuthListener,
+    resendSignupConfirmation: resendSignupConfirmation,
+    requestPasswordReset: requestPasswordReset,
+    fetchOnboardingProfile: fetchOnboardingProfile,
+    applyOnboardingProfileToForm: applyOnboardingProfileToForm,
     signUpFromOnboarding: signUpFromOnboarding,
     saveOnboardingProfile: saveOnboardingProfile
   };

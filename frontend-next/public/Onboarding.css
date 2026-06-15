@@ -131,6 +131,113 @@
   font-size: 13px;
   line-height: 1.55;
 }
+.onb-signed-in-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #86efac;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.theme-light .onb-signed-in-notice {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.1);
+}
+.onb-form-step.is-signed-in .onb-field,
+.onb-form-step.is-signed-in .onb-field-hint,
+.onb-form-step.is-signed-in .onb-check,
+.onb-form-step.is-signed-in .onb-divider,
+.onb-form-step.is-signed-in .onb-pick-group,
+.onb-form-step.is-signed-in #onb-continue-heading {
+  display: none;
+}
+.onb-form-step.is-signed-in .onb-step-note:not(.onb-signed-in-notice) {
+  display: none;
+}
+.onb-form-step.is-email-confirm .onb-field,
+.onb-form-step.is-email-confirm .onb-field-hint,
+.onb-form-step.is-email-confirm .onb-check,
+.onb-form-step.is-email-confirm .onb-divider,
+.onb-form-step.is-email-confirm .onb-pick-group,
+.onb-form-step.is-email-confirm #onb-continue-heading,
+.onb-form-step.is-email-confirm .onb-step-note:not(.onb-email-confirm-notice) {
+  display: none;
+}
+.onb-email-confirm-panel {
+  margin-top: 4px;
+}
+.onb-email-confirm-notice {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.theme-light .onb-email-confirm-notice {
+  color: #1d4ed8;
+  background: rgba(59, 130, 246, 0.1);
+}
+.onb-email-confirm-panel .onb-field {
+  display: block !important;
+  margin-top: 14px;
+}
+.onb-email-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+.onb-email-confirm-status {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.onb-email-confirm-status.is-error {
+  color: #f87171;
+}
+.onb-email-confirm-status.is-success {
+  color: #86efac;
+}
+.theme-light .onb-email-confirm-status.is-error {
+  color: #b42318;
+}
+.theme-light .onb-email-confirm-status.is-success {
+  color: #166534;
+}
+.onb-existing-profile-panel {
+  margin: 0 0 20px;
+  padding: 20px 22px;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.08);
+}
+.onb-existing-profile-panel h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.onb-existing-profile-panel p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.onb-existing-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.onb-wizard.is-choice-mode .onb-form-step,
+.onb-wizard.is-choice-mode .onb-wizard-nav {
+  display: none !important;
+}
 .onb-step-note--tight {
   margin-top: 8px;
   margin-bottom: 10px !important;
