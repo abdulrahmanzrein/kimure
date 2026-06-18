@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Kimure Marketplace</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/marketplace.css">
+</head>
+
+<body class="page theme-dark" data-i18n-title-key="titles.marketplace">
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" data-i18n-alt="img.logoAlt">
+        </a>
+      </div>
+
+      <nav class="nav" data-i18n-aria-label="aria.nav" aria-label="Primary Navigation">
+        <div class="nav-dropdown">
+          <a href="about.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.about">About</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="about.html#our-story" class="nav-dropdown-link" role="menuitem" data-i18n="nav.story">Our Story</a>
+            <a href="about.html#mission-vision" class="nav-dropdown-link" role="menuitem" data-i18n="nav.mission">Mission &amp; Vision</a>
+            <a href="about.html#team" class="nav-dropdown-link" role="menuitem" data-i18n="nav.team">Team</a>
+            <a href="about.html#careers" class="nav-dropdown-link" role="menuitem" data-i18n="nav.careers">Careers</a>
+            <a href="about.html#press" class="nav-dropdown-link" role="menuitem" data-i18n="nav.press">Press / Media</a>
+            <a href="about.html#contact" class="nav-dropdown-link" role="menuitem" data-i18n="nav.contact">Contact Us</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="platform.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.platform">Platform</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="platform.html#platform-overview" class="nav-dropdown-link" role="menuitem" data-i18n="nav.overview">Overview</a>
+            <a href="platform.html#platform-features" class="nav-dropdown-link" role="menuitem" data-i18n="nav.features">Features</a>
+            <a href="platform.html#platform-how-it-works" class="nav-dropdown-link" role="menuitem" data-i18n="nav.how">How It Works</a>
+            <span class="nav-dropdown-link is-muted" role="menuitem" data-i18n="nav.mobileSoon">Mobile app — coming soon</span>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="solutions.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.solutions">Solutions</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <div class="nav-dropdown-group" data-i18n="nav.byIndustry">By industry</div>
+            <a href="solutions.html#industry-real-estate" class="nav-dropdown-link" role="menuitem" data-i18n="nav.realestate">Real Estate</a>
+            <a href="solutions.html#industry-finance" class="nav-dropdown-link" role="menuitem" data-i18n="nav.finance">Finance</a>
+            <a href="solutions.html#industry-education" class="nav-dropdown-link" role="menuitem" data-i18n="nav.education">Education</a>
+            <div class="nav-dropdown-group" data-i18n="nav.byUseCase">By use case</div>
+            <a href="solutions.html#use-case-data" class="nav-dropdown-link" role="menuitem" data-i18n="nav.dataAnalysis">Data Analysis</a>
+            <a href="solutions.html#use-case-automation" class="nav-dropdown-link" role="menuitem" data-i18n="nav.automation">Automation</a>
+            <a href="solutions.html#use-case-ai" class="nav-dropdown-link" role="menuitem" data-i18n="nav.aiInsights">AI Insights</a>
+            <div class="nav-dropdown-group" data-i18n="nav.forTeams">For teams</div>
+            <a href="solutions.html#teams-startups" class="nav-dropdown-link" role="menuitem" data-i18n="nav.startups">Startups</a>
+            <a href="solutions.html#teams-enterprises" class="nav-dropdown-link" role="menuitem" data-i18n="nav.enterprises">Enterprises</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="marketplace.html" class="nav-link nav-dropdown-trigger" aria-current="page" data-i18n="nav.marketplace">Marketplace</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <div class="nav-dropdown-group" data-i18n="nav.browseListings">Browse listings</div>
+            <a href="marketplace.html#browse-listings" class="nav-dropdown-link" role="menuitem" data-i18n="nav.allListings">All listings</a>
+            <a href="marketplace.html#mp-categories" class="nav-dropdown-link" role="menuitem" data-i18n="nav.categories">Categories</a>
+            <a href="marketplace.html#mp-featured" class="nav-dropdown-link" role="menuitem" data-i18n="nav.featured">Featured</a>
+            <a href="marketplace.html#mp-new-arrivals" class="nav-dropdown-link" role="menuitem" data-i18n="nav.newArrivals">New Arrivals</a>
+            <a href="marketplace.html#mp-top-rated" class="nav-dropdown-link" role="menuitem" data-i18n="nav.topRated">Top Rated</a>
+            <a href="marketplace.html#sell-your-item" class="nav-dropdown-link" role="menuitem" data-i18n="nav.sellItem">Sell / List Your Item</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="investors.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.investors">Investors</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="investors.html#investors-overview" class="nav-dropdown-link" role="menuitem" data-i18n="nav.invOverview">Overview</a>
+            <a href="investors.html#investors-financials" class="nav-dropdown-link" role="menuitem" data-i18n="nav.financials">Financials</a>
+            <a href="investors.html#investors-reports" class="nav-dropdown-link" role="menuitem" data-i18n="nav.reports">Reports</a>
+            <a href="investors.html#investors-pitch-deck" class="nav-dropdown-link" role="menuitem" data-i18n="nav.pitchDeck">Pitch Deck</a>
+            <a href="investors.html#investors-news" class="nav-dropdown-link" role="menuitem" data-i18n="nav.news">News / Updates</a>
+            <a href="investors.html#investors-governance" class="nav-dropdown-link" role="menuitem" data-i18n="nav.governance">Governance</a>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <button class="toggle toggle-lang" id="langToggle" type="button" data-i18n-aria-label="aria.langToggle">
+            <span class="toggle-dot"></span>
+            <span class="toggle-text-lang">EN</span>
+          </button>
+          <button class="toggle" id="themeToggle" type="button" data-i18n-aria-label="aria.themeToggle" aria-label="Toggle dark/light mode">
+            <span class="toggle-dot"></span>
+            <span class="toggle-text">Dark</span>
+          </button>
+          <a class="btn btn-primary js-early-access" href="#" data-i18n="nav.earlyAccess">Get Early Access</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="mp-page">
+      <section class="mp-hero">
+        <div class="mp-hero-content">
+          <div>
+            <div class="tag">
+              <span class="tag-dot"></span>
+              <span data-i18n="nav.marketplace">Marketplace</span>
+            </div>
+            <h1 class="mp-hero-title" data-i18n="mp.title">Marketplace Intelligence</h1>
+            <p class="mp-hero-sub" data-i18n="mp.sub">
+              Buy, sell, lease, and invest in verified real estate, rural land, and agricultural assets with AI-guided navigation.
+            </p>
+            <form class="mp-search-bar" id="mpSearchForm" role="search" data-i18n-aria-label="aria.searchListings" aria-label="Search listings">
+              <input type="search" id="mpSearchInput" name="q" placeholder="Search by location, ROI, or property type" data-i18n-placeholder="mp.placeholder" autocomplete="off" />
+              <button type="submit" data-i18n="mp.search">Search</button>
+            </form>
+          </div>
+          <div class="mp-hero-image">
+            <img src="assets/images/deal.png" alt="" data-i18n-alt="mp.heroImgAlt" />
+          </div>
+        </div>
+      </section>
+
+      <section class="mp-listings mp-listings--featured" id="browse-listings" data-i18n-aria-label="aria.featuredListings" aria-label="Featured listings">
+        <div class="mp-listings-head" id="mp-featured">
+          <h2 class="mp-listings-title" data-i18n="mp.listingsTitle2">Featured listings</h2>
+        </div>
+        <div class="mp-listings-grid" id="mpFeaturedGrid">
+          <article class="mp-listing-card" id="mp-top-rated" data-modes="buy sale rent" data-category="apartment" data-search="urban 3 bed canada 860k 91 apartment condo" data-location="Canada" data-type="Urban" data-price="860000" data-roi="91">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/urban-apartment.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">Fit 91%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$860K</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing1">Urban • 3 Bed • Canada</div>
+              <a class="mp-listing-cta" href="#listing-1" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+
+          <article class="mp-listing-card" id="mp-new-arrivals" data-modes="buy sale invest" data-category="rural" data-search="rural land 48 acres 1.42m 12% roi acreage" data-location="Canada" data-type="Rural Land" data-price="1420000" data-roi="12">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/rural-land.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">ROI 12%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$1.42M</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing2">Rural Land • 48 Acres</div>
+              <a class="mp-listing-cta" href="#listing-2" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+
+          <article class="mp-listing-card" data-modes="rent" data-category="agricultural" data-search="agricultural lease farmland 320k 88 rent" data-location="US" data-type="Agricultural" data-price="320000" data-roi="88">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/farmland.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">Fit 88%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$320K</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing3">Agricultural • Lease Option</div>
+              <a class="mp-listing-cta" href="#listing-3" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+
+          <article class="mp-listing-card" data-modes="buy sale rent invest" data-category="commercial" data-search="commercial toronto canada 2.1m retail office" data-location="Canada" data-type="Commercial" data-price="2100000" data-roi="9">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/commercial.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">ROI 9%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$2.1M</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing4">Commercial • Toronto • Canada</div>
+              <a class="mp-listing-cta" href="#listing-4" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+
+          <article class="mp-listing-card" data-modes="buy sale rent" data-category="house" data-search="residential 4 bed us 550k single family house" data-location="US" data-type="Residential" data-price="550000" data-roi="85">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/house-suburban.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">Fit 85%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$550K</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing5">Residential • 4 Bed • US</div>
+              <a class="mp-listing-cta" href="#listing-5" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+
+          <article class="mp-listing-card" data-modes="buy sale invest" data-category="urban-farm" data-search="farm agricultural canada 890k urban farm agri" data-location="Canada" data-type="Agricultural" data-price="890000" data-roi="11">
+            <div class="mp-listing-thumb">
+              <img src="assets/images/listings/farm-property.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
+            </div>
+            <div class="mp-listing-top">
+              <span class="badge" data-i18n="mp.verified">Verified</span>
+              <span class="badge gold-badge">ROI 11%</span>
+            </div>
+            <div class="mp-listing-info">
+              <div class="mp-listing-price">$890K</div>
+              <div class="mp-listing-meta" data-i18n="mp.listing6">Farm • Agricultural • Canada</div>
+              <a class="mp-listing-cta" href="#listing-6" data-i18n="mp.viewDetails">View Details →</a>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <div class="mp-intent-hub" id="mp-categories" data-i18n-aria-label="aria.mpBrowseCategories" aria-label="Marketplace categories">
+        <h2 class="mp-category-browse-title" data-i18n="mp.catTitle">Buy, sell, rent, and invest</h2>
+        <p class="mp-category-browse-lead" data-i18n="mp.catLead">The same listing cards as featured above, grouped by how you want to participate. Use search to filter every section.</p>
+
+        <section class="mp-listings mp-listings--intent" id="mp-intent-buy" data-i18n-aria-label="aria.mpIntentBuy" aria-label="Buy listings">
+          <div class="mp-listings-head">
+            <h2 class="mp-listings-title" data-i18n="mp.modeBuy">Buy</h2>
+          </div>
+          <div class="mp-listings-grid" id="mpGridBuy">
+            <p class="mp-no-results mp-intent-empty mp-hidden" id="mpEmptyBuy" aria-live="polite" data-i18n="mp.intentEmpty">No listings match your search in this section.</p>
+          </div>
+        </section>
+
+        <section class="mp-listings mp-listings--intent" id="mp-intent-sale" data-i18n-aria-label="aria.mpIntentSale" aria-label="For sale listings">
+          <div class="mp-listings-head">
+            <h2 class="mp-listings-title" data-i18n="mp.modeSale">For sale</h2>
+          </div>
+          <div class="mp-listings-grid" id="mpGridSale">
+            <p class="mp-no-results mp-intent-empty mp-hidden" id="mpEmptySale" aria-live="polite" data-i18n="mp.intentEmpty">No listings match your search in this section.</p>
+          </div>
+        </section>
+
+        <section class="mp-listings mp-listings--intent" id="mp-intent-rent" data-i18n-aria-label="aria.mpIntentRent" aria-label="Rent listings">
+          <div class="mp-listings-head">
+            <h2 class="mp-listings-title" data-i18n="mp.modeRent">Rent</h2>
+          </div>
+          <div class="mp-listings-grid" id="mpGridRent">
+            <p class="mp-no-results mp-intent-empty mp-hidden" id="mpEmptyRent" aria-live="polite" data-i18n="mp.intentEmpty">No listings match your search in this section.</p>
+          </div>
+        </section>
+
+        <section class="mp-listings mp-listings--intent" id="mp-intent-invest" data-i18n-aria-label="aria.mpIntentInvest" aria-label="Invest listings">
+          <div class="mp-listings-head">
+            <h2 class="mp-listings-title" data-i18n="mp.modeInvest">Invest</h2>
+          </div>
+          <div class="mp-listings-grid" id="mpGridInvest">
+            <p class="mp-no-results mp-intent-empty mp-hidden" id="mpEmptyInvest" aria-live="polite" data-i18n="mp.intentEmpty">No listings match your search in this section.</p>
+          </div>
+        </section>
+      </div>
+
+      <section class="mp-value" id="mp-value-delivers" data-i18n-aria-label="aria.mpValue" aria-label="What Kimure delivers">
+        <h2 class="mp-value-title" data-i18n="mp.valTitle">What Kimure delivers</h2>
+        <div class="mp-value-grid">
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val1h">Smart AI Brokerage</h3>
+            <ul>
+              <li data-i18n="mp.val1l1">Automatic matching between buyers, sellers, investors, and landowners</li>
+              <li data-i18n="mp.val1l2">Based on needs, budget, objectives, and location</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val2h">AI Inspection & Due Diligence</h3>
+            <ul>
+              <li data-i18n="mp.val2l1">Visual inspection via photos, video, satellite, digital scans</li>
+              <li data-i18n="mp.val2l2">Property condition, repair requirements, compliance gaps, enhancement potential</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val3h">Dynamic Pricing & Negotiation</h3>
+            <ul>
+              <li data-i18n="mp.val3l1">Market valuation, price negotiation scenarios, risk outlook</li>
+              <li data-i18n="mp.val3l2">ROI simulation for investors</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val4h">Financial Brokerage Layer</h3>
+            <ul>
+              <li data-i18n="mp.val4l1">Mortgage and agricultural credit brokerage</li>
+              <li data-i18n="mp.val4l2">Borrower pre-qualification, automated financial scoring</li>
+              <li data-i18n="mp.val4l3">Connections to banks, fintechs, insurers</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val5h">Agricultural & Rural Land Brokerage</h3>
+            <ul>
+              <li data-i18n="mp.val5l1">Productivity & profitability evaluation</li>
+              <li data-i18n="mp.val5l2">Climate & sustainability considerations</li>
+              <li data-i18n="mp.val5l3">Investment and leasing structuring</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val6h">Transaction & Closing Hub</h3>
+            <ul>
+              <li data-i18n="mp.val6l1">Document management, legal & regulatory workflows</li>
+              <li data-i18n="mp.val6l2">E-signatures and compliance support</li>
+              <li data-i18n="mp.val6l3">Partner ecosystem: lawyers, notaries, authorities</li>
+            </ul>
+          </div>
+          <div class="mp-value-card">
+            <h3 data-i18n="mp.val7h">Value Enhancement & Design AI</h3>
+            <ul>
+              <li data-i18n="mp.val7l1">Renovation recommendations, energy efficiency improvements</li>
+              <li data-i18n="mp.val7l2">Interior redesign options, post-improvement valuation projection</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="mp-cta" id="sell-your-item">
+        <h2 class="mp-cta-title" data-i18n="mp.ctaSellH">Sell / list your item</h2>
+        <p class="mp-cta-sub" data-i18n="mp.ctaSellP">Get early access to list properties and land on the Kimure marketplace and AI tools.</p>
+        <div class="mp-cta-actions">
+          <a class="btn btn-primary js-early-access" href="#" data-i18n="nav.earlyAccess">Get Early Access</a>
+          <a class="btn btn-outline" href="platform.html" data-i18n="mp.explorePlat">Explore Platform</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> <span data-i18n="footer.rights">Kimure. All rights reserved.</span><br><span data-i18n="footer.powered">Powered by Kimutu Power Inc.</span></div>
+      <div class="foot-links">
+        <a href="about.html" data-i18n="nav.about">About</a>
+        <a href="platform.html" data-i18n="nav.platform">Platform</a>
+        <a href="solutions.html" data-i18n="nav.solutions">Solutions</a>
+        <a href="marketplace.html" data-i18n="nav.marketplace">Marketplace</a>
+        <a href="investors.html" data-i18n="nav.investors">Investors</a>
+        <a href="onboarding.html" data-i18n="nav.onboarding">Onboarding</a>
+      </div>
+      <div class="social" data-i18n-aria-label="aria.social" aria-label="Social links">
+        <a href="https://www.facebook.com/kimunturealestate" target="_blank" rel="noopener noreferrer" title="Facebook" data-i18n-title="social.facebook">f</a>
+        <a href="https://www.linkedin.com/company/kimureal/" target="_blank" rel="noopener noreferrer" title="LinkedIn" data-i18n-title="social.linkedin">in</a>
+        <a href="#" title="Email" data-i18n-title="social.email">@</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <div class="early-access-overlay" id="earlyAccessOverlay" aria-hidden="true">
+    <div class="early-access-modal auth-modal-shell" role="dialog" aria-labelledby="authModalTitle" aria-modal="true">
+      <button type="button" class="early-access-close" id="earlyAccessClose" data-i18n-aria-label="demo.closeAria" aria-label="Close">×</button>
+      <div id="authModalMain">
+        <h2 class="early-access-title" id="authModalTitle" data-i18n="auth.title">Log in or sign up</h2>
+        <p class="early-access-sub" data-i18n="auth.sub">Access your Kimure account or start registration.</p>
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab is-active" role="tab" aria-selected="true" id="authTabLogin" data-i18n="auth.tabLogin">Login</button>
+          <button type="button" class="auth-tab" role="tab" aria-selected="false" id="authTabSignUp" data-i18n="auth.tabSignUp">Sign up</button>
+        </div>
+        <div id="authPanelLogin" class="auth-panel" role="tabpanel" aria-labelledby="authTabLogin">
+          <form id="loginForm" class="early-access-form auth-login-form" novalidate>
+            <label for="loginEmail" class="early-access-label" data-i18n="auth.emailLabel">Email</label>
+            <input type="email" id="loginEmail" name="email" class="early-access-input" autocomplete="username" data-i18n-placeholder="earlyAccess.placeholder" placeholder="you@example.com" required />
+            <label for="loginPassword" class="early-access-label" data-i18n="auth.passwordLabel">Password</label>
+            <input type="password" id="loginPassword" name="password" class="early-access-input" autocomplete="current-password" data-i18n-placeholder="auth.passwordPlaceholder" placeholder="••••••••" required />
+            <button type="submit" class="btn btn-primary early-access-submit" data-i18n="auth.loginSubmit">Log in</button>
+          </form>
+        </div>
+        <div id="authPanelSignUp" class="auth-panel auth-panel-signup" role="tabpanel" aria-labelledby="authTabSignUp" hidden>
+          <p class="auth-signup-intro" data-i18n="auth.signUpIntro">Create your account with our smart onboarding form.</p>
+          <a href="onboarding-form.html" class="btn btn-primary early-access-submit auth-signup-btn" data-i18n="auth.signUpContinue">Continue to registration</a>
+          <p class="auth-signup-note" data-i18n="auth.signUpNote">You’ll verify email, set password, and complete steps 1–10.</p>
+        </div>
+      </div>
+      <div class="early-access-success" id="authLoginSuccess" aria-live="polite" hidden>
+        <p class="early-access-success-text" data-i18n="auth.loginSuccess">You're signed in (demo).</p>
+        <button type="button" class="btn btn-outline early-access-close-btn" id="earlyAccessCloseAfter" data-i18n="earlyAccess.closeBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/marketplace.js"></script>
+</body>
+</html>

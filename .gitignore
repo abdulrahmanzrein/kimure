@@ -1,0 +1,20 @@
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+coverage/
+out/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+apps/web/public/supabase-config.js
+
+# Logs and editor files
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

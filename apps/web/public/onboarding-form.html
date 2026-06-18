@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Onboarding — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/onboarding.css">
+</head>
+
+<body class="page theme-dark" data-i18n-title-key="titles.onboardingForm">
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" data-i18n-alt="img.logoAlt">
+        </a>
+      </div>
+
+      <nav class="nav" data-i18n-aria-label="aria.nav" aria-label="Primary Navigation">
+        <div class="nav-dropdown">
+          <a href="about.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.about">About</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="about.html#our-story" class="nav-dropdown-link" role="menuitem" data-i18n="nav.story">Our Story</a>
+            <a href="about.html#mission-vision" class="nav-dropdown-link" role="menuitem" data-i18n="nav.mission">Mission &amp; Vision</a>
+            <a href="about.html#team" class="nav-dropdown-link" role="menuitem" data-i18n="nav.team">Team</a>
+            <a href="about.html#careers" class="nav-dropdown-link" role="menuitem" data-i18n="nav.careers">Careers</a>
+            <a href="about.html#press" class="nav-dropdown-link" role="menuitem" data-i18n="nav.press">Press / Media</a>
+            <a href="about.html#contact" class="nav-dropdown-link" role="menuitem" data-i18n="nav.contact">Contact Us</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="platform.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.platform">Platform</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="platform.html#platform-overview" class="nav-dropdown-link" role="menuitem" data-i18n="nav.overview">Overview</a>
+            <a href="platform.html#platform-features" class="nav-dropdown-link" role="menuitem" data-i18n="nav.features">Features</a>
+            <a href="platform.html#platform-how-it-works" class="nav-dropdown-link" role="menuitem" data-i18n="nav.how">How It Works</a>
+            <span class="nav-dropdown-link is-muted" role="menuitem" data-i18n="nav.mobileSoon">Mobile app — coming soon</span>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="solutions.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.solutions">Solutions</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <div class="nav-dropdown-group" data-i18n="nav.byIndustry">By industry</div>
+            <a href="solutions.html#industry-real-estate" class="nav-dropdown-link" role="menuitem" data-i18n="nav.realestate">Real Estate</a>
+            <a href="solutions.html#industry-finance" class="nav-dropdown-link" role="menuitem" data-i18n="nav.finance">Finance</a>
+            <a href="solutions.html#industry-education" class="nav-dropdown-link" role="menuitem" data-i18n="nav.education">Education</a>
+            <div class="nav-dropdown-group" data-i18n="nav.byUseCase">By use case</div>
+            <a href="solutions.html#use-case-data" class="nav-dropdown-link" role="menuitem" data-i18n="nav.dataAnalysis">Data Analysis</a>
+            <a href="solutions.html#use-case-automation" class="nav-dropdown-link" role="menuitem" data-i18n="nav.automation">Automation</a>
+            <a href="solutions.html#use-case-ai" class="nav-dropdown-link" role="menuitem" data-i18n="nav.aiInsights">AI Insights</a>
+            <div class="nav-dropdown-group" data-i18n="nav.forTeams">For teams</div>
+            <a href="solutions.html#teams-startups" class="nav-dropdown-link" role="menuitem" data-i18n="nav.startups">Startups</a>
+            <a href="solutions.html#teams-enterprises" class="nav-dropdown-link" role="menuitem" data-i18n="nav.enterprises">Enterprises</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="marketplace.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.marketplace">Marketplace</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <div class="nav-dropdown-group" data-i18n="nav.browseListings">Browse listings</div>
+            <a href="marketplace.html#browse-listings" class="nav-dropdown-link" role="menuitem" data-i18n="nav.allListings">All listings</a>
+            <a href="marketplace.html#mp-categories" class="nav-dropdown-link" role="menuitem" data-i18n="nav.categories">Categories</a>
+            <a href="marketplace.html#mp-featured" class="nav-dropdown-link" role="menuitem" data-i18n="nav.featured">Featured</a>
+            <a href="marketplace.html#mp-new-arrivals" class="nav-dropdown-link" role="menuitem" data-i18n="nav.newArrivals">New Arrivals</a>
+            <a href="marketplace.html#mp-top-rated" class="nav-dropdown-link" role="menuitem" data-i18n="nav.topRated">Top Rated</a>
+            <a href="marketplace.html#sell-your-item" class="nav-dropdown-link" role="menuitem" data-i18n="nav.sellItem">Sell / List Your Item</a>
+          </div>
+        </div>
+        <div class="nav-dropdown">
+          <a href="investors.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.investors">Investors</a>
+          <div class="nav-dropdown-menu" role="menu">
+            <a href="investors.html#investors-overview" class="nav-dropdown-link" role="menuitem" data-i18n="nav.invOverview">Overview</a>
+            <a href="investors.html#investors-financials" class="nav-dropdown-link" role="menuitem" data-i18n="nav.financials">Financials</a>
+            <a href="investors.html#investors-reports" class="nav-dropdown-link" role="menuitem" data-i18n="nav.reports">Reports</a>
+            <a href="investors.html#investors-pitch-deck" class="nav-dropdown-link" role="menuitem" data-i18n="nav.pitchDeck">Pitch Deck</a>
+            <a href="investors.html#investors-news" class="nav-dropdown-link" role="menuitem" data-i18n="nav.news">News / Updates</a>
+            <a href="investors.html#investors-governance" class="nav-dropdown-link" role="menuitem" data-i18n="nav.governance">Governance</a>
+          </div>
+        </div>
+        <div class="nav-actions">
+          <button class="toggle toggle-lang" id="langToggle" type="button" data-i18n-aria-label="aria.langToggle">
+            <span class="toggle-dot"></span>
+            <span class="toggle-text-lang">EN</span>
+          </button>
+          <button class="toggle" id="themeToggle" type="button" data-i18n-aria-label="aria.themeToggle" aria-label="Toggle dark/light mode">
+            <span class="toggle-dot"></span>
+            <span class="toggle-text">Dark</span>
+          </button>
+          <a class="btn btn-primary js-early-access" href="#" data-i18n="nav.earlyAccess">Get Early Access</a>
+        </div>
+      </nav>
+    </header>
+
+    <main class="onb-form-page">
+      <a class="onb-back-link" href="onboarding.html" data-i18n="onb.form.backLink">← Back to onboarding overview</a>
+
+      <header class="onb-form-head">
+        <h1 data-i18n="onb.form.title">Kimure: AI Brokerage Platform for Real Estate, Rural Land, Agricultural Assets &amp; Financial Services</h1>
+        <p class="onb-subtitle" data-i18n="onb.form.subtitle">Smart Onboarding Registration Form</p>
+      </header>
+
+      <div class="onb-progress-wrap">
+        <div class="onb-progress-label"><span data-i18n="onb.form.stepWord">Step</span> <span id="currentStepNum">1</span> <span data-i18n="onb.form.ofWord">of</span> <span id="onbProgressTotal">10</span></div>
+        <div class="onb-progress-bar" role="progressbar" aria-valuemin="1" aria-valuemax="10" aria-valuenow="1">
+          <div class="onb-progress-fill"></div>
+        </div>
+      </div>
+
+      <form id="onboardingWizard" class="onb-wizard" novalidate>
+
+        <div class="onb-form-step is-active" data-step="1" aria-hidden="false">
+          <h2>Step 1 — Account Registration</h2>
+          <p class="onb-step-note"><strong>Get an access</strong> — enter your email below.</p>
+          <p class="onb-step-note">You’ll <strong>receive the link by email</strong> — click on the link to verify your address.</p>
+
+          <div class="onb-field">
+            <label for="onb-email">Email</label>
+            <input type="email" id="onb-email" name="email" autocomplete="email" placeholder="you@example.com" required />
+          </div>
+
+          <div class="onb-field">
+            <label for="onb-password">Password</label>
+            <input type="password" id="onb-password" name="password" autocomplete="new-password" placeholder="__________________" minlength="8" required aria-describedby="onb-pass-hint" />
+          </div>
+          <p id="onb-pass-hint" class="onb-field-hint">Choose a strong password (at least 8 characters).</p>
+          <div class="onb-field">
+            <label for="onb-password-confirm">Confirm Password</label>
+            <input type="password" id="onb-password-confirm" name="password_confirm" autocomplete="new-password" placeholder="__________________" required />
+          </div>
+
+          <label class="onb-check onb-pick">
+            <input type="checkbox" id="onb-terms" name="terms" required class="onb-pick-input visually-hidden" />
+            <span class="onb-pick-ui" aria-hidden="true"></span>
+            <span class="onb-pick-text">I agree to the <a href="legal.html#terms" target="_blank" rel="noopener noreferrer">Terms &amp; Conditions</a></span>
+          </label>
+
+          <div class="onb-divider">After verification email</div>
+          <p class="onb-step-note" id="onb-continue-heading"><strong>Continue on</strong></p>
+          <div class="onb-pick-group" role="radiogroup" aria-labelledby="onb-continue-heading">
+            <label class="onb-check onb-pick">
+              <input type="radio" name="continue_on" value="website" class="onb-pick-input visually-hidden" checked />
+              <span class="onb-pick-ui" aria-hidden="true"></span>
+              <span class="onb-pick-text">Website</span>
+            </label>
+            <label class="onb-check onb-pick">
+              <input type="radio" name="continue_on" value="mobile" class="onb-pick-input visually-hidden" />
+              <span class="onb-pick-ui" aria-hidden="true"></span>
+              <span class="onb-pick-text">Mobile App</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="onb-form-step" data-step="2" aria-hidden="true">
+          <h2>Step 2 — Basic Profile</h2>
+          <div class="onb-field">
+            <label for="onb-fullname">Full name</label>
+            <input type="text" id="onb-fullname" name="full_name" autocomplete="name" />
+          </div>
+          <div class="onb-field">
+            <label for="onb-country">Country / region</label>
+            <input type="text" id="onb-country" name="country" autocomplete="country-name" />
+          </div>
+          <div class="onb-field">
+            <label for="onb-city-profile">City <span class="onb-field-hint" style="display:inline;font-weight:400">(optional)</span></label>
+            <input type="text" id="onb-city-profile" name="city_profile" autocomplete="address-level2" />
+          </div>
+          <div class="onb-field">
+            <label for="onb-phone">Phone number <span class="onb-field-hint" style="display:inline;font-weight:400">(optional)</span></label>
+            <input type="tel" id="onb-phone" name="phone" autocomplete="tel" />
+          </div>
+        </div>
+
+        <div class="onb-form-step" data-step="3" aria-hidden="true">
+          <h2>Step 3 — What Is Your Goal?</h2>
+          <p class="onb-step-note">Select your main objective:</p>
+          <fieldset class="onb-fieldset">
+            <legend class="onb-fieldset-legend visually-hidden">Main goal</legend>
+            <label class="onb-check onb-pick"><input type="radio" name="goal" value="renting" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Renting</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="goal" value="buying" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Buying</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="goal" value="investing" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Investing</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="goal" value="building" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Building / Development</span></label>
+          </fieldset>
+        </div>
+
+        <div class="onb-form-step" data-step="4" aria-hidden="true">
+          <h2>Step 4 — Property Interest</h2>
+          <p class="onb-step-note">What type of property are you looking for? (Select all that apply.)</p>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="house" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">House</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="apartment" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Apartment</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="office" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Office</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="commercial" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Commercial Space</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="land" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Land</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="property_type" value="farm" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Farm / Agricultural land</span></label>
+        </div>
+
+        <div class="onb-form-step" data-step="5" aria-hidden="true">
+          <h2>Step 5 — Budget Range</h2>
+          <p class="onb-step-note">Select your estimated budget.</p>
+          <fieldset class="onb-fieldset">
+            <legend class="onb-fieldset-legend visually-hidden">Budget</legend>
+            <label class="onb-check onb-pick"><input type="radio" name="budget" value="under50k" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Under $50,000</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="budget" value="50k-150k" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">$50,000 – $150,000</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="budget" value="150k-500k" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">$150,000 – $500,000</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="budget" value="500k-1m" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">$500,000 – $1M</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="budget" value="1mplus" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">$1M+</span></label>
+          </fieldset>
+        </div>
+
+        <div class="onb-form-step" data-step="6" aria-hidden="true">
+          <h2>Step 6 — Preferred Location</h2>
+          <p class="onb-step-note">Where are you interested in?</p>
+          <div class="onb-field">
+            <label for="onb-loc-country">Country / region</label>
+            <input type="text" id="onb-loc-country" name="loc_country" />
+          </div>
+          <div class="onb-field">
+            <label for="onb-loc-city">City / area <span class="onb-field-hint" style="display:inline;font-weight:400">(optional)</span></label>
+            <input type="text" id="onb-loc-city" name="loc_city" />
+          </div>
+        </div>
+
+        <div class="onb-form-step" data-step="7" aria-hidden="true">
+          <h2>Step 7 — Investment Timeline</h2>
+          <p class="onb-step-note">When are you planning to start?</p>
+          <fieldset class="onb-fieldset">
+            <legend class="onb-fieldset-legend visually-hidden">Timeline</legend>
+            <label class="onb-check onb-pick"><input type="radio" name="timeline" value="immediate" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Immediately</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="timeline" value="3mo" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Within 3 months</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="timeline" value="6mo" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Within 6 months</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="timeline" value="1yr" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Within 1 year</span></label>
+            <label class="onb-check onb-pick"><input type="radio" name="timeline" value="exploring" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Just exploring opportunities</span></label>
+          </fieldset>
+        </div>
+
+        <div class="onb-form-step" data-step="8" aria-hidden="true">
+          <h2>Step 8 — AI Recommendation</h2>
+          <p class="onb-step-note">After submitting, the system will:</p>
+          <ul class="onb-ai-list">
+            <li>Analyze your profile</li>
+            <li>Evaluate your financial inputs</li>
+            <li>Match you with properties and investors</li>
+            <li>Provide AI recommendations</li>
+          </ul>
+        </div>
+
+        <div class="onb-form-step" data-step="9" aria-hidden="true">
+          <h2>Step 9 — Smart Calculator or later <span class="onb-step-tag">(Next)</span></h2>
+          <p class="onb-step-note">Use the Smart Calculator to refine your matches.</p>
+          <div class="onb-field">
+            <label for="onb-funds">Estimated Available Funds</label>
+            <input type="number" id="onb-funds" name="available_funds" min="0" step="1000" placeholder="0" />
+          </div>
+          <div class="onb-field">
+            <label for="onb-rental-income">Expected Monthly Rental Income <span class="onb-field-hint onb-field-hint--inline">(Optional)</span></label>
+            <input type="number" id="onb-rental-income" name="monthly_rental" min="0" step="100" placeholder="0" />
+          </div>
+          <p class="onb-step-note onb-step-note--tight">Investment Return Goal <span class="onb-field-hint">(Optional)</span></p>
+          <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="short" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Short-term profit</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="long" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Long-term investment</span></label>
+          <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="rental" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Rental income</span></label>
+        </div>
+
+        <div class="onb-form-step" data-step="10" aria-hidden="true">
+          <h2>Step 10 — Profile Update <span class="onb-step-tag">(Future)</span></h2>
+          <p class="onb-future-note">Users can update their profile anytime:</p>
+          <ul class="onb-future-list">
+            <li>New financial situation</li>
+            <li>Updated budget</li>
+            <li>New investment goals</li>
+            <li>Additional property interests</li>
+          </ul>
+          <p class="onb-future-note onb-future-note--after">This allows the AI engine to recalculate and provide better matches.</p>
+        </div>
+
+        <div class="onb-wizard-nav">
+          <button type="button" class="btn btn-outline onb-back" hidden>Back</button>
+          <button type="button" class="btn btn-primary onb-next">Create My Account</button>
+        </div>
+      </form>
+    </main>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> <span data-i18n="footer.rights">Kimure. All rights reserved.</span><br><span data-i18n="footer.powered">Powered by Kimutu Power Inc.</span></div>
+      <div class="foot-links">
+        <a href="about.html" data-i18n="nav.about">About</a>
+        <a href="platform.html" data-i18n="nav.platform">Platform</a>
+        <a href="solutions.html" data-i18n="nav.solutions">Solutions</a>
+        <a href="marketplace.html" data-i18n="nav.marketplace">Marketplace</a>
+        <a href="investors.html" data-i18n="nav.investors">Investors</a>
+        <a href="onboarding.html" data-i18n="nav.onboarding">Onboarding</a>
+      </div>
+      <div class="social" data-i18n-aria-label="aria.social" aria-label="Social links">
+        <a href="https://www.facebook.com/kimunturealestate" target="_blank" rel="noopener noreferrer" title="Facebook" data-i18n-title="social.facebook">f</a>
+        <a href="https://www.linkedin.com/company/kimureal/" target="_blank" rel="noopener noreferrer" title="LinkedIn" data-i18n-title="social.linkedin">in</a>
+        <a href="#" title="Email" data-i18n-title="social.email">@</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <div class="early-access-overlay" id="earlyAccessOverlay" aria-hidden="true">
+    <div class="early-access-modal auth-modal-shell" role="dialog" aria-labelledby="authModalTitle" aria-modal="true">
+      <button type="button" class="early-access-close" id="earlyAccessClose" data-i18n-aria-label="demo.closeAria" aria-label="Close">×</button>
+      <div id="authModalMain">
+        <h2 class="early-access-title" id="authModalTitle" data-i18n="auth.title">Log in or sign up</h2>
+        <p class="early-access-sub" data-i18n="auth.sub">Access your Kimure account or start registration.</p>
+        <div class="auth-tabs" role="tablist">
+          <button type="button" class="auth-tab is-active" role="tab" aria-selected="true" id="authTabLogin" data-i18n="auth.tabLogin">Login</button>
+          <button type="button" class="auth-tab" role="tab" aria-selected="false" id="authTabSignUp" data-i18n="auth.tabSignUp">Sign up</button>
+        </div>
+        <div id="authPanelLogin" class="auth-panel" role="tabpanel" aria-labelledby="authTabLogin">
+          <form id="loginForm" class="early-access-form auth-login-form" novalidate>
+            <label for="loginEmail" class="early-access-label" data-i18n="auth.emailLabel">Email</label>
+            <input type="email" id="loginEmail" name="email" class="early-access-input" autocomplete="username" data-i18n-placeholder="earlyAccess.placeholder" placeholder="you@example.com" required />
+            <label for="loginPassword" class="early-access-label" data-i18n="auth.passwordLabel">Password</label>
+            <input type="password" id="loginPassword" name="password" class="early-access-input" autocomplete="current-password" data-i18n-placeholder="auth.passwordPlaceholder" placeholder="••••••••" required />
+            <button type="submit" class="btn btn-primary early-access-submit" data-i18n="auth.loginSubmit">Log in</button>
+          </form>
+        </div>
+        <div id="authPanelSignUp" class="auth-panel auth-panel-signup" role="tabpanel" aria-labelledby="authTabSignUp" hidden>
+          <p class="auth-signup-intro" data-i18n="auth.signUpIntro">Create your account with our smart onboarding form.</p>
+          <a href="onboarding-form.html" class="btn btn-primary early-access-submit auth-signup-btn" data-i18n="auth.signUpContinue">Continue to registration</a>
+          <p class="auth-signup-note" data-i18n="auth.signUpNote">You’ll verify email, set password, and complete steps 1–10.</p>
+        </div>
+      </div>
+      <div class="early-access-success" id="authLoginSuccess" aria-live="polite" hidden>
+        <p class="early-access-success-text" data-i18n="auth.loginSuccess">You're signed in (demo).</p>
+        <button type="button" class="btn btn-outline early-access-close-btn" id="earlyAccessCloseAfter" data-i18n="earlyAccess.closeBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/onboarding-form.js"></script>
+</body>
+</html>

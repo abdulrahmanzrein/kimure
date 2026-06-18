@@ -1,0 +1,12 @@
+{
+  "name": "kimure-platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix apps/web && npm install --prefix apps/api",
+    "dev:web": "npm run dev --prefix apps/web",
+    "dev:api": "npm run start:dev --prefix apps/api",
+    "build": "npm run build --prefix apps/web && npm run build --prefix apps/api",
+    "typecheck": "npm run typecheck --prefix apps/api"
+  }
+}
