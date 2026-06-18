@@ -12,6 +12,26 @@
     return window.supabase.createClient(cfg.url, cfg.anonKey);
   }
 
+  // Base URL of our own Kimure backend (NestJS). Set in supabase-config.js;
+  // falls back to the local dev server. Onboarding now goes through this API
+  // instead of talking to Supabase directly, so the backend can validate + log it.
+  function getApiBaseUrl() {
+    var cfg = window.KIMURE_SUPABASE_CONFIG;
+    if (cfg && cfg.apiBaseUrl) return cfg.apiBaseUrl;
+    return "http://localhost:3001/api";
+  }
+
+  // Grab the logged-in user's access token (a JWT) from the stored session.
+  // The backend reads this from the Authorization header to know who is calling
+  // and to enforce row-level security (the user only sees their own row).
+  async function getAccessToken() {
+    var client = getSupabaseClient();
+    if (!client) return null;
+    var result = await client.auth.getSession();
+    var session = result.data ? result.data.session : null;
+    return session ? session.access_token : null;
+  }
+
   function explainMissingConfig() {
     alert(
       "Supabase is not configured yet. Copy supabase-config.example.js to supabase-config.js, then add your Supabase Project URL and anon public key."
@@ -181,18 +201,24 @@
     setCheckboxValues(form, "return_goal", fin.return_goals);
   }
 
-  async function fetchOnboardingProfile(userId) {
-    var client = getSupabaseClient();
-    if (!client || !userId) return null;
+  // Load the user's saved onboarding answers from our backend (GET /api/onboarding).
+  // No userId argument needed anymore: the backend identifies the user from the token.
+  async function fetchOnboardingProfile() {
+    var token = await getAccessToken();
+    if (!token) return null;
 
-    var result = await client
-      .from("onboarding_profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/onboarding", {
+        headers: { Authorization: "Bearer " + token }
+      });
+    } catch (err) {
+      return null; // server unreachable -> behave like "nothing saved yet"
+    }
 
-    if (result.error) return null;
-    return result.data;
+    // 404 (no row yet) or any error: treat as "no profile saved".
+    if (!response.ok) return null;
+    return await response.json();
   }
 
   function numberValue(form, selector) {
@@ -229,36 +255,41 @@
     };
   }
 
+  // Save the user's onboarding answers through our backend (POST /api/onboarding).
+  // The backend upserts the row and sets user_id from the token, so we no longer
+  // write to Supabase directly here.
   async function saveOnboardingProfile(form, button) {
-    var client = getSupabaseClient();
-    if (!client) {
-      explainMissingConfig();
-      return false;
-    }
-
     setButtonLoading(button, true, "Saving...");
 
-    var userResult = await client.auth.getUser();
-    var user = userResult.data && userResult.data.user ? userResult.data.user : null;
-
-    if (!user && window.KIMURE_AUTH_USER_ID) {
-      user = { id: window.KIMURE_AUTH_USER_ID };
-    }
-
-    if (!user) {
+    var token = await getAccessToken();
+    if (!token) {
       setButtonLoading(button, false);
       return { ok: false, needsLogin: true, message: "Please confirm your email and sign in before saving onboarding answers." };
     }
 
-    var payload = buildOnboardingPayload(form, user.id);
-    var result = await client
-      .from("onboarding_profiles")
-      .upsert(payload, { onConflict: "user_id" });
+    // user_id is included for shape but the backend overrides it from the token.
+    var payload = buildOnboardingPayload(form, null);
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/onboarding", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      setButtonLoading(button, false);
+      return { ok: false, message: "Could not reach the server. Is the API running on " + getApiBaseUrl() + "?" };
+    }
 
     setButtonLoading(button, false);
 
-    if (result.error) {
-      return { ok: false, message: result.error.message };
+    if (!response.ok) {
+      var errBody = await response.json().catch(function () { return {}; });
+      return { ok: false, message: errBody.message || "Saving failed." };
     }
 
     return { ok: true };

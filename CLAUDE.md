@@ -86,6 +86,15 @@ bash /mnt/c/Users/abdul/Downloads/kimuntu/test.sh
 To test a different route, edit the last `curl` line in `test.sh`. The token is
 valid for 1 hour, so the script re-fetches it each run.
 
+**Testing the website against the API (browser):** serve the static site on
+port **3000** (`cd apps/web/public && npx serve -l 3000`) and open
+`http://localhost:3000/...`. The browser enforces CORS; `main.ts` only allows
+the origin in `CORS_ORIGINS` (default `http://localhost:3000`). Opening pages as
+`file://` or on another port will fail with a CORS error — not a code bug. The
+frontend's API base URL is set in `apps/web/public/supabase-config.js`
+(`apiBaseUrl`). Note: login/auth still goes browser→Supabase directly; only data
+flows route through the API.
+
 ---
 
 ## Architecture in one picture
@@ -113,6 +122,8 @@ instead, so the backend can validate, log, and control them.
 GET  /api/health          public   - liveness check
 POST /api/ai/:tool        auth      - forwards to JT's AI Gateway (8 tools)
 GET  /api/users/me        auth      - returns the logged-in user's profile
+GET  /api/onboarding      auth      - returns the user's onboarding answers
+POST /api/onboarding      auth      - create/update the user's onboarding answers
 ```
 
 Folder layout (`apps/api/src`):
@@ -126,9 +137,12 @@ src/
 ├── ai/
 │   ├── ai.controller.ts          POST /api/ai/:tool
 │   └── ai-gateway.service.ts     forwards request to JT's Gateway
-└── users/
-    ├── users.controller.ts       GET /api/users/me
-    └── users.service.ts          reads profiles table (passes user token for RLS)
+├── users/
+│   ├── users.controller.ts       GET /api/users/me
+│   └── users.service.ts          reads profiles table (passes user token for RLS)
+└── onboarding/
+    ├── onboarding.controller.ts  GET + POST /api/onboarding
+    └── onboarding.service.ts     reads/upserts onboarding_profiles
 ```
 
 **Pattern to copy for new features:** a folder with a `*.controller.ts`
@@ -150,27 +164,20 @@ the user's token in a `global.headers.Authorization` Bearer header (see
 - [x] `SupabaseAuthGuard` — verifies Supabase access tokens
 - [x] `POST /api/ai/:tool` — authenticated AI proxy routes + integration contract
 - [x] **`GET /api/users/me`** — returns the logged-in user's profile (tested end-to-end)
+- [x] **`GET` + `POST /api/onboarding`** — read/upsert onboarding answers in
+  `onboarding_profiles` (tested end-to-end). Test script: `test-onboarding.sh`.
+- [x] **Onboarding frontend wired to the API** — `auth.js`
+  (`saveOnboardingProfile` / `fetchOnboardingProfile`) now calls `POST` / `GET
+  /api/onboarding` with the user's Bearer token instead of Supabase directly
+  (verified in the browser). API base URL lives in `supabase-config.js`
+  (`apiBaseUrl`). Login still goes browser→Supabase; only data routes through the API.
 
 ### ⬜ Next (in build order)
 
 Each task = one folder under `apps/api/src` with a controller + service,
-registered in `app.module.ts`. Build one, test with `test.sh`, then check it off.
+registered in `app.module.ts`. Build one, test, then check it off.
 
-#### 1. Onboarding routes — `src/onboarding/`
-Move onboarding off the browser-to-Supabase path and behind the API.
-```
-GET  /api/onboarding   - load the user's onboarding answers
-POST /api/onboarding   - create/update (upsert) the user's answers
-```
-- Reads/writes `onboarding_profiles` (see columns in `001_supabase_core_schema.sql`).
-- Pass the user token to Supabase so RLS allows the row (copy `users.service.ts`).
-- After this works, update `apps/web/public/assets/js/auth.js`
-  (`saveOnboardingProfile` / `fetchOnboardingProfile`) to call the API instead
-  of Supabase directly.
-- **Why:** lets the backend validate + later log onboarding; also fills in the
-  user's `full_name` which is currently `null`.
-
-#### 2. AI request logging — edit `src/ai/ai-gateway.service.ts`
+#### 1. AI request logging — edit `src/ai/ai-gateway.service.ts`
 After receiving JT's response, insert a row into `ai_requests`.
 ```
 ai_requests: { user_id, engine, request_payload, response_payload, status, error_message }
@@ -181,7 +188,7 @@ ai_requests: { user_id, engine, request_payload, response_payload, status, error
 - Log on both success and failure (set `status` + `error_message`).
 - **Why:** compliance (PIPEDA/GDPR), debugging, future personalization, billing.
 
-#### 3. Listings API — `src/listings/`
+#### 2. Listings API — `src/listings/`
 ```
 GET  /api/listings        - list properties (filters: city, price, type, status)
 GET  /api/listings/:id    - one property's full details
@@ -195,7 +202,7 @@ POST /api/listings        - create a listing (partners only - role check later)
   to `/api/listings`.
 - **Why:** first "it's real" moment — the marketplace shows live DB data.
 
-#### 4. Saved properties (favorites) — `src/saved-properties/`
+#### 3. Saved properties (favorites) — `src/saved-properties/`
 ```
 GET    /api/saved-properties       - my saved listings
 POST   /api/saved-properties       - save a listing { listing_id }
@@ -203,7 +210,7 @@ DELETE /api/saved-properties/:id   - unsave
 ```
 - Reads/writes `saved_properties` (unique on user_id + listing_id).
 
-#### 5. Leads / CRM starter — `src/leads/`
+#### 4. Leads / CRM starter — `src/leads/`
 ```
 POST /api/leads   - user requests agent contact -> creates a lead
 GET  /api/leads   - user sees their leads (agents see theirs later)
@@ -211,14 +218,15 @@ GET  /api/leads   - user sees their leads (agents see theirs later)
 - Reads/writes `leads` (status enum: new/contacted/negotiation/closed_won/closed_lost).
 - **Why:** the business model — "the CRM monetizes user intent."
 
-#### 6. Rate limiting — AI routes
+#### 5. Rate limiting — AI routes
 Add a per-user limit (e.g. 10 req/min) on `POST /api/ai/:tool`.
 - Consider `@nestjs/throttler`. Keep it minimal.
 - **Why:** prevent abuse / runaway Gemini cost before production.
 
-#### 7. Wire the frontend to the backend
-Change `apps/web/public/assets/js/*.js` so every flow (onboarding, listings,
-saved, leads, AI tools) calls the API routes above instead of Supabase directly.
+#### 6. Wire the remaining frontend flows to the backend
+Onboarding is already wired (see Done). Do the same for the rest: change
+`apps/web/public/assets/js/*.js` so listings, saved, leads, and AI-tool flows
+call the API routes above instead of Supabase directly.
 - **Why:** turns two separate pieces into one connected platform. After this,
   every user action flows through the backend where it can be controlled.
 
