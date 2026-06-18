@@ -5,6 +5,8 @@ import { AiGatewayService } from "./ai/ai-gateway.service";
 import { SupabaseAuthGuard } from "./auth/supabase-auth.guard";
 import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
+import { OnboardingController } from "./onboarding/onboarding.controller";
+import { OnboardingService } from "./onboarding/onboarding.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -25,7 +27,17 @@ class HealthController {
       isGlobal: true
     })
   ],
-  controllers: [HealthController, AiController, UsersController],
-  providers: [AiGatewayService, SupabaseAuthGuard, UsersService]
+  controllers: [
+    HealthController,
+    AiController,
+    UsersController,
+    OnboardingController
+  ],
+  providers: [
+    AiGatewayService,
+    SupabaseAuthGuard,
+    UsersService,
+    OnboardingService
+  ]
 })
 export class AppModule {}
