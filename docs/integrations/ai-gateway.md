@@ -64,8 +64,9 @@ needed by the selected capability.
 }
 ```
 
-The current learning-focused API accepts flexible JSON objects. Capability
-specific validation will be added after JT confirms the final schemas.
+Most routes currently accept flexible JSON objects. Credit-profile uses a
+strict normalized contract and response allowlist documented in
+[`credit-ai-contract.md`](../project/credit-ai-contract.md).
 
 ## Examples
 
@@ -134,9 +135,9 @@ specific validation will be added after JT confirms the final schemas.
 }
 ```
 
-`credit-profile` must only be called after the UI has collected explicit user
-consent. The current endpoint transports the consent flag; it does not perform
-a credit bureau pull.
+`credit-profile` accepts directional requests without bureau consent. Auto and
+named bureau-provider modes require explicit bureau consent. The Kimure API
+normalizes the consent flags and permissible-purpose metadata before forwarding.
 
 ## Backend-to-Gateway Envelope
 
@@ -172,8 +173,9 @@ the data use has been agreed on.
 
 ## Responses
 
-Successful structured Gateway responses are returned to the client unchanged.
-This avoids maintaining two competing AI response formats.
+Successful structured Gateway responses are normally returned to the client
+unchanged. Credit-profile is the exception: the Kimure API returns only its
+documented safe response allowlist and drops provider-specific response fields.
 
 Backend integration errors:
 

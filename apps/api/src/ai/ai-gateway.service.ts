@@ -6,6 +6,10 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomUUID } from "crypto";
+import {
+  getSafeGatewayErrorCode,
+  shapeCreditProfileResponse
+} from "./credit-ai.contract";
 
 @Injectable()
 export class AiGatewayService {
@@ -17,12 +21,13 @@ export class AiGatewayService {
     userId: string,
     authorization?: string
   ): Promise<unknown> {
+    const requestId = randomUUID();
+    const isCreditProfile = tool === "credit-profile";
     const baseUrl = this.config.get<string>("AI_GATEWAY_BASE_URL");
     if (!baseUrl) {
       throw new ServiceUnavailableException("AI Gateway is not configured");
     }
 
-    const requestId = randomUUID();
     const requestBody = {
       requestId,
       capability: tool,
@@ -50,8 +55,14 @@ export class AiGatewayService {
           message: "AI Gateway rejected the request",
           requestId,
           upstreamStatus: response.status,
-          upstreamResponse: body
+          ...(isCreditProfile
+            ? { errorCode: getSafeGatewayErrorCode(body) }
+            : { upstreamResponse: body })
         });
+      }
+
+      if (isCreditProfile) {
+        return shapeCreditProfileResponse(body);
       }
 
       return body;
