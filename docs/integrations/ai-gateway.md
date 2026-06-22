@@ -7,15 +7,18 @@ Kimure clients call this NestJS backend:
 ```txt
 Website / Mobile
   -> Kimure NestJS API
-  -> JT AI Gateway
+  -> apps/ai-gateway
   -> Gemini and capability logic
 ```
 
 The NestJS API owns authentication, input validation, trusted user context,
 request IDs, timeout handling, and the stable route surface used by clients.
 
-The AI Gateway owns routing internals, prompts, Gemini calls, model selection,
-and structured AI output.
+The internal `apps/ai-gateway` app owns routing internals, prompts, Gemini
+calls, provider adapters, model selection, and structured AI output.
+
+Website and mobile clients must call `apps/api`; they must not call the Gateway,
+Gemini, Thirdstream, Equifax, or TransUnion directly.
 
 ## Client Routes
 
@@ -64,8 +67,9 @@ needed by the selected capability.
 }
 ```
 
-The current learning-focused API accepts flexible JSON objects. Capability
-specific validation will be added after JT confirms the final schemas.
+Most routes currently accept flexible JSON objects. Credit-profile uses a
+strict normalized contract and response allowlist documented in
+[`credit-ai-contract.md`](../project/credit-ai-contract.md).
 
 ## Examples
 
@@ -134,9 +138,9 @@ specific validation will be added after JT confirms the final schemas.
 }
 ```
 
-`credit-profile` must only be called after the UI has collected explicit user
-consent. The current endpoint transports the consent flag; it does not perform
-a credit bureau pull.
+`credit-profile` accepts directional requests without bureau consent. Auto and
+named bureau-provider modes require explicit bureau consent. The Kimure API
+normalizes the consent flags and permissible-purpose metadata before forwarding.
 
 ## Backend-to-Gateway Envelope
 
@@ -164,7 +168,8 @@ Forwarded headers:
 - `X-Request-ID`: generated correlation ID
 - `X-API-Key`: optional server-to-server key from `AI_GATEWAY_API_KEY`
 
-JT should confirm this envelope before the two services are connected.
+`apps/ai-gateway` accepts this envelope and uses only its `input` object as the
+capability payload.
 
 Only the stable user ID is forwarded by default. Email and other profile data
 should be added to `input` only when a capability genuinely requires it and
@@ -172,8 +177,9 @@ the data use has been agreed on.
 
 ## Responses
 
-Successful structured Gateway responses are returned to the client unchanged.
-This avoids maintaining two competing AI response formats.
+Successful structured Gateway responses are normally returned to the client
+unchanged. Credit-profile is the exception: the Kimure API returns only its
+documented safe response allowlist and drops provider-specific response fields.
 
 Backend integration errors:
 
@@ -185,8 +191,10 @@ Backend integration errors:
 
 ## Remaining Integration Work
 
-1. Confirm the outgoing envelope and response schemas with JT.
-2. Add capability-specific required-field rules after those schemas are final.
-3. Add server-side `ai_requests` and `ai_reports` persistence.
-4. Add rate limiting.
-5. Connect the onboarding and marketplace frontend flows.
+1. Add capability-specific required-field rules after those schemas are final.
+2. Add server-side `ai_requests` and `ai_reports` persistence.
+3. Add rate limiting.
+4. Connect the onboarding and marketplace frontend flows.
+
+Live bureau pulls remain blocked until the approved Thirdstream subscription,
+product access, and API key are available in the Gateway environment.

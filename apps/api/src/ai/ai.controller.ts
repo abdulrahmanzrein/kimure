@@ -12,6 +12,10 @@ import {
   SupabaseAuthGuard
 } from "../auth/supabase-auth.guard";
 import { AiGatewayService } from "./ai-gateway.service";
+import {
+  normalizeCreditProfileInput,
+  normalizeMortgageInput
+} from "./credit-ai.contract";
 
 const allowedTools = [
   "chat",
@@ -41,19 +45,22 @@ export class AiController {
       throw new BadRequestException(`Unknown AI tool: ${tool}`);
     }
 
-    if (tool === "credit-profile" && input.consent !== true) {
-      throw new BadRequestException(
-        "consent must be true before requesting a credit profile"
-      );
-    }
-
     if (!request.user) {
       throw new BadRequestException("Authenticated user is missing");
     }
 
+    // Credit data crosses the service boundary only after capability-specific
+    // validation and allowlist normalization.
+    const normalizedInput =
+      tool === "credit-profile"
+        ? normalizeCreditProfileInput(input)
+        : tool === "mortgage"
+          ? normalizeMortgageInput(input)
+          : input;
+
     return this.gateway.execute(
       tool,
-      input,
+      normalizedInput,
       request.user.id,
       request.headers.authorization
     );

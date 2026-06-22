@@ -13,6 +13,7 @@ incrementally connects them to Supabase and the NestJS API:
 - `/about.html`
 - `/onboarding.html`
 - `/onboarding-form.html`
+- `/credit-profile.html`
 - `/legal.html`
 
 Visiting `/` redirects to `/index.html`.

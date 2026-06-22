@@ -295,6 +295,46 @@
     return { ok: true };
   }
 
+  // Send the official credit-profile contract to the Kimure API. Website code
+  // never calls Gemini, a bureau provider, or the AI Gateway directly.
+  async function requestCreditProfile(payload) {
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in before requesting a credit-readiness assessment."
+      };
+    }
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/ai/credit-profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "The credit-readiness request could not be completed.";
+      return { ok: false, message: message };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -373,7 +413,8 @@
     fetchOnboardingProfile: fetchOnboardingProfile,
     applyOnboardingProfileToForm: applyOnboardingProfileToForm,
     signUpFromOnboarding: signUpFromOnboarding,
-    saveOnboardingProfile: saveOnboardingProfile
+    saveOnboardingProfile: saveOnboardingProfile,
+    requestCreditProfile: requestCreditProfile
   };
 
   initAuthListener();

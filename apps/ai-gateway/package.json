@@ -1,0 +1,20 @@
+{
+  "name": "@kimure/ai-gateway",
+  "version": "0.1.0",
+  "description": "Kimure internal AI Gateway",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "check": "node --check server.js && node --check scripts/test-ai-routes.js && node --check scripts/check-credit-contract.js && node --check scripts/check-credit-providers.js && node --check src/routes/aiRoutes.js && node --check src/services/aiRouter.js && node --check src/services/creditProfileService.js && node --check src/services/creditProfile/normalizeCreditProfileRequest.js && node --check src/services/creditProfile/buildCreditMortgageHandoff.js && node --check src/services/creditProfile/creditAssessmentStore.js && node --check src/services/creditProviderService.js && node --check src/services/creditProviders/index.js && node --check src/services/creditProviders/thirdstreamProvider.js && node --check src/services/creditProviders/normalizeCreditReport.js && node --check src/services/equifaxCreditService.js && node --check src/services/geminiService.js && node --check src/services/mortgageService.js && node --check src/services/mockAiService.js && node --check src/utils/responseContract.js",
+    "check:credit-contract": "node scripts/check-credit-contract.js",
+    "check:credit-providers": "node scripts/check-credit-providers.js",
+    "test:ai-routes": "node scripts/test-ai-routes.js"
+  },
+  "private": true,
+  "license": "UNLICENSED",
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}
