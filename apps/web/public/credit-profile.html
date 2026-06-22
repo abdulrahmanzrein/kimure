@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Credit Readiness — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/credit-profile.css" />
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav credit-nav" aria-label="Primary navigation">
+        <a href="platform.html" class="nav-link">Platform</a>
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+        <a href="onboarding.html" class="nav-link">Account</a>
+      </nav>
+      <div class="actions">
+        <button class="toggle" id="themeToggle" type="button" aria-label="Toggle dark/light mode">
+          <span class="toggle-dot" aria-hidden="true"></span>
+          <span id="themeText">Dark</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="credit-page">
+      <a class="credit-back-link" href="platform.html">← Back to platform</a>
+
+      <header class="credit-intro">
+        <p class="credit-eyebrow">Financial readiness</p>
+        <h1>Build your credit-readiness profile</h1>
+        <p>
+          Get an informational estimate from your financial profile, or choose a bureau-verified
+          check using additional identity details and explicit consent.
+        </p>
+      </header>
+
+      <div class="credit-layout">
+        <form id="creditProfileForm" class="credit-form" novalidate>
+          <section class="credit-card">
+            <div class="credit-section-heading">
+              <span>1</span>
+              <div>
+                <h2>Assessment type</h2>
+                <p>Choose whether to use financial details only or request bureau verification.</p>
+              </div>
+            </div>
+
+            <div class="credit-field">
+              <label for="creditAssessmentType">Assessment type</label>
+              <select id="creditAssessmentType" name="assessmentType">
+                <option value="estimate">Credit readiness estimate</option>
+                <option value="bureau">Bureau-verified check</option>
+              </select>
+              <p class="credit-field-note" id="creditModeNote">
+                Informational guidance only. This does not pull a bureau report or provide your actual credit score.
+              </p>
+            </div>
+
+            <div class="credit-field credit-bureau-field" id="creditBureauField" hidden>
+              <label for="creditBureauChoice">Credit bureau</label>
+              <select id="creditBureauChoice" name="creditBureau" disabled>
+                <option value="">Select a credit bureau</option>
+                <option value="equifax">Equifax</option>
+                <option value="transunion">TransUnion</option>
+              </select>
+              <p class="credit-field-note">
+                Bureau verification requires explicit consent and access to an approved provider.
+              </p>
+            </div>
+          </section>
+
+          <section class="credit-card">
+            <div class="credit-section-heading">
+              <span>2</span>
+              <div>
+                <h2>Financial profile</h2>
+                <p>Annual income and monthly debt are required for useful guidance.</p>
+              </div>
+            </div>
+
+            <div class="credit-grid">
+              <div class="credit-field">
+                <label for="creditAnnualIncome">Annual income</label>
+                <input id="creditAnnualIncome" name="annualIncome" type="number" min="1" step="1000" inputmode="decimal" required />
+              </div>
+              <div class="credit-field">
+                <label for="creditMonthlyDebt">Monthly debt payments</label>
+                <input id="creditMonthlyDebt" name="monthlyDebt" type="number" min="0" step="50" inputmode="decimal" required />
+              </div>
+              <div class="credit-field">
+                <label for="creditEmploymentStatus">Employment status <span>Optional</span></label>
+                <select id="creditEmploymentStatus" name="employmentStatus">
+                  <option value="">Select</option>
+                  <option value="full-time">Full-time</option>
+                  <option value="part-time">Part-time</option>
+                  <option value="self-employed">Self-employed</option>
+                  <option value="contract">Contract</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="credit-field">
+                <label for="creditEmploymentStability">Employment stability <span>Optional</span></label>
+                <select id="creditEmploymentStability" name="employmentStability">
+                  <option value="">Select</option>
+                  <option value="under-1-year">Under 1 year</option>
+                  <option value="1-2-years">1–2 years</option>
+                  <option value="2-plus-years">2+ years</option>
+                </select>
+              </div>
+              <div class="credit-field">
+                <label for="creditHousingPayment">Current housing payment <span>Optional</span></label>
+                <input id="creditHousingPayment" name="currentHousingPayment" type="number" min="0" step="50" inputmode="decimal" />
+              </div>
+              <div class="credit-field">
+                <label for="creditSavings">Savings <span>Optional</span></label>
+                <input id="creditSavings" name="savings" type="number" min="0" step="1000" inputmode="decimal" />
+              </div>
+              <div class="credit-field">
+                <label for="creditDownPayment">Planned down payment <span>Optional</span></label>
+                <input id="creditDownPayment" name="downPayment" type="number" min="0" step="1000" inputmode="decimal" />
+              </div>
+              <div class="credit-field">
+                <label for="creditPurchasePrice">Target purchase price <span>Optional</span></label>
+                <input id="creditPurchasePrice" name="targetPurchasePrice" type="number" min="0" step="1000" inputmode="decimal" />
+              </div>
+              <div class="credit-field">
+                <label for="creditTimeline">Timeline <span>Optional</span></label>
+                <select id="creditTimeline" name="timeline">
+                  <option value="">Select</option>
+                  <option value="0-3-months">0–3 months</option>
+                  <option value="3-6-months">3–6 months</option>
+                  <option value="6-12-months">6–12 months</option>
+                  <option value="exploring">Exploring</option>
+                </select>
+              </div>
+              <div class="credit-field">
+                <label for="creditLocation">Target location <span>Optional</span></label>
+                <input id="creditLocation" name="location" type="text" autocomplete="address-level2" />
+              </div>
+              <div class="credit-field">
+                <label for="creditFirstTimeBuyer">First-time buyer <span>Optional</span></label>
+                <select id="creditFirstTimeBuyer" name="firstTimeBuyer">
+                  <option value="">Select</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+              <div class="credit-field">
+                <label for="creditRiskTolerance">Risk tolerance <span>Optional</span></label>
+                <select id="creditRiskTolerance" name="riskTolerance">
+                  <option value="">Select</option>
+                  <option value="conservative">Conservative</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="growth">Growth</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="credit-card credit-provider-fields" id="creditProviderFields" hidden>
+            <div class="credit-section-heading">
+              <span>3</span>
+              <div>
+                <h2>Bureau verification details</h2>
+                <p>Required only for a bureau-verified check.</p>
+              </div>
+            </div>
+
+            <fieldset class="credit-fieldset">
+              <legend>Identity</legend>
+              <div class="credit-grid">
+                <div class="credit-field">
+                  <label for="creditFirstName">First name</label>
+                  <input id="creditFirstName" data-provider-field name="firstName" type="text" autocomplete="given-name" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditMiddleName">Middle name <span>Optional</span></label>
+                  <input id="creditMiddleName" data-provider-field name="middleName" type="text" autocomplete="additional-name" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditLastName">Last name</label>
+                  <input id="creditLastName" data-provider-field name="lastName" type="text" autocomplete="family-name" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditDateOfBirth">Date of birth</label>
+                  <input id="creditDateOfBirth" data-provider-field name="dateOfBirth" type="date" autocomplete="bday" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditPhoneNumber">Phone number <span>Optional</span></label>
+                  <input id="creditPhoneNumber" data-provider-field name="phoneNumber" type="tel" autocomplete="tel" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditSin">Social Insurance Number <span>Optional</span></label>
+                  <input id="creditSin" data-provider-field name="socialInsuranceNumber" type="password" inputmode="numeric" autocomplete="off" aria-describedby="creditSinNote" />
+                  <p class="credit-field-note" id="creditSinNote">Optional. It is cleared after submission and never shown in results.</p>
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset class="credit-fieldset">
+              <legend>Current address</legend>
+              <div class="credit-grid">
+                <div class="credit-field">
+                  <label for="creditUnitNumber">Unit <span>Optional</span></label>
+                  <input id="creditUnitNumber" data-provider-field name="unitNumber" type="text" autocomplete="address-line2" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditCivicNumber">Civic number</label>
+                  <input id="creditCivicNumber" data-provider-field name="civicNumber" type="text" />
+                </div>
+                <div class="credit-field credit-field-wide">
+                  <label for="creditStreetName">Street name</label>
+                  <input id="creditStreetName" data-provider-field name="streetName" type="text" autocomplete="address-line1" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditCity">City</label>
+                  <input id="creditCity" data-provider-field name="city" type="text" autocomplete="address-level2" />
+                </div>
+                <div class="credit-field">
+                  <label for="creditProvinceCode">Province</label>
+                  <select id="creditProvinceCode" data-provider-field name="provinceCode" autocomplete="address-level1">
+                    <option value="">Select</option>
+                    <option value="AB">Alberta</option>
+                    <option value="BC">British Columbia</option>
+                    <option value="MB">Manitoba</option>
+                    <option value="NB">New Brunswick</option>
+                    <option value="NL">Newfoundland and Labrador</option>
+                    <option value="NS">Nova Scotia</option>
+                    <option value="NT">Northwest Territories</option>
+                    <option value="NU">Nunavut</option>
+                    <option value="ON">Ontario</option>
+                    <option value="PE">Prince Edward Island</option>
+                    <option value="QC">Quebec</option>
+                    <option value="SK">Saskatchewan</option>
+                    <option value="YT">Yukon</option>
+                  </select>
+                </div>
+                <div class="credit-field">
+                  <label for="creditPostalCode">Postal code</label>
+                  <input id="creditPostalCode" data-provider-field name="postalCode" type="text" autocomplete="postal-code" />
+                </div>
+              </div>
+            </fieldset>
+
+            <div class="credit-consent">
+              <label for="creditBureauConsent">
+                <input id="creditBureauConsent" data-provider-field name="bureauConsent" type="checkbox" />
+                <span>
+                  I explicitly consent to a credit-provider inquiry for the purpose of this
+                  credit-readiness assessment. I understand this is not lender approval.
+                </span>
+              </label>
+              <p>
+                Kimure sends provider-enabled requests through its secured API. Provider access
+                depends on approved subscriptions and may be unavailable in the current environment.
+              </p>
+            </div>
+          </section>
+
+          <div class="credit-form-errors" id="creditFormErrors" role="alert" hidden></div>
+
+          <div class="credit-submit-row">
+            <button class="btn btn-primary" id="creditSubmit" type="submit">Generate assessment</button>
+            <p id="creditSubmitStatus" aria-live="polite">Sign in to submit an assessment.</p>
+          </div>
+        </form>
+
+        <aside class="credit-sidebar">
+          <section class="credit-privacy-card">
+            <p class="credit-eyebrow">Privacy first</p>
+            <h2>What Kimure returns</h2>
+            <ul>
+              <li>Readiness summary and score</li>
+              <li>Risk level and next actions</li>
+              <li>Verification and provider status</li>
+              <li>Missing information checklist</li>
+            </ul>
+            <p>Raw bureau data and sensitive identity details are never displayed on this page.</p>
+          </section>
+        </aside>
+      </div>
+
+      <section class="credit-results" id="creditResults" aria-live="polite" hidden>
+        <div class="credit-results-head">
+          <div>
+            <p class="credit-eyebrow">Assessment result</p>
+            <h2 id="creditResultSummary">Your readiness summary</h2>
+          </div>
+          <div class="credit-score-card">
+            <span>Readiness score</span>
+            <strong id="creditResultScore">—</strong>
+          </div>
+        </div>
+
+        <div class="credit-status-grid">
+          <div><span>Risk level</span><strong id="creditResultRisk">Unknown</strong></div>
+          <div><span>Provider status</span><strong id="creditProviderStatus">Not used</strong></div>
+          <div><span>Verification</span><strong id="creditVerificationStatus">Directional only</strong></div>
+        </div>
+
+        <div class="credit-result-grid">
+          <section>
+            <h3>Key insights</h3>
+            <ul id="creditResultInsights"></ul>
+          </section>
+          <section>
+            <h3>Recommendations</h3>
+            <ul id="creditResultRecommendations"></ul>
+          </section>
+          <section>
+            <h3>Missing information</h3>
+            <ul id="creditResultMissing"></ul>
+          </section>
+        </div>
+
+        <p class="credit-disclaimer" id="creditResultDisclaimer"></p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> Kimure. All rights reserved.</div>
+      <div class="foot-links">
+        <a href="about.html">About</a>
+        <a href="platform.html">Platform</a>
+        <a href="legal.html">Legal</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/credit-profile.js"></script>
+</body>
+</html>
