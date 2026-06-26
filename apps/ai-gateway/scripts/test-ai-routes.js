@@ -260,12 +260,17 @@ function hasUsefulOutput(body) {
 }
 
 function detectFallback(body) {
+  const source = body.reportData && body.reportData.source;
   const aiReasoningMode = body.reportData &&
     body.reportData.aiReasoning &&
     body.reportData.aiReasoning.mode;
   const geminiMode = body.reportData && body.reportData.geminiMode;
   const verificationStatus = body.reportData && body.reportData.verificationStatus;
   const providerStatus = body.reportData && body.reportData.providerStatus;
+
+  if (source === 'fallback') {
+    return body.reportData.geminiMode || 'structured_fallback';
+  }
 
   if (aiReasoningMode === 'rules_directional') {
     return 'rules_directional';
@@ -322,6 +327,19 @@ function validateRouteResult(test, result) {
 
   if (test.path === '/ai/credit-profile') {
     validateCreditProfileProvenance(body, failures, warnings);
+  }
+
+  if ([
+    '/ai/scout',
+    '/ai/analyze',
+    '/ai/rental',
+    '/ai/valuate',
+    '/ai/investment-planner'
+  ].includes(test.path)) {
+    const source = body.reportData && body.reportData.source;
+    if (!['gemini', 'fallback'].includes(source)) {
+      failures.push(`recommendation source is invalid (${source || 'missing'})`);
+    }
   }
 
   return {

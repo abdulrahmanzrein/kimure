@@ -4,6 +4,7 @@
   // Tracks the logged-in user in memory. Updated by getCurrentUser, signIn, signOut,
   // and the auth state listener below.
   var currentUser = null;
+  var creditAssessmentStorageKey = "kimure.creditAssessmentReference.v1";
 
   function getSupabaseClient() {
     var cfg = window.KIMURE_SUPABASE_CONFIG;
@@ -335,6 +336,224 @@
     return { ok: true, data: body };
   }
 
+  // Send a structured onboarding recommendation request through the Kimure
+  // API. The allowlist prevents browser code from choosing arbitrary routes.
+  async function requestAiRecommendation(tool, payload) {
+    var allowedTools = [
+      "chat",
+      "scout",
+      "analyze",
+      "rental",
+      "valuate",
+      "mortgage",
+      "credit-profile",
+      "investment-planner"
+    ];
+    if (allowedTools.indexOf(tool) === -1) {
+      return {
+        ok: false,
+        failureType: "client",
+        message: "AI recommendations could not be generated right now. Please try again."
+      };
+    }
+
+    var token;
+    try {
+      token = await getAccessToken();
+    } catch (err) {
+      console.warn("[kimure:web-ai] request unavailable", {
+        stage: "session",
+        tool: tool
+      });
+      return {
+        ok: false,
+        failureType: "auth",
+        needsLogin: true,
+        message: "Please sign in again before generating your recommendation."
+      };
+    }
+
+    if (!token) {
+      return {
+        ok: false,
+        failureType: "auth",
+        needsLogin: true,
+        message: "Please sign in again before generating your recommendation."
+      };
+    }
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/ai/" + tool, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      console.warn("[kimure:web-ai] request unavailable", {
+        stage: "network",
+        tool: tool
+      });
+      return {
+        ok: false,
+        failureType: "network",
+        message: "AI recommendations could not be generated right now. Please try again."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      console.warn("[kimure:web-ai] request unavailable", {
+        stage: "server",
+        tool: tool,
+        httpStatus: response.status
+      });
+      return {
+        ok: false,
+        failureType: "server",
+        httpStatus: response.status,
+        message: "AI recommendations could not be generated right now. Please try again."
+      };
+    }
+
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      console.warn("[kimure:web-ai] request unavailable", {
+        stage: "response",
+        tool: tool,
+        httpStatus: response.status
+      });
+      return {
+        ok: false,
+        failureType: "server",
+        httpStatus: response.status,
+        message: "AI recommendations could not be generated right now. Please try again."
+      };
+    }
+
+    return { ok: true, data: body };
+  }
+
+  function clearCreditAssessmentReference() {
+    try {
+      window.sessionStorage.removeItem(creditAssessmentStorageKey);
+    } catch (err) {
+      // Session storage may be unavailable in restricted browser contexts.
+    }
+  }
+
+  async function saveCreditAssessmentReference(reference) {
+    var assessmentId = reference && typeof reference.creditAssessmentId === "string"
+      ? reference.creditAssessmentId.trim()
+      : "";
+    var expiresAt = reference && typeof reference.expiresAt === "string"
+      ? reference.expiresAt.trim()
+      : "";
+    var expiresAtMs = Date.parse(expiresAt);
+    var user = currentUser || await getCurrentUser();
+
+    if (!assessmentId || assessmentId.length > 200 || !Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now() || !user) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    var storedReference = {
+      creditAssessmentId: assessmentId,
+      expiresAt: new Date(expiresAtMs).toISOString(),
+      userId: user.id
+    };
+
+    try {
+      window.sessionStorage.setItem(creditAssessmentStorageKey, JSON.stringify(storedReference));
+      return storedReference;
+    } catch (err) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+  }
+
+  async function getCreditAssessmentReference() {
+    var stored;
+    try {
+      stored = JSON.parse(window.sessionStorage.getItem(creditAssessmentStorageKey) || "null");
+    } catch (err) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    if (!stored || typeof stored !== "object") return null;
+
+    var assessmentId = typeof stored.creditAssessmentId === "string" ? stored.creditAssessmentId.trim() : "";
+    var expiresAt = typeof stored.expiresAt === "string" ? stored.expiresAt.trim() : "";
+    var userId = typeof stored.userId === "string" ? stored.userId.trim() : "";
+    var expiresAtMs = Date.parse(expiresAt);
+
+    if (!assessmentId || assessmentId.length > 200 || !userId || !Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    var user = currentUser || await getCurrentUser();
+    if (!user) return null;
+    if (user.id !== userId) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    return {
+      creditAssessmentId: assessmentId,
+      expiresAt: new Date(expiresAtMs).toISOString(),
+      userId: userId
+    };
+  }
+
+  // Send mortgage inputs to the Kimure API. Credit references remain opaque;
+  // browser code never forwards a credit handoff or calls the Gateway directly.
+  async function requestMortgage(payload) {
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in before requesting a mortgage estimate."
+      };
+    }
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/ai/mortgage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var nestedMessage = body && typeof body.message === "object" ? body.message : {};
+      var upstreamResponse = body && typeof body.upstreamResponse === "object" ? body.upstreamResponse : {};
+      var expiredReference = body.errorCode === "credit_assessment_not_found_or_expired" ||
+        nestedMessage.errorCode === "credit_assessment_not_found_or_expired" ||
+        upstreamResponse.errorCode === "credit_assessment_not_found_or_expired";
+      var message = expiredReference
+        ? "The recent credit-readiness reference expired. Submit again to use only the mortgage details entered here."
+        : "The mortgage estimate could not be completed.";
+      return { ok: false, message: message, creditReferenceExpired: expiredReference };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -373,6 +592,7 @@
 
   // End the session and clear the stored token.
   async function signOut() {
+    clearCreditAssessmentReference();
     var client = getSupabaseClient();
     if (!client) {
       explainMissingConfig();
@@ -392,6 +612,7 @@
 
     client.auth.onAuthStateChange(function (event, session) {
       currentUser = session && session.user ? session.user : null;
+      if (event === "SIGNED_OUT") clearCreditAssessmentReference();
       document.dispatchEvent(
         new CustomEvent("kimure-auth-changed", {
           detail: { event: event, user: currentUser }
@@ -414,7 +635,12 @@
     applyOnboardingProfileToForm: applyOnboardingProfileToForm,
     signUpFromOnboarding: signUpFromOnboarding,
     saveOnboardingProfile: saveOnboardingProfile,
-    requestCreditProfile: requestCreditProfile
+    requestAiRecommendation: requestAiRecommendation,
+    requestCreditProfile: requestCreditProfile,
+    requestMortgage: requestMortgage,
+    saveCreditAssessmentReference: saveCreditAssessmentReference,
+    getCreditAssessmentReference: getCreditAssessmentReference,
+    clearCreditAssessmentReference: clearCreditAssessmentReference
   };
 
   initAuthListener();

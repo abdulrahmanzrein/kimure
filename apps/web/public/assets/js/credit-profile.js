@@ -15,6 +15,7 @@
   var results = document.getElementById("creditResults");
   var sinInput = document.getElementById("creditSin");
   var creditAssessmentId = null;
+  var creditAssessmentExpiresAt = null;
   var bureauOptions = Object.freeze({
     equifax: { label: "Equifax", providerChoice: "thirdstream_equifax" },
     transunion: { label: "TransUnion", providerChoice: "thirdstream_transunion" }
@@ -242,7 +243,8 @@
       },
       missingFields: safeList(reportData.missingFields),
       disclaimer: safeText(source.disclaimer, "This assessment is informational and is not lender approval."),
-      creditAssessmentId: safeText(creditAssessment.assessmentId, null)
+      creditAssessmentId: safeText(creditAssessment.assessmentId, null),
+      creditAssessmentExpiresAt: safeText(creditAssessment.expiresAt, null)
     };
   }
 
@@ -274,9 +276,21 @@
     });
   }
 
-  function renderResult(response) {
+  async function renderResult(response) {
     var result = normalizeResponse(response);
     creditAssessmentId = result.creditAssessmentId;
+    creditAssessmentExpiresAt = result.creditAssessmentExpiresAt;
+
+    if (window.KIMURE_AUTH && window.KIMURE_AUTH.saveCreditAssessmentReference) {
+      if (creditAssessmentId && creditAssessmentExpiresAt) {
+        await window.KIMURE_AUTH.saveCreditAssessmentReference({
+          creditAssessmentId: creditAssessmentId,
+          expiresAt: creditAssessmentExpiresAt
+        });
+      } else if (window.KIMURE_AUTH.clearCreditAssessmentReference) {
+        window.KIMURE_AUTH.clearCreditAssessmentReference();
+      }
+    }
 
     setText("creditResultSummary", result.summary);
     setText("creditResultScore", result.score === null ? "—" : String(result.score));
@@ -339,16 +353,23 @@
     }
 
     renderErrors([]);
-    renderResult(response.data);
+    await renderResult(response.data);
     submitStatus.textContent = "Assessment complete.";
   });
 
   window.KIMURE_CREDIT_PROFILE = Object.freeze({
     getMortgageReference: function () {
-      return creditAssessmentId ? { creditAssessmentId: creditAssessmentId } : null;
+      return creditAssessmentId ? {
+        creditAssessmentId: creditAssessmentId,
+        expiresAt: creditAssessmentExpiresAt
+      } : null;
     },
     clear: function () {
       creditAssessmentId = null;
+      creditAssessmentExpiresAt = null;
+      if (window.KIMURE_AUTH && window.KIMURE_AUTH.clearCreditAssessmentReference) {
+        window.KIMURE_AUTH.clearCreditAssessmentReference();
+      }
     }
   });
 

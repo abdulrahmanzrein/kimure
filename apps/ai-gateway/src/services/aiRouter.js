@@ -5,8 +5,7 @@ const {
   createAiResponse
 } = require('../utils/responseContract');
 const {
-  generateGeminiChatResponse,
-  MissingGeminiApiKeyError
+  generateGeminiChatResponse
 } = require('./geminiService');
 
 const MIN_MEANINGFUL_SCORE = 3;
@@ -244,6 +243,8 @@ function createFallbackChatResponse(message, routingDetails, error) {
       : [`Call ${dedicatedRoute} with the structured inputs required by that tool.`],
     reportData: {
       ...routingDetails,
+      source: 'fallback',
+      parseMode: null,
       dedicatedRoute,
       routingAction: routingDetails.routedTool === 'chat' ? 'answer_general_or_clarify' : 'recommend_dedicated_route',
       geminiMode: 'structured_router_fallback',
@@ -260,43 +261,6 @@ function createFallbackChatResponse(message, routingDetails, error) {
   });
 }
 
-function createMissingKeyResponse(message, routingDetails) {
-  return createAiResponse({
-    status: 'error',
-    tool: 'chat',
-    resultType: 'configuration_error',
-    summary: 'GEMINI_API_KEY is missing from the backend environment. Add it to .env and restart the gateway.',
-    score: null,
-    riskLevel: 'unknown',
-    keyInsights: [
-      'The /ai/chat route is configured for Gemini-backed responses.',
-      'Gemini keys must stay in the backend .env file only.',
-      'Frontend clients should call this gateway and should never call Gemini directly.'
-    ],
-    recommendations: [
-      'Create a local .env file from .env.example.',
-      'Set GEMINI_API_KEY in the backend environment.',
-      'Restart the Kimure AI Gateway server.'
-    ],
-    reportData: {
-      ...routingDetails,
-      dedicatedRoute: getDedicatedRoute(routingDetails.routedTool),
-      routingAction: routingDetails.routedTool === 'chat' ? 'answer_general_or_clarify' : 'recommend_dedicated_route',
-      geminiMode: 'configuration_error',
-      promptVersion: ROUTER_PROMPT_VERSION,
-      configurationError: 'missing_gemini_api_key',
-      receivedPayload: {
-        message
-      }
-    },
-    crmSignals: {
-      leadIntent: 'backend_configuration',
-      suggestedFollowUp: 'Add GEMINI_API_KEY to backend .env before using Gemini-backed chat.'
-    },
-    disclaimer: 'Backend configuration error. Do not expose Gemini/API keys in frontend code.'
-  });
-}
-
 async function routeChatMessage(message) {
   const routingDetails = getIntentRoutingDetails(message);
 
@@ -306,10 +270,6 @@ async function routeChatMessage(message) {
       routingDetails
     });
   } catch (error) {
-    if (error instanceof MissingGeminiApiKeyError) {
-      return createMissingKeyResponse(message, routingDetails);
-    }
-
     return createFallbackChatResponse(message, routingDetails, error);
   }
 }
@@ -347,13 +307,7 @@ function getDedicatedRoute(tool) {
   return routes[tool] || '/ai/chat';
 }
 
-function getToolResponse(tool, payload) {
-  return getMockToolResponse(tool, payload);
-}
-
 module.exports = {
   routeChatMessage,
-  routeMockChatMessage,
-  getToolResponse
+  routeMockChatMessage
 };
-

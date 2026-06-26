@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mortgage Estimate — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/mortgage.css" />
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav mortgage-nav" aria-label="Primary navigation">
+        <a href="platform.html" class="nav-link">Platform</a>
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+        <a href="onboarding.html" class="nav-link">Account</a>
+      </nav>
+      <div class="actions">
+        <button class="toggle" id="themeToggle" type="button" aria-label="Toggle dark/light mode">
+          <span class="toggle-dot" aria-hidden="true"></span>
+          <span id="themeText">Dark</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="mortgage-page">
+      <a class="mortgage-back-link" href="credit-profile.html">← Back to credit profile</a>
+
+      <header class="mortgage-intro">
+        <p class="mortgage-eyebrow">Mortgage readiness</p>
+        <h1>Estimate your mortgage affordability</h1>
+        <p>
+          Enter your financial and purchase details for an informational estimate.
+          Results are not lender approval, underwriting, or a mortgage commitment.
+        </p>
+      </header>
+
+      <div class="mortgage-layout">
+        <form id="mortgageForm" class="mortgage-form" novalidate>
+          <section class="mortgage-card">
+            <div class="mortgage-section-heading">
+              <span>1</span>
+              <div>
+                <h2>Property and funds</h2>
+                <p>Tell us about the purchase you are considering.</p>
+              </div>
+            </div>
+
+            <div class="mortgage-grid">
+              <div class="mortgage-field">
+                <label for="mortgageTargetPrice">Target purchase price</label>
+                <input id="mortgageTargetPrice" type="number" min="1" step="1000" inputmode="decimal" required />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageDownPayment">Down payment</label>
+                <input id="mortgageDownPayment" type="number" min="0" step="1000" inputmode="decimal" required />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageAvailableFunds">Available funds <span>Optional</span></label>
+                <input id="mortgageAvailableFunds" type="number" min="0" step="1000" inputmode="decimal" />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgagePropertyType">Property type <span>Optional</span></label>
+                <select id="mortgagePropertyType">
+                  <option value="">Select</option>
+                  <option value="detached">Detached</option>
+                  <option value="semi-detached">Semi-detached</option>
+                  <option value="townhouse">Townhouse</option>
+                  <option value="condominium">Condominium</option>
+                  <option value="multi-unit">Multi-unit</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageLocation">Location <span>Optional</span></label>
+                <input id="mortgageLocation" type="text" autocomplete="address-level2" />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageTimeline">Purchase timeline <span>Optional</span></label>
+                <select id="mortgageTimeline">
+                  <option value="">Select</option>
+                  <option value="0-3-months">0–3 months</option>
+                  <option value="3-6-months">3–6 months</option>
+                  <option value="6-12-months">6–12 months</option>
+                  <option value="exploring">Exploring</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="mortgage-card">
+            <div class="mortgage-section-heading">
+              <span>2</span>
+              <div>
+                <h2>Income and debt</h2>
+                <p>Use gross income and current debt obligations.</p>
+              </div>
+            </div>
+
+            <div class="mortgage-grid">
+              <div class="mortgage-field">
+                <label for="mortgageAnnualIncome">Annual gross income</label>
+                <input id="mortgageAnnualIncome" type="number" min="1" step="1000" inputmode="decimal" required />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageMonthlyDebt">Monthly debt payments</label>
+                <input id="mortgageMonthlyDebt" type="number" min="0" step="50" inputmode="decimal" required />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageTotalDebt">Total debt balance <span>Optional</span></label>
+                <input id="mortgageTotalDebt" type="number" min="0" step="500" inputmode="decimal" />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageEmploymentType">Employment type <span>Optional</span></label>
+                <select id="mortgageEmploymentType">
+                  <option value="">Select</option>
+                  <option value="full-time">Full-time</option>
+                  <option value="part-time">Part-time</option>
+                  <option value="self-employed">Self-employed</option>
+                  <option value="contract">Contract</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageEmploymentStability">Employment stability <span>Optional</span></label>
+                <select id="mortgageEmploymentStability">
+                  <option value="">Select</option>
+                  <option value="under-1-year">Under 1 year</option>
+                  <option value="1-2-years">1–2 years</option>
+                  <option value="2-plus-years">2+ years</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="mortgage-card">
+            <div class="mortgage-section-heading">
+              <span>3</span>
+              <div>
+                <h2>Estimate assumptions</h2>
+                <p>These assumptions are not live lender terms.</p>
+              </div>
+            </div>
+
+            <div class="mortgage-grid">
+              <div class="mortgage-field">
+                <label for="mortgageInterestRate">Interest rate (%)</label>
+                <input id="mortgageInterestRate" type="number" min="0.1" max="30" step="0.05" inputmode="decimal" value="5.25" required />
+              </div>
+              <div class="mortgage-field">
+                <label for="mortgageAmortization">Amortization</label>
+                <select id="mortgageAmortization" required>
+                  <option value="15">15 years</option>
+                  <option value="20">20 years</option>
+                  <option value="25" selected>25 years</option>
+                  <option value="30">30 years</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <div class="mortgage-form-errors" id="mortgageFormErrors" role="alert" hidden></div>
+
+          <div class="mortgage-submit-row">
+            <button class="btn btn-primary" id="mortgageSubmit" type="submit">Generate mortgage estimate</button>
+            <p id="mortgageSubmitStatus" aria-live="polite">Sign in to submit an estimate.</p>
+          </div>
+        </form>
+
+        <aside class="mortgage-sidebar">
+          <section class="mortgage-reference-card">
+            <p class="mortgage-eyebrow">Credit reference</p>
+            <h2>Recent credit readiness</h2>
+            <p id="mortgageReferenceNote" aria-live="polite">
+              Checking for a recent credit-readiness reference…
+            </p>
+            <p>Only the short-lived reference ID is sent. Credit details and bureau data are not copied into this form.</p>
+          </section>
+        </aside>
+      </div>
+
+      <section class="mortgage-results" id="mortgageResults" aria-live="polite" hidden>
+        <div class="mortgage-results-head">
+          <div>
+            <p class="mortgage-eyebrow">Mortgage estimate</p>
+            <h2 id="mortgageResultSummary">Your affordability summary</h2>
+          </div>
+          <div class="mortgage-risk-card">
+            <span>Risk level</span>
+            <strong id="mortgageResultRisk">Unknown</strong>
+          </div>
+        </div>
+
+        <div class="mortgage-status-grid">
+          <div><span>Estimated affordability</span><strong id="mortgageAffordability">Not available</strong></div>
+          <div><span>Monthly payment range</span><strong id="mortgagePaymentRange">Not available</strong></div>
+          <div><span>Credit reference</span><strong id="mortgageReferenceStatus">Not provided</strong></div>
+        </div>
+
+        <div class="mortgage-result-grid">
+          <section>
+            <h3>Key insights</h3>
+            <ul id="mortgageResultInsights"></ul>
+          </section>
+          <section>
+            <h3>Recommendations</h3>
+            <ul id="mortgageResultRecommendations"></ul>
+          </section>
+          <section>
+            <h3>Warning flags</h3>
+            <ul id="mortgageResultWarnings"></ul>
+          </section>
+        </div>
+
+        <p class="mortgage-disclaimer" id="mortgageResultDisclaimer"></p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> Kimure. All rights reserved.</div>
+      <div class="foot-links">
+        <a href="about.html">About</a>
+        <a href="platform.html">Platform</a>
+        <a href="legal.html">Legal</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/mortgage.js"></script>
+</body>
+</html>

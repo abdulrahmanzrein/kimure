@@ -19,6 +19,10 @@
   var progressWrap = document.querySelector(".onb-progress-wrap");
   var emailConfirmPanel = null;
   var pendingSignupEmail = "";
+  var aiRecommendationComplete = false;
+  var aiResult = document.getElementById("onbAiResult");
+  var aiStatus = document.getElementById("onbAiStatus");
+  var aiLoading = document.getElementById("onbAiLoading");
 
   function isAwaitingEmailConfirmation() {
     return form.dataset.emailConfirmationPending === "true";
@@ -292,6 +296,361 @@
     showStep(2);
   }
 
+  function selectedValue(name) {
+    var input = form.querySelector('input[name="' + name + '"]:checked');
+    return input ? input.value : "";
+  }
+
+  function checkedValues(name) {
+    return Array.prototype.slice.call(
+      form.querySelectorAll('input[name="' + name + '"]:checked')
+    ).map(function (input) {
+      return input.value;
+    });
+  }
+
+  function textValue(selector) {
+    var input = form.querySelector(selector);
+    return input && input.value ? input.value.trim() : "";
+  }
+
+  function numberValue(selector) {
+    var input = form.querySelector(selector);
+    if (!input || input.value === "") return null;
+    var number = Number(input.value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function getBudgetRange(value) {
+    var ranges = {
+      under50k: [0, 50000],
+      "50k-150k": [50000, 150000],
+      "150k-500k": [150000, 500000],
+      "500k-1m": [500000, 1000000],
+      "1mplus": [1000000, null]
+    };
+    return ranges[value] || [null, null];
+  }
+
+  function selectAiTool(state) {
+    var goals = state.goals;
+
+    // Priority: mortgage readiness, investment planning, credit readiness,
+    // property matching, then general chat. Routes requiring financial inputs
+    // are selected only when those required inputs are actually available.
+    if (goals.indexOf("mortgage-affordability") >= 0 &&
+        state.financials.annualGross && state.financials.monthlyDebt != null) {
+      return "mortgage";
+    }
+    if (goals.indexOf("investing") >= 0 ||
+        goals.indexOf("long") >= 0 ||
+        goals.indexOf("short") >= 0 ||
+        goals.indexOf("rental") >= 0) {
+      return "investment-planner";
+    }
+    if (goals.indexOf("buying") >= 0 &&
+        state.financials.annualGross && state.financials.monthlyDebt != null) {
+      return "credit-profile";
+    }
+    if (state.onboarding.intent ||
+        state.property.types.length ||
+        state.filters.country ||
+        state.filters.city) {
+      return "scout";
+    }
+    return "chat";
+  }
+
+  function getAiQuestion(tool, state) {
+    var location = [state.filters.city, state.filters.country]
+      .filter(Boolean)
+      .join(", ");
+    var locationText = location ? " in " + location : "";
+
+    if (tool === "investment-planner") {
+      return "Create a practical investment plan from my onboarding goals, budget, property interests, and timeline" + locationText + ".";
+    }
+    if (tool === "mortgage") {
+      return "Estimate mortgage affordability from the financial and property information in my onboarding profile.";
+    }
+    if (tool === "credit-profile") {
+      return "Provide a directional credit-readiness assessment from my self-reported financial profile.";
+    }
+    if (tool === "scout") {
+      return "Recommend the best property search direction and next steps from my onboarding preferences" + locationText + ".";
+    }
+    return "Review my onboarding profile and recommend the most useful next step in Kimure.";
+  }
+
+  function buildAiRequest() {
+    var intent = selectedValue("goal");
+    var budget = getBudgetRange(selectedValue("budget"));
+    var propertyTypes = checkedValues("property_type");
+    var returnGoals = checkedValues("return_goal");
+    var country = textValue("#onb-loc-country");
+    var city = textValue("#onb-loc-city");
+    var timeline = selectedValue("timeline");
+    var goals = [intent].concat(returnGoals).filter(Boolean);
+    var state = {
+      onboarding: {
+        intent: intent || null,
+        budgetMin: budget[0],
+        budgetMax: budget[1],
+        timeline: timeline || null,
+        locationPreferences: country || city
+          ? [{ country: country, city: city }]
+          : [],
+        propertyPreferences: propertyTypes
+      },
+      financials: {
+        availableFunds: numberValue("#onb-funds"),
+        monthlyRentalIncome: numberValue("#onb-rental-income")
+      },
+      goals: goals,
+      filters: {
+        transactionType: intent || null,
+        propertyTypes: propertyTypes,
+        country: country || null,
+        city: city || null,
+        minPrice: budget[0],
+        maxPrice: budget[1]
+      },
+      property: {
+        types: propertyTypes
+      },
+      context: {
+        profileCountry: textValue("#onb-country") || null,
+        profileCity: textValue("#onb-city-profile") || null
+      }
+    };
+    var tool = selectAiTool(state);
+
+    return {
+      tool: tool,
+      payload: {
+        question: getAiQuestion(tool, state),
+        onboarding: state.onboarding,
+        financials: state.financials,
+        goals: state.goals,
+        filters: state.filters,
+        property: state.property,
+        context: state.context,
+        metadata: {
+          source: "smart_onboarding",
+          schemaVersion: "web-onboarding-v1"
+        },
+        consent: false
+      }
+    };
+  }
+
+  function safeObject(value) {
+    return value && typeof value === "object" && !Array.isArray(value)
+      ? value
+      : {};
+  }
+
+  function safeText(value, fallback) {
+    return typeof value === "string" && value.trim() ? value.trim() : fallback;
+  }
+
+  function safeList(value) {
+    return Array.isArray(value)
+      ? value.filter(function (item) {
+        return typeof item === "string" && item.trim();
+      }).slice(0, 12)
+      : [];
+  }
+
+  function normalizeAiResponse(response, selectedTool) {
+    var source = safeObject(response);
+    var reportData = safeObject(source.reportData);
+    var crmSignals = safeObject(source.crmSignals);
+    var aiReasoning = safeObject(reportData.aiReasoning);
+    var nextSteps = safeList(source.nextSteps);
+    if (!nextSteps.length) nextSteps = safeList(reportData.nextBestActions);
+    var suggestedFollowUp = safeText(crmSignals.suggestedFollowUp, null);
+    if (suggestedFollowUp && nextSteps.indexOf(suggestedFollowUp) === -1) {
+      nextSteps.push(suggestedFollowUp);
+    }
+
+    return {
+      tool: safeText(source.tool, selectedTool),
+      summary: safeText(source.summary, "No recommendation summary was returned."),
+      score: typeof source.score === "number" && Number.isFinite(source.score)
+        ? source.score
+        : null,
+      riskLevel: safeText(source.riskLevel, null),
+      keyInsights: safeList(source.keyInsights),
+      recommendations: safeList(source.recommendations),
+      nextSteps: nextSteps.slice(0, 12),
+      fallbackUsed:
+        source.source === "fallback" ||
+        reportData.source === "fallback" ||
+        reportData.mockMode === true ||
+        aiReasoning.mode === "rules_directional" ||
+        (typeof reportData.geminiMode === "string" &&
+          reportData.geminiMode !== "live") ||
+        source.resultType === "router_fallback",
+      disclaimer: safeText(
+        source.disclaimer,
+        "This recommendation is informational and is not professional approval or advice."
+      )
+    };
+  }
+
+  function getToolLabel(tool) {
+    var labels = {
+      chat: "Personalized Next-Step Recommendation",
+      scout: "Property Match Recommendation",
+      mortgage: "Mortgage Affordability Recommendation",
+      "credit-profile": "Credit Readiness Recommendation",
+      "investment-planner": "Investment Plan Recommendation"
+    };
+    return labels[tool] || "Kimure Recommendation";
+  }
+
+  function setText(id, text) {
+    var element = document.getElementById(id);
+    if (element) element.textContent = text;
+  }
+
+  function renderAiList(id, items, emptyMessage) {
+    var list = document.getElementById(id);
+    if (!list) return;
+    list.replaceChildren();
+    var values = items.length ? items : [emptyMessage];
+    values.forEach(function (message) {
+      var item = document.createElement("li");
+      item.textContent = message;
+      list.appendChild(item);
+    });
+  }
+
+  function renderAiRecommendation(response, selectedTool) {
+    var result = normalizeAiResponse(response, selectedTool);
+    var scoreWrap = document.getElementById("onbAiScoreWrap");
+    var riskWrap = document.getElementById("onbAiRiskWrap");
+    var generationNote = document.getElementById("onbAiGenerationNote");
+
+    setText("onbAiToolLabel", getToolLabel(result.tool));
+    setText("onbAiSummary", result.summary);
+    setText("onbAiScore", result.score === null ? "—" : String(result.score));
+    setText("onbAiRisk", result.riskLevel || "Unknown");
+    setText("onbAiDisclaimer", result.disclaimer);
+    if (scoreWrap) scoreWrap.hidden = result.score === null;
+    if (riskWrap) {
+      riskWrap.hidden = !result.riskLevel || result.riskLevel === "unknown";
+    }
+    if (generationNote) generationNote.hidden = !result.fallbackUsed;
+    renderAiList("onbAiInsights", result.keyInsights, "No additional insights were returned.");
+    renderAiList("onbAiRecommendations", result.recommendations, "No additional recommendations were returned.");
+    renderAiList("onbAiNextSteps", result.nextSteps, "Continue refining your profile for more specific guidance.");
+
+    if (aiResult) aiResult.hidden = false;
+    if (aiStatus) {
+      aiStatus.textContent = "Your recommendation is ready. Continue when you are ready.";
+      aiStatus.classList.remove("is-error");
+    }
+    if (aiResult) {
+      aiResult.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function resetAiRecommendation() {
+    aiRecommendationComplete = false;
+    if (aiResult) aiResult.hidden = true;
+    if (aiLoading) aiLoading.hidden = true;
+    if (aiStatus) {
+      aiStatus.textContent = "";
+      aiStatus.classList.remove("is-error");
+    }
+  }
+
+  function setAiLoading(loading) {
+    if (!nextBtn) return;
+    nextBtn.disabled = loading;
+    nextBtn.textContent = loading
+      ? "Generating AI matches…"
+      : t("onb.wiz.getMatches", "Get My AI Matches");
+    if (aiLoading) aiLoading.hidden = !loading;
+    form.setAttribute("aria-busy", loading ? "true" : "false");
+  }
+
+  function showAiFailure(message, isError) {
+    if (!aiStatus) return;
+    aiStatus.textContent = message;
+    aiStatus.classList.toggle("is-error", isError === true);
+  }
+
+  async function generateAiRecommendation() {
+    if (!window.KIMURE_AUTH ||
+        !window.KIMURE_AUTH.saveOnboardingProfile ||
+        !window.KIMURE_AUTH.requestAiRecommendation) {
+      showAiFailure(
+        "AI recommendations could not be generated right now. Please try again.",
+        true
+      );
+      return;
+    }
+
+    setAiLoading(true);
+    if (aiResult) aiResult.hidden = true;
+    if (aiStatus) {
+      aiStatus.textContent = "";
+      aiStatus.classList.remove("is-error");
+    }
+
+    var saveResult;
+    try {
+      saveResult = await window.KIMURE_AUTH.saveOnboardingProfile(form, null);
+    } catch (err) {
+      saveResult = { ok: false };
+    }
+    if (!saveResult || !saveResult.ok) {
+      if (saveResult && saveResult.needsLogin) {
+        setAiLoading(false);
+        showAiFailure(
+          "Please sign in again before generating your recommendation.",
+          false
+        );
+        return;
+      }
+
+      // Profile persistence is separate from AI recommendations. A temporary
+      // database save problem should not hide a valid Gemini or fallback result.
+      console.warn("[kimure:onboarding-ai] profile save unavailable", {
+        stage: "onboarding-save"
+      });
+    }
+
+    var request = buildAiRequest();
+    var response;
+    try {
+      response = await window.KIMURE_AUTH.requestAiRecommendation(
+        request.tool,
+        request.payload
+      );
+    } catch (err) {
+      response = { ok: false, failureType: "network" };
+    }
+    setAiLoading(false);
+
+    if (!response || !response.ok) {
+      showAiFailure(
+        response && response.needsLogin
+          ? "Please sign in again before generating your recommendation."
+          : "AI recommendations could not be generated right now. Please try again.",
+        !(response && response.needsLogin)
+      );
+      return;
+    }
+
+    renderAiRecommendation(response.data, request.tool);
+    aiRecommendationComplete = true;
+    updateNav();
+  }
+
   function updateNav() {
     if (numEl) numEl.textContent = String(current);
     if (barFill) barFill.style.width = ((current / total) * 100).toFixed(1) + "%";
@@ -304,7 +663,9 @@
     if (current === total) {
       nextBtn.textContent = t("onb.wiz.finish", "Finish");
     } else if (current === 8) {
-      nextBtn.textContent = t("onb.wiz.getMatches", "Get My AI Matches");
+      nextBtn.textContent = aiRecommendationComplete
+        ? t("onb.wiz.next", "Continue")
+        : t("onb.wiz.getMatches", "Get My AI Matches");
     } else if (current === 1 && isAwaitingEmailConfirmation()) {
       nextBtn.textContent = "Waiting for email confirmation";
       nextBtn.disabled = true;
@@ -355,6 +716,14 @@
         }
         form.dataset.authSignupComplete = "true";
       }
+    }
+    if (current === 8) {
+      if (aiRecommendationComplete) {
+        showStep(9);
+        return;
+      }
+      await generateAiRecommendation();
+      return;
     }
     if (current >= total) {
       if (window.KIMURE_AUTH) {
@@ -414,6 +783,16 @@
   form.addEventListener("submit", function (e) {
     e.preventDefault();
     goNext();
+  });
+
+  form.addEventListener("change", function (e) {
+    var targetStep = e.target.closest(".onb-form-step");
+    var stepNumber = targetStep
+      ? parseInt(targetStep.getAttribute("data-step"), 10)
+      : 0;
+    if (stepNumber >= 2 && stepNumber !== 8) {
+      resetAiRecommendation();
+    }
   });
 
   document.addEventListener("kimure-i18n-applied", function () {

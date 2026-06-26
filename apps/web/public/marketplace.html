@@ -115,6 +115,142 @@
         </div>
       </section>
 
+      <section class="mp-ai-tools" id="marketplace-ai-tools" aria-labelledby="marketplaceAiToolsTitle">
+        <div class="mp-ai-tools-head">
+          <p class="mp-ai-eyebrow">Kimure intelligence</p>
+          <h2 id="marketplaceAiToolsTitle">Marketplace AI Tools</h2>
+          <p>
+            Use your own property and financial details to generate structured guidance.
+            Results are informational and do not represent live listings, appraisals, lender approval, or professional advice.
+          </p>
+        </div>
+
+        <div class="mp-ai-tools-grid">
+          <article class="mp-ai-tool-card">
+            <h3>Property Scout</h3>
+            <p>Build a focused property-search direction from your location, budget, goal, and preferred asset type.</p>
+            <form class="mp-ai-form" data-ai-tool="scout" novalidate>
+              <label>Goal
+                <select name="goal" required>
+                  <option value="buy">Buy a home</option>
+                  <option value="invest">Investment property</option>
+                  <option value="rural-land">Rural or agricultural land</option>
+                </select>
+              </label>
+              <div class="mp-ai-field-row">
+                <label>Location
+                  <input name="location" type="text" placeholder="Ottawa, Ontario" required />
+                </label>
+                <label>Maximum budget
+                  <input name="budget" type="text" inputmode="decimal" placeholder="650000" autocomplete="off" required />
+                </label>
+              </div>
+              <label>Property type
+                <select name="propertyType" required>
+                  <option value="house">House</option>
+                  <option value="condominium">Condominium</option>
+                  <option value="commercial">Commercial</option>
+                  <option value="rural-land">Rural land</option>
+                  <option value="farm">Farm / agricultural</option>
+                </select>
+              </label>
+              <button class="btn btn-primary" type="submit">Generate matches</button>
+              <p class="mp-ai-form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="mp-ai-result" aria-live="polite" hidden></div>
+          </article>
+
+          <article class="mp-ai-tool-card">
+            <h3>Property Analyzer</h3>
+            <p>Review a specific property for investment fit, value drivers, risks, and ROI-style considerations.</p>
+            <form class="mp-ai-form" data-ai-tool="analyze" novalidate>
+              <label>Property address
+                <input name="address" type="text" placeholder="123 Example Street, Ottawa" required />
+              </label>
+              <div class="mp-ai-field-row">
+                <label>Asking price
+                  <input name="price" type="text" inputmode="decimal" placeholder="625000" autocomplete="off" required />
+                </label>
+                <label>Property type
+                  <input name="propertyType" type="text" placeholder="Duplex" required />
+                </label>
+              </div>
+              <label>Property and investment details
+                <textarea name="details" rows="3" placeholder="Condition, expected rent, expenses, renovation needs, or investment goal" required></textarea>
+              </label>
+              <button class="btn btn-primary" type="submit">Analyze property</button>
+              <p class="mp-ai-form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="mp-ai-result" aria-live="polite" hidden></div>
+          </article>
+
+          <article class="mp-ai-tool-card">
+            <h3>Rental Finder</h3>
+            <p>Turn your rental budget, location, lifestyle, and household needs into practical matching criteria.</p>
+            <form class="mp-ai-form" data-ai-tool="rental" novalidate>
+              <div class="mp-ai-field-row">
+                <label>Location
+                  <input name="location" type="text" placeholder="Toronto, Ontario" required />
+                </label>
+                <label>Monthly budget
+                  <input name="budget" type="text" inputmode="decimal" placeholder="2800" autocomplete="off" required />
+                </label>
+              </div>
+              <label>Rental needs
+                <textarea name="needs" rows="3" placeholder="Bedrooms, transit, accessibility, pets, schools, or lifestyle needs" required></textarea>
+              </label>
+              <button class="btn btn-primary" type="submit">Find rental direction</button>
+              <p class="mp-ai-form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="mp-ai-result" aria-live="polite" hidden></div>
+          </article>
+
+          <article class="mp-ai-tool-card">
+            <h3>Property Evaluator</h3>
+            <p>Get directional fair-value reasoning and learn what evidence is still needed for a stronger estimate.</p>
+            <form class="mp-ai-form" data-ai-tool="valuate" novalidate>
+              <label>Property address
+                <input name="address" type="text" placeholder="123 Example Street, Ottawa" required />
+              </label>
+              <div class="mp-ai-field-row">
+                <label>Asking price
+                  <input name="price" type="text" inputmode="decimal" placeholder="625000" autocomplete="off" required />
+                </label>
+                <label>Property type
+                  <input name="propertyType" type="text" placeholder="Townhouse" required />
+                </label>
+              </div>
+              <label>Property details
+                <textarea name="details" rows="3" placeholder="Size, age, condition, upgrades, lot, bedrooms, and bathrooms" required></textarea>
+              </label>
+              <button class="btn btn-primary" type="submit">Evaluate property</button>
+              <p class="mp-ai-form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="mp-ai-result" aria-live="polite" hidden></div>
+          </article>
+
+          <article class="mp-ai-tool-card mp-ai-link-card">
+            <h3>Mortgage Readiness</h3>
+            <p>Estimate borrowing power, payment ranges, and financing readiness with the dedicated mortgage workflow.</p>
+            <a class="btn btn-primary" href="mortgage.html">Open mortgage estimate</a>
+            <p class="mp-ai-card-note">A recent credit-readiness reference can be used without exposing raw credit data.</p>
+          </article>
+
+          <article class="mp-ai-tool-card">
+            <h3>Ask Kimure</h3>
+            <p>Ask a general real-estate, property, financing, or investment question and let Kimure guide the next step.</p>
+            <form class="mp-ai-form" data-ai-tool="chat" novalidate>
+              <label>Your question
+                <textarea name="question" rows="4" placeholder="What should I compare before buying rural land?" required></textarea>
+              </label>
+              <button class="btn btn-primary" type="submit">Ask Kimure</button>
+              <p class="mp-ai-form-status" role="status" aria-live="polite"></p>
+            </form>
+            <div class="mp-ai-result" aria-live="polite" hidden></div>
+          </article>
+        </div>
+      </section>
+
       <section class="mp-listings mp-listings--featured" id="browse-listings" data-i18n-aria-label="aria.featuredListings" aria-label="Featured listings">
         <div class="mp-listings-head" id="mp-featured">
           <h2 class="mp-listings-title" data-i18n="mp.listingsTitle2">Featured listings</h2>

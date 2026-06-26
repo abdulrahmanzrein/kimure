@@ -1,7 +1,6 @@
 const express = require('express');
 const {
-  routeChatMessage,
-  getToolResponse
+  routeChatMessage
 } = require('../services/aiRouter');
 const {
   createCreditProfile
@@ -9,6 +8,21 @@ const {
 const {
   createMortgageAssessment
 } = require('../services/mortgageService');
+const {
+  createScoutRecommendation
+} = require('../services/scoutService');
+const {
+  createInvestmentPlan
+} = require('../services/investmentPlannerService');
+const {
+  createPropertyAnalysis
+} = require('../services/propertyAnalysisService');
+const {
+  createRentalRecommendation
+} = require('../services/rentalFinderService');
+const {
+  createPropertyEvaluation
+} = require('../services/propertyEvaluatorService');
 
 const router = express.Router();
 
@@ -27,6 +41,8 @@ router.use((req, res, next) => {
       outcome: failed ? 'failure' : 'success',
       fallbackUsed: metadata.fallbackUsed === true,
       fallbackMode: metadata.fallbackMode || null,
+      source: metadata.source || null,
+      parseMode: metadata.parseMode || null,
       httpStatus: res.statusCode,
       durationMs: Date.now() - startedAt
     });
@@ -60,20 +76,40 @@ router.post('/mortgage', async (req, res, next) => {
   }
 });
 
-router.post('/analyze', (req, res) => {
-  res.json(getToolResponse('analyze', getRequestInput(req)));
+router.post('/analyze', async (req, res, next) => {
+  try {
+    const response = await createPropertyAnalysis(getRequestInput(req));
+    sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/scout', (req, res) => {
-  res.json(getToolResponse('scout', getRequestInput(req)));
+router.post('/scout', async (req, res, next) => {
+  try {
+    const response = await createScoutRecommendation(getRequestInput(req));
+    sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/valuate', (req, res) => {
-  res.json(getToolResponse('valuate', getRequestInput(req)));
+router.post('/valuate', async (req, res, next) => {
+  try {
+    const response = await createPropertyEvaluation(getRequestInput(req));
+    sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
 });
 
-router.post('/rental', (req, res) => {
-  res.json(getToolResponse('rental', getRequestInput(req)));
+router.post('/rental', async (req, res, next) => {
+  try {
+    const response = await createRentalRecommendation(getRequestInput(req));
+    sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
 });
 
 router.post('/credit-profile', async (req, res, next) => {
@@ -85,8 +121,13 @@ router.post('/credit-profile', async (req, res, next) => {
   }
 });
 
-router.post('/investment-planner', (req, res) => {
-  res.json(getToolResponse('investment-planner', getRequestInput(req)));
+router.post('/investment-planner', async (req, res, next) => {
+  try {
+    const response = await createInvestmentPlan(getRequestInput(req));
+    sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
 });
 
 // apps/api sends a trusted envelope. Direct payloads remain accepted for local
@@ -109,7 +150,9 @@ function sendAiResponse(res, response) {
     tool: response.tool,
     status: response.status,
     fallbackUsed: Boolean(fallbackMode),
-    fallbackMode
+    fallbackMode,
+    source: response.source || response.reportData && response.reportData.source,
+    parseMode: response.reportData && response.reportData.parseMode
   };
 
   return res.status(statusCode).json(response);
@@ -122,6 +165,10 @@ function getFallbackMode(response) {
   const fallbackData = reportData.fallbackData || {};
   const verificationStatus = reportData.verificationStatus || {};
   const providerStatus = reportData.providerStatus || {};
+
+  if (reportData.source === 'fallback') {
+    return reportData.geminiMode || 'structured_fallback';
+  }
 
   if (aiReasoning.mode === 'rules_directional') {
     return 'rules_directional';

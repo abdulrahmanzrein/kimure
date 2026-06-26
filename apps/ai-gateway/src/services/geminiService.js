@@ -14,6 +14,14 @@ class MissingGeminiApiKeyError extends Error {
   }
 }
 
+class GeminiRequestError extends Error {
+  constructor(httpStatus) {
+    super(`Gemini request failed with HTTP ${httpStatus}`);
+    this.name = 'GeminiRequestError';
+    this.httpStatus = httpStatus;
+  }
+}
+
 const RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
@@ -202,7 +210,8 @@ async function generateGeminiStructuredJson({
   userPrompt,
   responseSchema,
   maxOutputTokens = 1400,
-  temperature = 0.2
+  temperature = 0.2,
+  allowProse = false
 }) {
   const apiKey = getGeminiApiKey();
 
@@ -268,13 +277,19 @@ async function generateGeminiStructuredJson({
   });
 
   if (!geminiResponse.ok) {
-    const errorText = await geminiResponse.text();
-    throw new Error(`Gemini request failed with ${geminiResponse.status}: ${errorText.slice(0, 240)}`);
+    throw new GeminiRequestError(geminiResponse.status);
   }
 
   const payload = await geminiResponse.json();
   const text = extractGeminiText(payload);
-  return parseGeminiJson(text);
+  const parsed = parseGeminiOutput(text, { allowProse });
+  Object.defineProperty(parsed, '__kimureHttpStatus', {
+    value: geminiResponse.status,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  return parsed;
 }
 
 function extractGeminiText(payload) {
@@ -294,22 +309,195 @@ function extractGeminiText(payload) {
   return text;
 }
 
-function parseGeminiJson(text) {
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    const match = text.match(/\{[\s\S]*\}/);
+function parseGeminiOutput(text, options = {}) {
+  const trimmed = typeof text === 'string' ? text.trim() : '';
+  if (!trimmed) {
+    throw new Error('Gemini returned empty text content');
+  }
 
-    if (!match) {
-      throw new Error('Gemini returned invalid JSON');
+  try {
+    return withParseMode(JSON.parse(trimmed), 'json');
+  } catch (error) {
+    const fencedBlocks = [...trimmed.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)];
+    for (const match of fencedBlocks) {
+      try {
+        return withParseMode(JSON.parse(match[1].trim()), 'fenced_json');
+      } catch (fencedError) {
+        // Continue to balanced JSON extraction or prose normalization.
+      }
     }
 
-    try {
-      return JSON.parse(match[0]);
-    } catch (innerError) {
-      throw new Error('Gemini returned invalid JSON');
+    const jsonObjectText = extractBalancedJsonObject(trimmed);
+    if (jsonObjectText) {
+      try {
+        return withParseMode(JSON.parse(jsonObjectText), 'extracted_json');
+      } catch (extractedError) {
+        // Continue to prose normalization when the caller allows it.
+      }
+    }
+
+    if (options.allowProse) {
+      const normalized = normalizeGeminiProse(trimmed);
+      if (normalized) {
+        return withParseMode(normalized, 'prose_normalized');
+      }
+    }
+
+    throw new Error('Gemini returned unusable structured content');
+  }
+}
+
+function extractBalancedJsonObject(text) {
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index];
+
+    if (start === -1) {
+      if (character === '{') {
+        start = index;
+        depth = 1;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (character === '"') {
+      inString = true;
+    } else if (character === '{') {
+      depth += 1;
+    } else if (character === '}') {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
     }
   }
+
+  return null;
+}
+
+function normalizeGeminiProse(text) {
+  const lines = text
+    .replace(/```[a-z]*|```/gi, '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+
+  const sections = {
+    insights: [],
+    recommendations: [],
+    nextSteps: []
+  };
+  let activeSection = 'insights';
+  const proseLines = [];
+
+  lines.forEach((line) => {
+    const normalizedHeading = line
+      .replace(/^#{1,6}\s*/, '')
+      .replace(/:$/, '')
+      .toLowerCase();
+
+    if (/^(key )?insights?$/.test(normalizedHeading)) {
+      activeSection = 'insights';
+      return;
+    }
+    if (/^recommendations?$/.test(normalizedHeading)) {
+      activeSection = 'recommendations';
+      return;
+    }
+    if (/^(next|action) steps?$/.test(normalizedHeading)) {
+      activeSection = 'nextSteps';
+      return;
+    }
+    if (/^disclaimer$/.test(normalizedHeading)) {
+      activeSection = 'disclaimer';
+      return;
+    }
+
+    const item = line
+      .replace(/^[-*•]\s+/, '')
+      .replace(/^\d+[.)]\s+/, '')
+      .trim();
+    if (!item) return;
+
+    if (activeSection === 'disclaimer') {
+      sections.disclaimer = [sections.disclaimer, item].filter(Boolean).join(' ');
+    } else if (/^[-*•]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) {
+      sections[activeSection].push(item);
+    } else {
+      proseLines.push(item);
+    }
+  });
+
+  const prose = proseLines.join(' ').trim();
+  const sentences = splitSentences(prose);
+  const summary = sentences.shift() || lines[0];
+  if (!summary || summary.length < 8) return null;
+
+  if (!sections.insights.length) {
+    sections.insights = sentences.slice(0, 3);
+    if (!sections.insights.length) sections.insights = [summary];
+  }
+  if (!sections.recommendations.length) {
+    sections.recommendations = sentences.slice(3, 6);
+    if (!sections.recommendations.length) {
+      sections.recommendations = [
+        'Use this recommendation as a starting point and confirm missing details before acting.'
+      ];
+    }
+  }
+  if (!sections.nextSteps.length) {
+    sections.nextSteps = sections.recommendations.slice(0, 3);
+  }
+
+  return {
+    status: 'success',
+    resultType: 'gemini_prose_recommendation',
+    summary: summary.slice(0, 4000),
+    score: null,
+    riskLevel: 'unknown',
+    keyInsights: sections.insights.slice(0, 12),
+    recommendations: sections.recommendations.slice(0, 12),
+    reportData: {
+      assumptions: [],
+      nextBestActions: sections.nextSteps.slice(0, 12)
+    },
+    crmSignals: {},
+    disclaimer: sections.disclaimer || DEFAULT_DISCLAIMER
+  };
+}
+
+function splitSentences(text) {
+  return text
+    ? text.split(/(?<=[.!?])\s+/).map((item) => item.trim()).filter(Boolean)
+    : [];
+}
+
+function withParseMode(value, parseMode) {
+  if (!isPlainObject(value)) {
+    throw new Error('Gemini response root must be an object');
+  }
+
+  Object.defineProperty(value, '__kimureParseMode', {
+    value: parseMode,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  return value;
 }
 
 function normalizeGeminiResponse(parsed, message, routingDetails) {
@@ -339,6 +527,8 @@ function normalizeGeminiResponse(parsed, message, routingDetails) {
       receivedMessage: response.reportData.receivedMessage || message,
       dedicatedRoute: getDedicatedRoute(resolvedTool),
       routingAction: resolvedTool === 'chat' ? 'answer_general_or_clarify' : 'recommend_dedicated_route',
+      source: 'gemini',
+      parseMode: parsed.__kimureParseMode || 'json',
       geminiMode: 'live',
       geminiModel: DEFAULT_GEMINI_MODEL,
       promptVersion: CHAT_PROMPT_VERSION
@@ -383,6 +573,7 @@ function isPlainObject(value) {
 module.exports = {
   generateGeminiChatResponse,
   generateGeminiStructuredJson,
-  MissingGeminiApiKeyError
+  parseGeminiOutput,
+  MissingGeminiApiKeyError,
+  GeminiRequestError
 };
-

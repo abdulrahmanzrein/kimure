@@ -1,10 +1,10 @@
-.credit-page {
+.mortgage-page {
   max-width: 1120px;
   margin: 0 auto;
   padding: 30px 0 72px;
 }
 
-.credit-back-link {
+.mortgage-back-link {
   display: inline-block;
   margin-bottom: 24px;
   color: var(--gold);
@@ -12,16 +12,16 @@
   text-decoration: none;
 }
 
-.credit-back-link:hover {
+.mortgage-back-link:hover {
   text-decoration: underline;
 }
 
-.credit-intro {
+.mortgage-intro {
   max-width: 760px;
   margin-bottom: 32px;
 }
 
-.credit-eyebrow {
+.mortgage-eyebrow {
   margin: 0 0 8px;
   color: var(--gold);
   font-size: 12px;
@@ -30,59 +30,63 @@
   text-transform: uppercase;
 }
 
-.credit-intro h1 {
+.mortgage-intro h1 {
   margin: 0 0 14px;
   font-size: clamp(30px, 5vw, 48px);
   line-height: 1.05;
   letter-spacing: -0.035em;
 }
 
-.credit-intro > p:last-child {
-  margin: 0;
+.mortgage-intro > p:last-child,
+.mortgage-reference-card p {
   color: var(--muted);
-  font-size: 16px;
-  line-height: 1.65;
+  line-height: 1.6;
 }
 
-.credit-layout {
+.mortgage-intro > p:last-child {
+  margin: 0;
+  font-size: 16px;
+}
+
+.mortgage-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 28px;
   align-items: start;
 }
 
-.credit-form {
+.mortgage-form {
   display: grid;
   gap: 18px;
 }
 
-.credit-card,
-.credit-privacy-card,
-.credit-results {
+.mortgage-card,
+.mortgage-reference-card,
+.mortgage-results {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.025);
 }
 
-.theme-light .credit-card,
-.theme-light .credit-privacy-card,
-.theme-light .credit-results {
+.theme-light .mortgage-card,
+.theme-light .mortgage-reference-card,
+.theme-light .mortgage-results {
   border-color: rgba(0, 0, 0, 0.1);
   background: rgba(0, 0, 0, 0.025);
 }
 
-.credit-card {
+.mortgage-card {
   padding: 24px;
 }
 
-.credit-section-heading {
+.mortgage-section-heading {
   display: flex;
   gap: 14px;
   align-items: flex-start;
   margin-bottom: 22px;
 }
 
-.credit-section-heading > span {
+.mortgage-section-heading > span {
   display: grid;
   place-items: center;
   flex: 0 0 30px;
@@ -94,44 +98,40 @@
   font-weight: 800;
 }
 
-.credit-section-heading h2 {
+.mortgage-section-heading h2,
+.mortgage-reference-card h2 {
   margin: 1px 0 4px;
   font-size: 19px;
 }
 
-.credit-section-heading p {
+.mortgage-section-heading p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
 }
 
-.credit-grid {
+.mortgage-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.credit-field-wide {
-  grid-column: span 2;
-}
-
-.credit-field label,
-.credit-fieldset legend {
+.mortgage-field label {
   display: block;
   margin-bottom: 7px;
   font-size: 13px;
   font-weight: 700;
 }
 
-.credit-field label span {
+.mortgage-field label span {
   color: var(--muted2);
   font-size: 11px;
   font-weight: 500;
 }
 
-.credit-field input,
-.credit-field select {
+.mortgage-field input,
+.mortgage-field select {
   box-sizing: border-box;
   width: 100%;
   min-height: 46px;
@@ -145,93 +145,28 @@
   font-size: 14px;
 }
 
-.credit-field select option {
+.mortgage-field select option {
   color: #111;
 }
 
-.theme-light .credit-field input,
-.theme-light .credit-field select {
+.theme-light .mortgage-field input,
+.theme-light .mortgage-field select {
   border-color: rgba(0, 0, 0, 0.15);
   background: rgba(0, 0, 0, 0.03);
 }
 
-.credit-field input:focus,
-.credit-field select:focus {
+.mortgage-field input:focus,
+.mortgage-field select:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
 }
 
-.credit-field input[aria-invalid="true"],
-.credit-field select[aria-invalid="true"] {
+.mortgage-field input[aria-invalid="true"],
+.mortgage-field select[aria-invalid="true"] {
   border-color: #f87171;
 }
 
-.credit-field-note {
-  margin: 7px 0 0;
-  color: var(--muted2);
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.credit-bureau-field {
-  margin-top: 16px;
-}
-
-.credit-fieldset {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.credit-fieldset + .credit-fieldset {
-  margin-top: 26px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.theme-light .credit-fieldset + .credit-fieldset {
-  border-top-color: rgba(0, 0, 0, 0.08);
-}
-
-.credit-fieldset legend {
-  margin-bottom: 14px;
-  color: var(--gold);
-  font-size: 15px;
-}
-
-.credit-consent {
-  margin-top: 24px;
-  padding: 16px;
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 12px;
-  background: rgba(212, 175, 55, 0.07);
-}
-
-.credit-consent label {
-  display: flex;
-  gap: 11px;
-  align-items: flex-start;
-  font-size: 13px;
-  font-weight: 650;
-  line-height: 1.5;
-}
-
-.credit-consent input {
-  flex: 0 0 auto;
-  width: 17px;
-  height: 17px;
-  margin-top: 2px;
-  accent-color: var(--gold);
-}
-
-.credit-consent p {
-  margin: 10px 0 0 28px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.credit-form-errors {
+.mortgage-form-errors {
   padding: 13px 15px;
   border: 1px solid rgba(248, 113, 113, 0.45);
   border-radius: 11px;
@@ -241,77 +176,67 @@
   line-height: 1.55;
 }
 
-.theme-light .credit-form-errors {
+.theme-light .mortgage-form-errors {
   color: #991b1b;
 }
 
-.credit-form-errors ul {
+.mortgage-form-errors ul {
   margin: 0;
   padding-left: 18px;
 }
 
-.credit-submit-row {
+.mortgage-submit-row {
   display: flex;
   gap: 16px;
   align-items: center;
   padding: 6px 0;
 }
 
-.credit-submit-row p {
+.mortgage-submit-row p {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
 }
 
-.credit-sidebar {
+.mortgage-sidebar {
   position: sticky;
   top: 20px;
 }
 
-.credit-privacy-card {
+.mortgage-reference-card {
   padding: 22px;
 }
 
-.credit-privacy-card h2 {
-  margin: 0 0 14px;
-  font-size: 19px;
+.mortgage-reference-card p {
+  margin: 12px 0 0;
+  font-size: 12px;
 }
 
-.credit-privacy-card ul {
-  margin: 0 0 16px;
-  padding-left: 18px;
+.mortgage-reference-card #mortgageReferenceNote {
   color: var(--text);
   font-size: 13px;
-  line-height: 1.7;
 }
 
-.credit-privacy-card > p:last-child {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.credit-results {
+.mortgage-results {
   margin-top: 30px;
   padding: 26px;
 }
 
-.credit-results-head {
+.mortgage-results-head {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   align-items: flex-start;
 }
 
-.credit-results-head h2 {
+.mortgage-results-head h2 {
   max-width: 760px;
   margin: 0;
   font-size: 23px;
   line-height: 1.35;
 }
 
-.credit-score-card {
+.mortgage-risk-card {
   flex: 0 0 130px;
   padding: 13px 16px;
   border-radius: 12px;
@@ -319,8 +244,8 @@
   text-align: center;
 }
 
-.credit-score-card span,
-.credit-status-grid span {
+.mortgage-risk-card span,
+.mortgage-status-grid span {
   display: block;
   color: var(--muted);
   font-size: 11px;
@@ -328,58 +253,46 @@
   letter-spacing: 0.08em;
 }
 
-.credit-score-card strong {
+.mortgage-risk-card strong {
   display: block;
   margin-top: 4px;
   color: var(--gold);
-  font-size: 27px;
+  font-size: 20px;
 }
 
-.credit-status-grid {
+.mortgage-status-grid,
+.mortgage-result-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 24px 0;
+  gap: 14px;
+  margin-top: 24px;
 }
 
-.credit-status-grid > div {
-  padding: 14px;
+.mortgage-status-grid > div,
+.mortgage-result-grid section {
+  padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 11px;
 }
 
-.theme-light .credit-status-grid > div {
+.theme-light .mortgage-status-grid > div,
+.theme-light .mortgage-result-grid section {
   border-color: rgba(0, 0, 0, 0.08);
 }
 
-.credit-status-grid strong {
+.mortgage-status-grid strong {
   display: block;
   margin-top: 6px;
   font-size: 14px;
+  line-height: 1.4;
 }
 
-.credit-result-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.credit-result-grid section {
-  padding: 18px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.theme-light .credit-result-grid section {
-  background: rgba(0, 0, 0, 0.025);
-}
-
-.credit-result-grid h3 {
+.mortgage-result-grid h3 {
   margin: 0 0 11px;
   font-size: 15px;
 }
 
-.credit-result-grid ul {
+.mortgage-result-grid ul {
   margin: 0;
   padding-left: 18px;
   color: var(--muted);
@@ -387,7 +300,7 @@
   line-height: 1.65;
 }
 
-.credit-disclaimer {
+.mortgage-disclaimer {
   margin: 22px 0 0;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -396,65 +309,47 @@
   line-height: 1.6;
 }
 
-.theme-light .credit-disclaimer {
+.theme-light .mortgage-disclaimer {
   border-top-color: rgba(0, 0, 0, 0.08);
 }
 
-.credit-result-actions {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  margin-top: 20px;
-}
-
-.credit-result-actions p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
 @media (max-width: 900px) {
-  .credit-layout {
+  .mortgage-layout {
     grid-template-columns: 1fr;
   }
 
-  .credit-sidebar {
+  .mortgage-sidebar {
     position: static;
   }
 }
 
 @media (max-width: 680px) {
-  .credit-nav {
+  .mortgage-nav {
     display: none;
   }
 
-  .credit-page {
+  .mortgage-page {
     padding-top: 20px;
   }
 
-  .credit-card,
-  .credit-results {
+  .mortgage-card,
+  .mortgage-results {
     padding: 18px;
   }
 
-  .credit-grid,
-  .credit-status-grid,
-  .credit-result-grid {
+  .mortgage-grid,
+  .mortgage-status-grid,
+  .mortgage-result-grid {
     grid-template-columns: 1fr;
   }
 
-  .credit-field-wide {
-    grid-column: auto;
-  }
-
-  .credit-results-head,
-  .credit-submit-row,
-  .credit-result-actions {
+  .mortgage-results-head,
+  .mortgage-submit-row {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .credit-score-card {
+  .mortgage-risk-card {
     flex-basis: auto;
   }
 }
