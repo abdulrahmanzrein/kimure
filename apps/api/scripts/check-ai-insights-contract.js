@@ -1,9 +1,35 @@
 const assert = require("node:assert/strict");
 const {
+  AiInsightsService,
+  buildAiReportInsertRow,
+  shapePersistableDashboardInsight,
   shapeDashboardAiInsight
 } = require("../src/ai-insights");
 
 const fixedGeneratedAt = "2026-06-26T00:00:00.000Z";
+
+function assertNoUnsafeAiReportFields(value) {
+  const serialized = JSON.stringify(value);
+
+  return ![
+    "rawGeminiResponse",
+    "prompt",
+    "sourceResponse",
+    "contentBase64",
+    "assessment_id_hash",
+    "credit_mortgage_handoff",
+    "creditMortgageHandoff",
+    "request_payload",
+    "response_payload",
+    "stack",
+    "authorization",
+    "apiKey",
+    "token",
+    "sourceTrust"
+  ].some(function (field) {
+    return serialized.includes(field);
+  });
+}
 
 const unsafeInsight = shapeDashboardAiInsight(
   {
@@ -153,4 +179,92 @@ assert.equal(onboardingInsight.insightType, "onboarding_recommendation");
 assert.equal(onboardingInsight.title, "Onboarding Match");
 assert.equal(onboardingInsight.sourceLabel, "Rules-based directional");
 
-console.log("AI dashboard insight contract checks passed.");
+const persistableInsight = shapePersistableDashboardInsight(
+  {
+    id: "gateway-id-should-not-persist",
+    tool: "credit-profile",
+    summary: "Credit summary",
+    sourceResponse: "drop-this",
+    reportData: {
+      providerStatus: { status: "directional" },
+      creditMortgageHandoff: { readinessScore: 80 }
+    }
+  },
+  { generatedAt: fixedGeneratedAt }
+);
+const insertRow = buildAiReportInsertRow(
+  "00000000-0000-4000-8000-000000000001",
+  persistableInsight
+);
+
+assert.equal(insertRow.user_id, "00000000-0000-4000-8000-000000000001");
+assert.equal(insertRow.ai_request_id, null);
+assert.equal(insertRow.report_type, "credit_readiness");
+assert.equal(insertRow.title, "Credit Readiness Summary");
+assert.equal(insertRow.report_data.id, null);
+assert.equal(insertRow.report_data.summary, "Credit summary");
+assert.equal(insertRow.report_data.safeMetadata.providerStatus, "directional");
+assert.equal(assertNoUnsafeAiReportFields(insertRow), true);
+assert.equal(JSON.stringify(insertRow).includes("gateway-id-should-not-persist"), false);
+
+const missingConfigService = {
+  get: function () {
+    return undefined;
+  }
+};
+const skippedService = new AiInsightsService(missingConfigService);
+
+skippedService
+  .persistDashboardInsight(
+    "00000000-0000-4000-8000-000000000001",
+    { tool: "mortgage", summary: "Mortgage summary" },
+    { generatedAt: fixedGeneratedAt }
+  )
+  .then(function (result) {
+    assert.equal(result.status, "skipped");
+    assert.equal(result.insight.summary, "Mortgage summary");
+
+    const failingConfigService = {
+      get: function (key) {
+        if (key === "SUPABASE_URL") return "http://localhost:54321";
+        if (key === "SUPABASE_SERVICE_ROLE_KEY") return "test-service-role";
+        return undefined;
+      }
+    };
+    const failingService = new AiInsightsService(failingConfigService);
+    failingService.client = {
+      from: function (tableName) {
+        assert.equal(tableName, "ai_reports");
+        return {
+          insert: async function (row) {
+            assert.equal(row.report_data.summary, "Stored safely");
+            assert.equal(assertNoUnsafeAiReportFields(row), true);
+            return { error: { message: "simulated insert failure" } };
+          }
+        };
+      }
+    };
+
+    return failingService.persistDashboardInsight(
+      "00000000-0000-4000-8000-000000000001",
+      {
+        tool: "scout",
+        summary: "Stored safely",
+        prompt: "drop-this",
+        reportData: {
+          sourceResponse: "drop-this"
+        }
+      },
+      { generatedAt: fixedGeneratedAt }
+    );
+  })
+  .then(function (result) {
+    assert.equal(result.status, "failed");
+    assert.equal(result.insight.summary, "Stored safely");
+    assert.equal(assertNoUnsafeAiReportFields(result.insight), true);
+    console.log("AI dashboard insight contract checks passed.");
+  })
+  .catch(function (error) {
+    console.error(error);
+    process.exit(1);
+  });
