@@ -199,6 +199,21 @@ steps, safe CRM signals, source labels, disclaimers, and small status metadata.
 It must not expose prompts, raw Gemini output, provider payloads, bureau data,
 tokens, stack traces, or raw request/response logs.
 
+Future dashboard widgets should read sanitized AI report cards from:
+
+```http
+GET /api/ai/insights/dashboard
+```
+
+For one report type, use:
+
+```http
+GET /api/ai/insights/latest?type=credit_readiness
+```
+
+Supported `type` values are `onboarding_recommendation`, `credit_readiness`,
+`mortgage_estimate`, and `marketplace_tool`.
+
 Backend integration errors:
 
 - `400`: invalid Kimure client payload

@@ -3,7 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { AiController } from "./ai/ai.controller";
 import { AiGatewayService } from "./ai/ai-gateway.service";
 import { CreditAssessmentsService } from "./ai/credit-assessments.service";
-import { AiInsightsService } from "./ai-insights";
+import { AiInsightsController, AiInsightsService } from "./ai-insights";
 import { SupabaseAuthGuard } from "./auth/supabase-auth.guard";
 import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
@@ -32,6 +32,7 @@ class HealthController {
   controllers: [
     HealthController,
     AiController,
+    AiInsightsController,
     UsersController,
     OnboardingController
   ],

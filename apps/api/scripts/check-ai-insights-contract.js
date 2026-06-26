@@ -1,7 +1,11 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const {
   AiInsightsService,
+  buildDashboardInsightsResponse,
   buildAiReportInsertRow,
+  isDashboardInsightType,
+  normalizeAiReportRow,
   shapePersistableDashboardInsight,
   shapeDashboardAiInsight
 } = require("../src/ai-insights");
@@ -228,6 +232,9 @@ assert.deepEqual(
     title: "Smart Onboarding Recommendation"
   }
 );
+assert.equal(isDashboardInsightType("credit_readiness"), true);
+assert.equal(isDashboardInsightType("mortgage_estimate"), true);
+assert.equal(isDashboardInsightType("unsupported"), false);
 
 const persistableInsight = shapePersistableDashboardInsight(
   {
@@ -256,6 +263,126 @@ assert.equal(insertRow.report_data.summary, "Credit summary");
 assert.equal(insertRow.report_data.safeMetadata.providerStatus, "directional");
 assert.equal(assertNoUnsafeAiReportFields(insertRow), true);
 assert.equal(JSON.stringify(insertRow).includes("gateway-id-should-not-persist"), false);
+
+const reportRows = [
+  {
+    user_id: "user-a",
+    report_type: "marketplace_tool",
+    created_at: "2026-06-26T03:00:00.000Z",
+    report_data: {
+      insightType: "marketplace_tool",
+      tool: "scout",
+      title: "Scout",
+      summary: "Newest marketplace",
+      sourceLabel: "Gemini-backed",
+      status: "success",
+      keyInsights: ["Good fit"],
+      sourceResponse: "drop-this",
+      creditMortgageHandoff: { readinessScore: 99 },
+      safeMetadata: {
+        generatedAt: "2026-06-26T03:00:00.000Z"
+      }
+    }
+  },
+  {
+    user_id: "user-a",
+    report_type: "credit_readiness",
+    created_at: "2026-06-26T02:00:00.000Z",
+    report_data: {
+      insightType: "credit_readiness",
+      tool: "credit-profile",
+      title: "Credit",
+      summary: "Credit ready",
+      status: "success",
+      sourceLabel: "Rules-based directional",
+      safeMetadata: {
+        providerStatus: "not_connected",
+        verificationStatus: "directional_only",
+        generatedAt: "2026-06-26T02:00:00.000Z"
+      }
+    }
+  },
+  {
+    user_id: "user-a",
+    report_type: "mortgage_estimate",
+    created_at: "2026-06-26T01:00:00.000Z",
+    report_data: {
+      insightType: "mortgage_estimate",
+      tool: "mortgage",
+      title: "Mortgage",
+      summary: "Mortgage estimate",
+      status: "success",
+      sourceLabel: "Gemini-backed",
+      safeMetadata: {
+        creditReferenceStatus: "resolved",
+        generatedAt: "2026-06-26T01:00:00.000Z"
+      }
+    }
+  },
+  {
+    user_id: "user-a",
+    report_type: "onboarding_recommendation",
+    created_at: "2026-06-26T00:00:00.000Z",
+    report_data: {
+      insightType: "onboarding_recommendation",
+      tool: "chat",
+      title: "Onboarding",
+      summary: "Onboarding match",
+      status: "success",
+      sourceLabel: "Platform-signal fallback"
+    }
+  },
+  {
+    user_id: "user-a",
+    report_type: "unsupported",
+    created_at: "2026-06-25T00:00:00.000Z",
+    report_data: {
+      summary: "Must be skipped",
+      sourceResponse: "drop-this"
+    }
+  }
+];
+const dashboardResponse = buildDashboardInsightsResponse(reportRows);
+
+assert.equal(dashboardResponse.onboardingRecommendation.summary, "Onboarding match");
+assert.equal(dashboardResponse.creditReadiness.summary, "Credit ready");
+assert.equal(dashboardResponse.mortgageEstimate.summary, "Mortgage estimate");
+assert.equal(dashboardResponse.marketplaceTools.length, 1);
+assert.equal(dashboardResponse.marketplaceTools[0].summary, "Newest marketplace");
+assert.equal(assertNoUnsafeAiReportFields(dashboardResponse), true);
+assert.equal(JSON.stringify(dashboardResponse).includes("sourceResponse"), false);
+assert.equal(JSON.stringify(dashboardResponse).includes("creditMortgageHandoff"), false);
+
+const malformedInsight = normalizeAiReportRow({
+  report_type: "credit_readiness",
+  created_at: "2026-06-26T04:00:00.000Z",
+  report_data: {
+    tool: "credit-profile",
+    summary: "SIN 123-456-789 at 123 Main Street",
+    sourceResponse: "drop-this",
+    assessment_id_hash: "drop-this",
+    request_payload: { token: "drop-this" },
+    safeMetadata: {
+      sourceTrust: "api_resolved_supabase_assessment",
+      creditReferenceStatus: "resolved",
+      generatedAt: "2026-06-26T04:00:00.000Z"
+    }
+  }
+});
+
+assert.ok(malformedInsight);
+assert.equal(malformedInsight.insightType, "credit_readiness");
+assert.equal(malformedInsight.safeMetadata.creditReferenceStatus, "resolved");
+assert.equal(assertNoUnsafeAiReportFields(malformedInsight), true);
+assert.equal(JSON.stringify(malformedInsight).includes("123-456-789"), false);
+assert.equal(JSON.stringify(malformedInsight).includes("123 Main Street"), false);
+
+const skippedMalformedInsight = normalizeAiReportRow({
+  report_type: "not_supported",
+  report_data: { summary: "skip me", sourceResponse: "drop-this" }
+});
+
+assert.equal(skippedMalformedInsight, null);
 
 const missingConfigService = {
   get: function () {
@@ -345,6 +472,19 @@ skippedService
     assert.equal(result.status, "failed");
     assert.equal(result.insight.summary, "Still returned safely");
     assert.equal(assertNoUnsafeAiReportFields(result.insight), true);
+
+    const source = fs.readFileSync(
+      require("node:path").join(
+        __dirname,
+        "../src/ai-insights/ai-insights.service.ts"
+      ),
+      "utf8"
+    );
+
+    assert.equal(source.includes('.eq("user_id", userId)'), true);
+    assert.equal(source.includes('.select("report_type, report_data, created_at")'), true);
+    assert.equal(source.includes("request_payload"), false);
+    assert.equal(source.includes("response_payload"), false);
     console.log("AI dashboard insight contract checks passed.");
   })
   .catch(function (error) {
