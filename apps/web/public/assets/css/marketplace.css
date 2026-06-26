@@ -122,6 +122,185 @@
   grid-column: 1 / -1;
 }
 
+/* Marketplace AI tools */
+.mp-ai-tools {
+  margin: 34px 0 36px;
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(159, 128, 73, 0.2);
+  background:
+    radial-gradient(700px 320px at 12% 0%, rgba(159, 128, 73, 0.12), transparent 62%),
+    rgba(255, 255, 255, 0.02);
+}
+.theme-light .mp-ai-tools {
+  border-color: rgba(159, 128, 73, 0.24);
+  background:
+    radial-gradient(700px 320px at 12% 0%, rgba(159, 128, 73, 0.14), transparent 62%),
+    rgba(0, 0, 0, 0.02);
+}
+.mp-ai-tools-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 360px);
+  gap: 22px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+.mp-ai-tools-title {
+  margin: 8px 0 8px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+.mp-ai-tools-lead,
+.mp-ai-tools-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+  font-size: 14px;
+}
+.mp-ai-tools-note {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+.theme-light .mp-ai-tools-note {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
+.mp-ai-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.mp-ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(6, 6, 6, 0.34);
+}
+.theme-light .mp-ai-card {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.56);
+}
+.mp-ai-card h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--gold);
+}
+.mp-ai-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 13px;
+}
+.mp-ai-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+.mp-ai-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted2);
+  font-size: 12px;
+  font-weight: 700;
+}
+.mp-ai-form input,
+.mp-ai-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  padding: 11px 12px;
+  font: inherit;
+  resize: vertical;
+}
+.theme-light .mp-ai-form input,
+.theme-light .mp-ai-form textarea {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.03);
+}
+.mp-ai-form input::placeholder,
+.mp-ai-form textarea::placeholder {
+  color: var(--muted2);
+}
+.mp-ai-form .btn {
+  justify-content: center;
+  width: 100%;
+  margin-top: 4px;
+}
+.mp-ai-result {
+  min-height: 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.mp-ai-result.is-loading,
+.mp-ai-result.is-error,
+.mp-ai-result.is-ready {
+  padding: 13px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+.theme-light .mp-ai-result.is-loading,
+.theme-light .mp-ai-result.is-error,
+.theme-light .mp-ai-result.is-ready {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
+.mp-ai-result.is-error {
+  color: #ffb4a8;
+  border-color: rgba(255, 120, 96, 0.35);
+}
+.mp-ai-result-kicker {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.mp-ai-result-title {
+  margin: 7px 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.mp-ai-result-meta,
+.mp-ai-fallback-note,
+.mp-ai-disclaimer {
+  margin: 8px 0 0;
+  color: var(--muted2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mp-ai-fallback-note {
+  color: var(--gold);
+}
+.mp-ai-result-subtitle {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.mp-ai-result-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted2);
+  line-height: 1.55;
+}
+.mp-ai-cta-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
 /* Listings grid (functional) */
 .mp-listings-head {
   display: flex;
@@ -303,6 +482,15 @@
 
 @media (max-width: 640px) {
   .mp-hero-content {
+    grid-template-columns: 1fr;
+  }
+  .mp-ai-tools {
+    padding: 18px;
+  }
+  .mp-ai-tools-head {
+    grid-template-columns: 1fr;
+  }
+  .mp-ai-tools-grid {
     grid-template-columns: 1fr;
   }
   .mp-hero-image {
