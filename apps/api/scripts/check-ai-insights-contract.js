@@ -5,6 +5,9 @@ const {
   shapePersistableDashboardInsight,
   shapeDashboardAiInsight
 } = require("../src/ai-insights");
+const {
+  getDashboardInsightOptionsForAiTool
+} = require("../src/ai/ai.controller");
 
 const fixedGeneratedAt = "2026-06-26T00:00:00.000Z";
 
@@ -179,6 +182,53 @@ assert.equal(onboardingInsight.insightType, "onboarding_recommendation");
 assert.equal(onboardingInsight.title, "Onboarding Match");
 assert.equal(onboardingInsight.sourceLabel, "Rules-based directional");
 
+assert.deepEqual(getDashboardInsightOptionsForAiTool("credit-profile", {}), {
+  insightType: "credit_readiness",
+  tool: "credit-profile",
+  title: "Credit Readiness Summary"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("mortgage", {}), {
+  insightType: "mortgage_estimate",
+  tool: "mortgage",
+  title: "Mortgage Estimate Summary"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("scout", {}), {
+  insightType: "marketplace_tool",
+  tool: "scout",
+  title: "Property Scout Insight"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("analyze", {}), {
+  insightType: "marketplace_tool",
+  tool: "analyze",
+  title: "Property Analysis Insight"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("rental", {}), {
+  insightType: "marketplace_tool",
+  tool: "rental",
+  title: "Rental Finder Insight"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("valuate", {}), {
+  insightType: "marketplace_tool",
+  tool: "valuate",
+  title: "Property Valuation Insight"
+});
+assert.deepEqual(getDashboardInsightOptionsForAiTool("investment-planner", {}), {
+  insightType: "marketplace_tool",
+  tool: "investment-planner",
+  title: "Investment Planner Insight"
+});
+assert.equal(getDashboardInsightOptionsForAiTool("chat", {}), null);
+assert.deepEqual(
+  getDashboardInsightOptionsForAiTool("chat", {
+    metadata: { context: "smart_onboarding" }
+  }),
+  {
+    insightType: "onboarding_recommendation",
+    tool: "chat",
+    title: "Smart Onboarding Recommendation"
+  }
+);
+
 const persistableInsight = shapePersistableDashboardInsight(
   {
     id: "gateway-id-should-not-persist",
@@ -261,6 +311,39 @@ skippedService
   .then(function (result) {
     assert.equal(result.status, "failed");
     assert.equal(result.insight.summary, "Stored safely");
+    assert.equal(assertNoUnsafeAiReportFields(result.insight), true);
+
+    const throwingConfigService = {
+      get: function (key) {
+        if (key === "SUPABASE_URL") return "http://localhost:54321";
+        if (key === "SUPABASE_SERVICE_ROLE_KEY") return "test-service-role";
+        return undefined;
+      }
+    };
+    const throwingService = new AiInsightsService(throwingConfigService);
+    throwingService.client = {
+      from: function () {
+        return {
+          insert: async function () {
+            throw new Error("simulated network failure");
+          }
+        };
+      }
+    };
+
+    return throwingService.persistDashboardInsight(
+      "00000000-0000-4000-8000-000000000001",
+      {
+        tool: "mortgage",
+        summary: "Still returned safely",
+        sourceResponse: "drop-this"
+      },
+      { generatedAt: fixedGeneratedAt }
+    );
+  })
+  .then(function (result) {
+    assert.equal(result.status, "failed");
+    assert.equal(result.insight.summary, "Still returned safely");
     assert.equal(assertNoUnsafeAiReportFields(result.insight), true);
     console.log("AI dashboard insight contract checks passed.");
   })

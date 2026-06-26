@@ -39,19 +39,25 @@ export class AiInsightsService {
     const client = this.getServiceClient();
 
     if (!client) {
-      this.log("ai_report_persist", "skipped");
+      this.log("ai_report_persist", "skipped", insight.tool);
       return { status: "skipped", insight };
     }
 
     const row = buildAiReportInsertRow(userId, insight);
-    const { error } = await client.from("ai_reports").insert(row);
 
-    if (error) {
-      this.log("ai_report_persist", "failed");
+    try {
+      const { error } = await client.from("ai_reports").insert(row);
+
+      if (error) {
+        this.log("ai_report_persist", "failed", insight.tool);
+        return { status: "failed", insight };
+      }
+    } catch (error) {
+      this.log("ai_report_persist", "failed", insight.tool);
       return { status: "failed", insight };
     }
 
-    this.log("ai_report_persist", "stored");
+    this.log("ai_report_persist", "stored", insight.tool);
     return { status: "stored", insight };
   }
 
@@ -71,8 +77,8 @@ export class AiInsightsService {
     return this.client;
   }
 
-  private log(stage: string, status: string) {
-    console.info("[ai-insights]", { stage, status });
+  private log(stage: string, status: string, tool: string) {
+    console.info("[ai-insights]", { stage, status, tool });
   }
 }
 
