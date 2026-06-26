@@ -247,8 +247,9 @@ export function normalizeCreditProfileInput(
   }) as NormalizedCreditProfileInput;
 }
 
-// Mortgage may use an opaque server assessment reference. A legacy client
-// handoff is minimized and explicitly marked untrusted before forwarding.
+// Mortgage may use an opaque server assessment reference. Client-supplied
+// credit handoff objects are dropped here; the API resolves trusted handoff
+// data server-side before forwarding to the Gateway.
 export function normalizeMortgageInput(input: JsonObject): JsonObject {
   const {
     creditMortgageHandoff,
@@ -261,18 +262,10 @@ export function normalizeMortgageInput(input: JsonObject): JsonObject {
     "creditAssessmentId",
     200
   );
-  const clientHandoff =
-    creditMortgageHandoff ?? creditProfileContext ?? credit_profile_context;
 
   return compact({
     ...otherInput,
-    creditAssessmentId: assessmentId,
-    creditMortgageHandoff:
-      clientHandoff === undefined
-        ? undefined
-        : sanitizeCreditMortgageHandoff(clientHandoff),
-    creditMortgageHandoffTrust:
-      clientHandoff === undefined ? undefined : "client_supplied_untrusted"
+    creditAssessmentId: assessmentId
   });
 }
 

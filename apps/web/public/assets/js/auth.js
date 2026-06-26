@@ -32,6 +32,75 @@
     return session ? session.access_token : null;
   }
 
+  var creditAssessmentStorageKey = "kimure.creditAssessmentReference";
+
+  function clearCreditAssessmentReference() {
+    try {
+      window.sessionStorage.removeItem(creditAssessmentStorageKey);
+    } catch (err) {
+      // If storage is unavailable, behave like there is no saved reference.
+    }
+  }
+
+  function normalizeCreditAssessmentReference(reference) {
+    if (!reference || typeof reference !== "object") return null;
+
+    var creditAssessmentId = typeof reference.creditAssessmentId === "string"
+      ? reference.creditAssessmentId.trim()
+      : "";
+    var expiresAt = typeof reference.expiresAt === "string"
+      ? reference.expiresAt.trim()
+      : "";
+    var userId = typeof reference.userId === "string"
+      ? reference.userId.trim()
+      : "";
+    var expiresAtMs = Date.parse(expiresAt);
+
+    if (!creditAssessmentId || !expiresAt || !userId || Number.isNaN(expiresAtMs)) return null;
+    if (expiresAtMs <= Date.now()) return null;
+    if (currentUser && currentUser.id && currentUser.id !== userId) return null;
+
+    return {
+      creditAssessmentId: creditAssessmentId,
+      expiresAt: expiresAt,
+      userId: userId
+    };
+  }
+
+  function saveCreditAssessmentReference(reference) {
+    var normalized = normalizeCreditAssessmentReference(reference);
+    if (!normalized) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    try {
+      window.sessionStorage.setItem(creditAssessmentStorageKey, JSON.stringify(normalized));
+      return normalized;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function getCreditAssessmentReference() {
+    var parsed;
+
+    try {
+      parsed = JSON.parse(window.sessionStorage.getItem(creditAssessmentStorageKey) || "null");
+    } catch (err) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    var normalized = normalizeCreditAssessmentReference(parsed);
+    if (!normalized) {
+      clearCreditAssessmentReference();
+      return null;
+    }
+
+    return normalized;
+  }
+
   function explainMissingConfig() {
     alert(
       "Supabase is not configured yet. Copy supabase-config.example.js to supabase-config.js, then add your Supabase Project URL and anon public key."
@@ -335,6 +404,51 @@
     return { ok: true, data: body };
   }
 
+  // Send mortgage details to the Kimure API only. The browser may attach an
+  // opaque creditAssessmentId, but never raw credit handoff/provider data.
+  async function requestMortgage(payload) {
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in before requesting a mortgage estimate."
+      };
+    }
+
+    var safePayload = { ...(payload || {}) };
+    delete safePayload.creditMortgageHandoff;
+    delete safePayload.creditProfileContext;
+    delete safePayload.credit_profile_context;
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/ai/mortgage", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(safePayload)
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "The mortgage estimate could not be completed.";
+      return { ok: false, message: message };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -381,6 +495,7 @@
 
     var result = await client.auth.signOut();
     currentUser = null;
+    clearCreditAssessmentReference();
     return result;
   }
 
@@ -392,6 +507,11 @@
 
     client.auth.onAuthStateChange(function (event, session) {
       currentUser = session && session.user ? session.user : null;
+      if (!currentUser || event === "SIGNED_OUT") {
+        clearCreditAssessmentReference();
+      } else {
+        getCreditAssessmentReference();
+      }
       document.dispatchEvent(
         new CustomEvent("kimure-auth-changed", {
           detail: { event: event, user: currentUser }
@@ -414,7 +534,11 @@
     applyOnboardingProfileToForm: applyOnboardingProfileToForm,
     signUpFromOnboarding: signUpFromOnboarding,
     saveOnboardingProfile: saveOnboardingProfile,
-    requestCreditProfile: requestCreditProfile
+    requestCreditProfile: requestCreditProfile,
+    requestMortgage: requestMortgage,
+    saveCreditAssessmentReference: saveCreditAssessmentReference,
+    getCreditAssessmentReference: getCreditAssessmentReference,
+    clearCreditAssessmentReference: clearCreditAssessmentReference
   };
 
   initAuthListener();

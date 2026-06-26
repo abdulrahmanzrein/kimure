@@ -119,10 +119,19 @@ rather than storing the general `ai_requests` payload unchanged.
 
 ## Mortgage handoff
 
-`POST /api/ai/mortgage` may include `creditAssessmentId`. The Gateway resolves
-that opaque reference server-side. A legacy client-supplied
-`creditMortgageHandoff` may be accepted temporarily, but the API minimizes it
-and marks it `client_supplied_untrusted`; it cannot establish verified status.
+`POST /api/ai/mortgage` may include `creditAssessmentId`. The browser must send
+only this opaque reference, never raw `creditMortgageHandoff` data. The Kimure
+API hashes the reference, resolves the matching active row for the authenticated
+user in `public.credit_assessments`, and forwards only the minimized trusted
+handoff to the Gateway. If the reference is missing, expired, revoked, or belongs
+to another user, the mortgage request continues without trusted credit context.
+
+Client-supplied `creditMortgageHandoff`, `creditProfileContext`, and
+`credit_profile_context` fields are ignored by the API.
+
+The Gateway accepts API-resolved handoff only when the API marks it with
+`creditMortgageHandoffTrust: "api_resolved_trusted"`. Its in-memory assessment
+store remains a development-only fallback for standalone local Gateway checks.
 
 ## Remaining blocker
 

@@ -14,6 +14,7 @@ incrementally connects them to Supabase and the NestJS API:
 - `/onboarding.html`
 - `/onboarding-form.html`
 - `/credit-profile.html`
+- `/mortgage.html`
 - `/legal.html`
 
 Visiting `/` redirects to `/index.html`.

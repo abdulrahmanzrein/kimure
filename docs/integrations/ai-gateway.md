@@ -125,6 +125,7 @@ strict normalized contract and response allowlist documented in
 
 ```json
 {
+  "creditAssessmentId": "optional-opaque-api-reference",
   "financials": {
     "annualIncome": 95000,
     "downPayment": 80000,
@@ -141,6 +142,16 @@ strict normalized contract and response allowlist documented in
 `credit-profile` accepts directional requests without bureau consent. Auto and
 named bureau-provider modes require explicit bureau consent. The Kimure API
 normalizes the consent flags and permissible-purpose metadata before forwarding.
+
+For mortgage handoff, clients may send only `creditAssessmentId`. The Kimure API
+resolves the reference from its Supabase-owned `credit_assessments` table and,
+when found for the authenticated user, forwards a minimized trusted handoff to
+the Gateway. Browser-supplied raw handoff data is not trusted.
+
+The Gateway treats `creditMortgageHandoffTrust: "api_resolved_trusted"` as the
+production trust signal and labels that context internally as an API-resolved
+Supabase assessment. Its process-local credit assessment memory store remains
+available only for standalone local Gateway development.
 
 ## Backend-to-Gateway Envelope
 

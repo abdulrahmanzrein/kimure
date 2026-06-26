@@ -242,7 +242,8 @@
       },
       missingFields: safeList(reportData.missingFields),
       disclaimer: safeText(source.disclaimer, "This assessment is informational and is not lender approval."),
-      creditAssessmentId: safeText(creditAssessment.assessmentId, null)
+      creditAssessmentId: safeText(creditAssessment.assessmentId, null),
+      creditAssessmentExpiresAt: safeText(creditAssessment.expiresAt, null)
     };
   }
 
@@ -290,9 +291,37 @@
     renderList("creditResultInsights", result.keyInsights, "No additional insights were returned.");
     renderList("creditResultRecommendations", result.recommendations, "No additional recommendations were returned.");
     renderList("creditResultMissing", result.missingFields, "No missing fields were identified.");
+    updateMortgageContinue(result);
 
     results.hidden = false;
     results.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function updateMortgageContinue(result) {
+    var continueRow = document.getElementById("creditMortgageContinue");
+    var continueStatus = document.getElementById("creditMortgageContinueStatus");
+    if (!continueRow || !continueStatus) return;
+
+    continueRow.hidden = true;
+    continueStatus.textContent = "";
+    if (!result.creditAssessmentId || !result.creditAssessmentExpiresAt) return;
+    if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.saveCreditAssessmentReference) return;
+
+    var user = window.KIMURE_AUTH.getCurrentUser
+      ? await window.KIMURE_AUTH.getCurrentUser()
+      : null;
+    if (!user || !user.id) return;
+
+    var saved = window.KIMURE_AUTH.saveCreditAssessmentReference({
+      creditAssessmentId: result.creditAssessmentId,
+      expiresAt: result.creditAssessmentExpiresAt,
+      userId: user.id
+    });
+
+    if (saved) {
+      continueStatus.textContent = "A recent credit-readiness reference is saved for this session.";
+      continueRow.hidden = false;
+    }
   }
 
   function setLoading(loading) {

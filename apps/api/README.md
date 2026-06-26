@@ -66,12 +66,16 @@ The API needs:
 
 - `SUPABASE_URL`
 - `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` for API-owned server writes such as credit
+  assessment references. Keep this server-side only.
 - `AI_GATEWAY_BASE_URL`
 
 Optional:
 
 - `AI_GATEWAY_API_KEY`
 - `AI_GATEWAY_TIMEOUT_MS`
+- `CREDIT_ASSESSMENT_HASH_SECRET` to HMAC opaque credit assessment references
+  separately from the Supabase service key.
 - `PORT`
 - `CORS_ORIGINS`
 
