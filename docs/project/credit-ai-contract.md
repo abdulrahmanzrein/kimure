@@ -129,6 +129,10 @@ to another user, the mortgage request continues without trusted credit context.
 Client-supplied `creditMortgageHandoff`, `creditProfileContext`, and
 `credit_profile_context` fields are ignored by the API.
 
+The Gateway accepts API-resolved handoff only when the API marks it with
+`creditMortgageHandoffTrust: "api_resolved_trusted"`. Its in-memory assessment
+store remains a development-only fallback for standalone local Gateway checks.
+
 ## Remaining blocker
 
 Live bureau pulls remain blocked until the approved Thirdstream subscription,

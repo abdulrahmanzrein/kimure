@@ -6,6 +6,7 @@ const {
   createCreditProfile
 } = require('../src/services/creditProfileService');
 const {
+  createMortgageAssessment,
   normalizeMortgageInput
 } = require('../src/services/mortgageService');
 const {
@@ -30,6 +31,7 @@ async function run() {
   const directionalResponse = await checkDirectionalResponseAndSensitiveData();
   checkCreditAssessmentRecord(directionalResponse);
   checkTrustedMortgageAssessmentResolution();
+  checkApiResolvedTrustedMortgageHandoff();
   checkMissingAssessmentResolution();
   await checkExpiredAssessmentResolution();
   await checkNoConsentProviderFallback();
@@ -37,9 +39,10 @@ async function run() {
   await checkAutoProviderRequiresConfiguration();
   await checkInsufficientProviderInput();
   checkMortgageHandoffAllowlist();
+  await checkMortgageResponseDoesNotLeakHandoff();
   checkAskKimureRouting();
   clearCreditAssessmentStore();
-  console.log('[PASS] Credit-profile contract alignment checks (16 groups)');
+  console.log('[PASS] Credit-profile contract alignment checks (18 groups)');
 }
 
 function checkNestedNormalization() {
@@ -235,11 +238,50 @@ function checkTrustedMortgageAssessmentResolution() {
   });
 
   assert.equal(input.creditAssessment.status, 'resolved');
-  assert.equal(input.creditAssessment.sourceTrust, 'server_assessment_reference');
-  assert.equal(input.creditMortgageHandoff.sourceTrust, 'server_assessment_reference');
+  assert.equal(input.creditAssessment.sourceTrust, 'gateway_ephemeral_memory_dev');
+  assert.equal(input.creditMortgageHandoff.sourceTrust, 'gateway_ephemeral_memory_dev');
   assert.equal(input.creditMortgageHandoff.verified, true);
   assert.equal(input.creditMortgageHandoff.verificationStatus.bureauDataVerified, true);
   assert.equal(JSON.stringify(input).includes('client-value-must-not-win'), false);
+}
+
+function checkApiResolvedTrustedMortgageHandoff() {
+  const input = normalizeMortgageInput({
+    creditMortgageHandoffTrust: 'api_resolved_trusted',
+    creditAssessment: {
+      status: 'resolved',
+      sourceTrust: 'api_resolved_trusted',
+      expiresAt: '2026-01-01T00:15:00Z'
+    },
+    creditMortgageHandoff: {
+      verificationStatus: {
+        status: 'verified_provider',
+        bureauDataVerified: true,
+        provider: 'thirdstream_equifax',
+        bureau: 'equifax',
+        environment: 'production'
+      },
+      providerStatus: {
+        provider: 'thirdstream_equifax',
+        bureau: 'equifax',
+        status: 'verified',
+        environment: 'production',
+        verified: true
+      },
+      readinessScore: 82,
+      riskLevel: 'medium',
+      sourceResponse: 'must-not-pass'
+    }
+  });
+
+  assert.equal(input.creditAssessment.status, 'resolved');
+  assert.equal(input.creditAssessment.sourceTrust, 'api_resolved_supabase_assessment');
+  assert.equal(input.creditAssessment.storageMode, 'api_supabase');
+  assert.equal(input.creditMortgageHandoff.sourceTrust, 'api_resolved_supabase_assessment');
+  assert.equal(input.creditMortgageHandoff.verified, true);
+  assert.equal(input.creditMortgageHandoff.verificationStatus.bureauDataVerified, true);
+  assert.equal(input.creditMortgageHandoff.readinessScore, 82);
+  assert.equal(JSON.stringify(input).includes('must-not-pass'), false);
 }
 
 function checkMissingAssessmentResolution() {
@@ -358,12 +400,40 @@ function checkMortgageHandoffAllowlist() {
   });
 
   assert.equal(input.creditMortgageHandoff.verified, false);
-  assert.equal(input.creditMortgageHandoff.verificationClaimed, true);
+  assert.equal(input.creditMortgageHandoff.verificationClaimed, false);
   assert.equal(input.creditMortgageHandoff.sourceTrust, 'client_supplied_untrusted');
-  assert.equal(input.creditMortgageHandoff.readinessScore, 78);
+  assert.equal(input.creditMortgageHandoff.readinessScore, null);
   assert.equal('providerData' in input.creditMortgageHandoff, false);
   assert.equal('socialInsuranceNumber' in input.creditMortgageHandoff, false);
   assert.equal(JSON.stringify(input.creditMortgageHandoff).includes('must-not-pass'), false);
+}
+
+async function checkMortgageResponseDoesNotLeakHandoff() {
+  await withProviderEnv({ GEMINI_API_KEY: '' }, async () => {
+    const response = await createMortgageAssessment({
+      income: { annualGross: 125000 },
+      creditMortgageHandoff: {
+        verificationStatus: {
+          status: 'verified_provider',
+          bureauDataVerified: true
+        },
+        providerStatus: { verified: true },
+        readinessScore: 99,
+        sourceResponse: 'must-not-pass',
+        socialInsuranceNumber: '999999998'
+      }
+    });
+    const serialized = JSON.stringify(response);
+
+    assert.equal(response.status, 'success');
+    assert.equal(response.reportData.creditReferenceStatus.sourceTrust, 'client_supplied_untrusted');
+    assert.equal(response.reportData.creditReferenceStatus.verifiedCredit, false);
+    assert.equal('creditMortgageHandoff' in response.reportData.mortgageInput, false);
+    assert.equal(serialized.includes('must-not-pass'), false);
+    assert.equal(serialized.includes('999999998'), false);
+    assert.equal(serialized.includes('sourceResponse'), false);
+    assert.equal(serialized.includes('contentBase64'), false);
+  });
 }
 
 function buildSyntheticVerifiedResponse() {
@@ -524,4 +594,3 @@ run().catch((error) => {
   console.error(error.stack || error.message);
   process.exitCode = 1;
 });
-

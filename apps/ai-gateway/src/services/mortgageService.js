@@ -245,17 +245,27 @@ function normalizeMortgageInput(payload) {
   const clientHandoff = payload.creditMortgageHandoff ||
     payload.creditProfileContext ||
     payload.credit_profile_context;
-  const assessmentResolution = resolveCreditAssessment(payload.creditAssessmentId);
+  const apiTrustedHandoff = payload.creditMortgageHandoffTrust === 'api_resolved_trusted'
+    ? clientHandoff
+    : null;
+  const assessmentResolution = resolveCreditAssessment({
+    assessmentId: payload.creditAssessmentId,
+    apiTrustedHandoff,
+    apiCreditAssessment: payload.creditAssessment
+  });
   const handoffSource = assessmentResolution.record
     ? assessmentResolution.record.creditMortgageHandoff
-    : clientHandoff;
+    : apiTrustedHandoff;
   const creditMortgageHandoff = normalizeCreditMortgageHandoff(
     handoffSource,
     {
-      trustedServerSide: Boolean(assessmentResolution.record),
+      trustedServerSide: assessmentResolution.summary.sourceTrust === 'api_resolved_supabase_assessment' ||
+        assessmentResolution.summary.sourceTrust === 'gateway_ephemeral_memory_dev',
       sourceTrust: assessmentResolution.record
-        ? 'server_assessment_reference'
-        : clientHandoff ? 'client_supplied_untrusted' : 'none'
+        ? assessmentResolution.summary.sourceTrust
+        : apiTrustedHandoff
+          ? 'api_resolved_supabase_assessment'
+          : clientHandoff ? 'client_supplied_untrusted' : 'none'
     }
   );
 
@@ -290,14 +300,30 @@ function normalizeMortgageInput(payload) {
   };
 }
 
-function resolveCreditAssessment(assessmentId) {
+function resolveCreditAssessment({ assessmentId, apiTrustedHandoff, apiCreditAssessment }) {
+  if (apiTrustedHandoff) {
+    const apiSummary = normalizeObject(apiCreditAssessment);
+
+    return {
+      record: {
+        creditMortgageHandoff: apiTrustedHandoff
+      },
+      summary: {
+        status: 'resolved',
+        sourceTrust: 'api_resolved_supabase_assessment',
+        storageMode: 'api_supabase',
+        expiresAt: stringOrNull(apiSummary.expiresAt),
+        warning: null
+      }
+    };
+  }
+
   const normalizedId = stringOrNull(assessmentId);
 
   if (!normalizedId) {
     return {
       record: null,
       summary: {
-        assessmentId: null,
         status: 'not_provided',
         sourceTrust: 'none',
         storageMode: null,
@@ -313,7 +339,6 @@ function resolveCreditAssessment(assessmentId) {
     return {
       record: null,
       summary: {
-        assessmentId: normalizedId,
         status: 'not_found_or_expired',
         sourceTrust: 'none',
         storageMode: null,
@@ -326,9 +351,8 @@ function resolveCreditAssessment(assessmentId) {
   return {
     record,
     summary: {
-      assessmentId: record.assessmentId,
       status: 'resolved',
-      sourceTrust: 'server_assessment_reference',
+      sourceTrust: 'gateway_ephemeral_memory_dev',
       storageMode: record.storageMode,
       expiresAt: record.expiresAt,
       warning: null
@@ -672,7 +696,8 @@ function mergeGeminiMortgageResponse({
       nextBestActions: Array.isArray(reportData.nextBestActions) ? reportData.nextBestActions : baselineAssessment.nextBestActions,
       creditAssessmentResolution: baselineAssessment.creditAssessmentResolution,
       dataSources: baselineAssessment.dataSources,
-      mortgageInput,
+      creditReferenceStatus: buildCreditReferenceStatus(mortgageInput),
+      mortgageInput: buildSafeMortgageInputSummary(mortgageInput),
       aiReasoning: {
         mode: 'gemini',
         modelOutput: 'structured_json',
@@ -704,7 +729,8 @@ function buildFallbackMortgageResponse({
     recommendations: baselineAssessment.nextBestActions,
     reportData: {
       ...baselineAssessment,
-      mortgageInput,
+      creditReferenceStatus: buildCreditReferenceStatus(mortgageInput),
+      mortgageInput: buildSafeMortgageInputSummary(mortgageInput),
       aiReasoning: {
         ...aiReasoning,
         promptVersion: MORTGAGE_PROMPT_VERSION
@@ -887,7 +913,7 @@ function buildReadinessFactors({
   if (input.creditAssessment.warning) {
     factors.push(`Credit assessment reference warning: ${input.creditAssessment.warning}.`);
   } else if (input.creditAssessment.status === 'resolved') {
-    factors.push('Credit-profile context was resolved from a backend-owned ephemeral assessment reference.');
+    factors.push(getCreditReferenceResolvedMessage(input.creditAssessment.sourceTrust));
   }
 
   if (input.creditMortgageHandoff.readinessScore !== null) {
@@ -947,6 +973,54 @@ function buildNextBestActions(input) {
   });
 
   return actions;
+}
+
+function getCreditReferenceResolvedMessage(sourceTrust) {
+  if (sourceTrust === 'api_resolved_supabase_assessment') {
+    return 'Credit-profile context was resolved by the Kimure API from persistent Supabase storage.';
+  }
+
+  return 'Credit-profile context was resolved from the Gateway development memory store.';
+}
+
+function buildCreditReferenceStatus(input) {
+  const sourceTrust = input.creditMortgageHandoff.sourceTrust || input.creditAssessment.sourceTrust;
+  const status = sourceTrust === 'client_supplied_untrusted'
+    ? 'untrusted_client_handoff_ignored'
+    : input.creditAssessment.status;
+
+  return {
+    status,
+    sourceTrust,
+    storageMode: input.creditAssessment.storageMode,
+    expiresAt: input.creditAssessment.expiresAt,
+    warning: input.creditAssessment.warning,
+    verifiedCredit: input.creditMortgageHandoff.verified === true,
+    verificationStatus: input.creditMortgageHandoff.verificationStatus.status,
+    providerStatus: input.creditMortgageHandoff.providerStatus.status || null
+  };
+}
+
+function buildSafeMortgageInputSummary(input) {
+  return {
+    targetPurchasePrice: input.targetPurchasePrice,
+    budget: input.budget,
+    downPayment: input.downPayment,
+    availableFunds: input.availableFunds,
+    totalAssets: input.totalAssets,
+    location: input.location,
+    timeline: input.timeline,
+    incomeProvided: Boolean(input.income.annualGross || input.income.monthlyGross),
+    debtProvided: Boolean(input.debt.monthlyPayments || input.debt.totalBalance || input.debt.items.length),
+    employmentTypeProvided: Boolean(input.employmentType || input.income.employmentType),
+    assumptions: input.assumptions,
+    propertyType: input.propertyType,
+    creditReferenceStatus: buildCreditReferenceStatus(input),
+    rawProvidedFields: input.rawProvidedFields.filter((field) => field !== 'creditMortgageHandoff' &&
+      field !== 'creditProfileContext' &&
+      field !== 'credit_profile_context' &&
+      field !== 'creditAssessmentId')
+  };
 }
 
 function calculateMortgageScore({
@@ -1074,4 +1148,3 @@ module.exports = {
   buildBaselineMortgageAssessment,
   normalizeCreditMortgageHandoff
 };
-

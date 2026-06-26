@@ -148,6 +148,11 @@ resolves the reference from its Supabase-owned `credit_assessments` table and,
 when found for the authenticated user, forwards a minimized trusted handoff to
 the Gateway. Browser-supplied raw handoff data is not trusted.
 
+The Gateway treats `creditMortgageHandoffTrust: "api_resolved_trusted"` as the
+production trust signal and labels that context internally as an API-resolved
+Supabase assessment. Its process-local credit assessment memory store remains
+available only for standalone local Gateway development.
+
 ## Backend-to-Gateway Envelope
 
 The NestJS API forwards this normalized JSON to
