@@ -2,6 +2,7 @@ import { Controller, Get, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AiController } from "./ai/ai.controller";
 import { AiGatewayService } from "./ai/ai-gateway.service";
+import { CreditAssessmentsService } from "./ai/credit-assessments.service";
 import { SupabaseAuthGuard } from "./auth/supabase-auth.guard";
 import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
@@ -35,6 +36,7 @@ class HealthController {
   ],
   providers: [
     AiGatewayService,
+    CreditAssessmentsService,
     SupabaseAuthGuard,
     UsersService,
     OnboardingService

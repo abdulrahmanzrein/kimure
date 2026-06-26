@@ -16,6 +16,7 @@ import {
   normalizeCreditProfileInput,
   normalizeMortgageInput
 } from "./credit-ai.contract";
+import { CreditAssessmentsService } from "./credit-assessments.service";
 
 const allowedTools = [
   "chat",
@@ -31,12 +32,15 @@ const allowedTools = [
 @Controller("ai")
 @UseGuards(SupabaseAuthGuard)
 export class AiController {
-  constructor(private readonly gateway: AiGatewayService) {}
+  constructor(
+    private readonly gateway: AiGatewayService,
+    private readonly creditAssessments: CreditAssessmentsService
+  ) {}
 
   // This one method handles POST /api/ai/chat, /scout, /mortgage, and the
   // other names in allowedTools.
   @Post(":tool")
-  runTool(
+  async runTool(
     @Param("tool") tool: string,
     @Body() input: Record<string, unknown>,
     @Req() request: AuthenticatedRequest
@@ -51,16 +55,44 @@ export class AiController {
 
     // Credit data crosses the service boundary only after capability-specific
     // validation and allowlist normalization.
-    const normalizedInput =
-      tool === "credit-profile"
-        ? normalizeCreditProfileInput(input)
-        : tool === "mortgage"
-          ? normalizeMortgageInput(input)
-          : input;
+    if (tool === "credit-profile") {
+      const normalizedInput = normalizeCreditProfileInput(input);
+      const response = await this.gateway.execute(
+        tool,
+        normalizedInput,
+        request.user.id,
+        request.headers.authorization
+      );
+      const persisted =
+        await this.creditAssessments.persistCreditProfileResponse(
+          request.user.id,
+          response
+        );
+      return persisted.response;
+    }
+
+    if (tool === "mortgage") {
+      const normalizedInput = normalizeMortgageInput(input);
+      const resolution = await this.creditAssessments.resolveForMortgage(
+        request.user.id,
+        normalizedInput.creditAssessmentId
+      );
+      const gatewayInput = this.creditAssessments.buildMortgageGatewayInput(
+        normalizedInput,
+        resolution
+      );
+
+      return this.gateway.execute(
+        tool,
+        gatewayInput,
+        request.user.id,
+        request.headers.authorization
+      );
+    }
 
     return this.gateway.execute(
       tool,
-      normalizedInput,
+      input,
       request.user.id,
       request.headers.authorization
     );
