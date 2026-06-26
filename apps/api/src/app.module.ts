@@ -8,6 +8,8 @@ import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
 import { OnboardingController } from "./onboarding/onboarding.controller";
 import { OnboardingService } from "./onboarding/onboarding.service";
+import { ListingsController } from "./listings/listings.controller";
+import { ListingsService } from "./listings/listings.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -32,14 +34,16 @@ class HealthController {
     HealthController,
     AiController,
     UsersController,
-    OnboardingController
+    OnboardingController,
+    ListingsController
   ],
   providers: [
     AiGatewayService,
     CreditAssessmentsService,
     SupabaseAuthGuard,
     UsersService,
-    OnboardingService
+    OnboardingService,
+    ListingsService
   ]
 })
 export class AppModule {}
