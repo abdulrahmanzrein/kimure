@@ -2,6 +2,7 @@ import { Controller, Get, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { AiController } from "./ai/ai.controller";
 import { AiGatewayService } from "./ai/ai-gateway.service";
+import { AiRequestsService } from "./ai/ai-requests.service";
 import { CreditAssessmentsService } from "./ai/credit-assessments.service";
 import { SupabaseAuthGuard } from "./auth/supabase-auth.guard";
 import { UsersController } from "./users/users.controller";
@@ -10,6 +11,7 @@ import { OnboardingController } from "./onboarding/onboarding.controller";
 import { OnboardingService } from "./onboarding/onboarding.service";
 import { ListingsController } from "./listings/listings.controller";
 import { ListingsService } from "./listings/listings.service";
+import { SupabaseService } from "./supabase/supabase.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -38,7 +40,9 @@ class HealthController {
     ListingsController
   ],
   providers: [
+    SupabaseService,
     AiGatewayService,
+    AiRequestsService,
     CreditAssessmentsService,
     SupabaseAuthGuard,
     UsersService,

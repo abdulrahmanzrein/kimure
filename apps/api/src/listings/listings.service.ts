@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseService } from "../supabase/supabase.service";
 
 // Filters the marketplace can pass on GET /api/listings. All optional.
 // `location` does a partial (case-insensitive) text match; the rest are exact
@@ -27,14 +26,14 @@ export interface ListingInput {
 
 @Injectable()
 export class ListingsService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
   // List marketplace properties, newest first, with optional filters.
   // Reads are public, so this uses the plain anon client (no user token).
   // RLS on `listings` (migration 004) lets the anon role read only *published*
   // listings, so drafts never leak even though this query has no status filter.
   async listListings(filters: ListingFilters) {
-    const client = this.getAnonClient();
+    const client = this.supabase.anon();
 
     let query = client
       .from("listings")
@@ -69,7 +68,7 @@ export class ListingsService {
 
   // Return one listing's full details, or null if the id does not exist.
   async getListing(id: string) {
-    const client = this.getAnonClient();
+    const client = this.supabase.anon();
 
     const { data, error } = await client
       .from("listings")
@@ -88,7 +87,7 @@ export class ListingsService {
   // A partner-role check is a later task — for now any authenticated user can
   // create, and we pass their token so future RLS will see auth.uid().
   async createListing(accessToken: string, input: ListingInput) {
-    const client = this.getUserClient(accessToken);
+    const client = this.supabase.forUser(accessToken);
 
     const { data, error } = await client
       .from("listings")
@@ -101,29 +100,5 @@ export class ListingsService {
     }
 
     return data;
-  }
-
-  // Anon client for public reads (publishable key, no user identity).
-  private getAnonClient(): SupabaseClient {
-    const url = this.config.get<string>("SUPABASE_URL")!;
-    const publishableKey = this.config.get<string>("SUPABASE_PUBLISHABLE_KEY")!;
-
-    return createClient(url, publishableKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    });
-  }
-
-  // User client for writes: the token in the Authorization header makes
-  // auth.uid() work inside RLS policies (same pattern as users/onboarding).
-  private getUserClient(accessToken: string): SupabaseClient {
-    const url = this.config.get<string>("SUPABASE_URL")!;
-    const publishableKey = this.config.get<string>("SUPABASE_PUBLISHABLE_KEY")!;
-
-    return createClient(url, publishableKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    });
   }
 }

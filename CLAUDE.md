@@ -147,9 +147,12 @@ src/
 ├── app.module.ts                 wires controllers + providers together
 ├── auth/
 │   └── supabase-auth.guard.ts    verifies Supabase Bearer token
+├── supabase/
+│   └── supabase.service.ts       builds Supabase clients: anon() / forUser(token) / service()
 ├── ai/
 │   ├── ai.controller.ts          POST /api/ai/:tool (8 tools)
-│   ├── ai-gateway.service.ts     forwards request to JT's Gateway
+│   ├── ai-gateway.service.ts     forwards to JT's Gateway; logs each call
+│   ├── ai-requests.service.ts    logs every AI call to ai_requests (service client)
 │   ├── credit-ai.contract.ts     credit/mortgage input+output contract (Josh)
 │   └── credit-assessments.service.ts  persists credit-profile, resolves mortgage (Josh)
 ├── users/
@@ -165,9 +168,13 @@ src/
 
 **Pattern to copy for new features:** a folder with a `*.controller.ts`
 (routes) and a `*.service.ts` (Supabase/database logic), both registered in
-`app.module.ts`. To make RLS work, the service creates the Supabase client with
-the user's token in a `global.headers.Authorization` Bearer header (see
-`users.service.ts`).
+`app.module.ts`. The service injects `SupabaseService` and picks the right
+client for the job: `supabase.anon()` for public reads, `supabase.forUser(token)`
+for the logged-in user's own rows (so `auth.uid()` works in RLS), or
+`supabase.service()` for privileged server-side writes that bypass RLS. See
+`listings.service.ts` (anon + user) or `users.service.ts` (user). Note: the auth
+guard and Josh's `credit-assessments.service.ts` still build their own clients —
+they can adopt `SupabaseService` later.
 
 ---
 
@@ -222,6 +229,14 @@ the user's token in a `global.headers.Authorization` Bearer header (see
   (listing_type matches the page's data-type strings; card extras — roi, image,
   beds/acres, currency, description — live in `metadata` jsonb). Idempotent
   (deletes prior rows where `metadata->>'seed' = 'true'`). Run AFTER 004.
+- [x] **AI request logging** — `src/ai/ai-requests.service.ts` (`AiRequestsService`),
+  called from `ai-gateway.service.ts`. Every `POST /api/ai/:tool` call writes one
+  row to `ai_requests` (engine, request_payload, response_payload, status,
+  error_message): success on a good response, error on gateway rejection /
+  timeout / unreachable. Uses the service-role client (bypasses RLS, writes for
+  any user); `log()` never throws so a logging failure can't break the AI
+  response. Registered in `app.module.ts`. ⚠️ Payloads stored as-is — redacting
+  sensitive credit-profile fields is a future refinement.
 - [x] **Marketplace frontend wired to the API** — `apps/web/public/assets/js/marketplace.js`
   now `fetch`es `GET /api/listings` and builds the featured cards from live DB
   data (price formatting, type/location, ROI or AI-fit badge, image from
@@ -236,21 +251,7 @@ the user's token in a `global.headers.Authorization` Bearer header (see
 Each task = one folder under `apps/api/src` with a controller + service,
 registered in `app.module.ts`. Build one, test, then check it off.
 
-#### 1. AI request logging — edit `src/ai/ai-gateway.service.ts`
-After receiving JT's response, insert a row into `ai_requests`.
-```
-ai_requests: { user_id, engine, request_payload, response_payload, status, error_message }
-```
-- Needs a Supabase client. Simplest clean option: a small shared
-  `SupabaseService` the AI + users services both use, OR reuse the existing
-  per-request token client pattern.
-- Log on both success and failure (set `status` + `error_message`).
-- Note: this is distinct from the credit-assessment persistence Josh added —
-  that logs credit results to `credit_assessments`; this logs *every* AI call to
-  `ai_requests`.
-- **Why:** compliance (PIPEDA/GDPR), debugging, future personalization, billing.
-
-#### 2. Saved properties (favorites) — `src/saved-properties/`
+#### 1. Saved properties (favorites) — `src/saved-properties/`
 ```
 GET    /api/saved-properties       - my saved listings
 POST   /api/saved-properties       - save a listing { listing_id }
@@ -258,7 +259,7 @@ DELETE /api/saved-properties/:id   - unsave
 ```
 - Reads/writes `saved_properties` (unique on user_id + listing_id).
 
-#### 3. Leads / CRM starter — `src/leads/`
+#### 2. Leads / CRM starter — `src/leads/`
 ```
 POST /api/leads   - user requests agent contact -> creates a lead
 GET  /api/leads   - user sees their leads (agents see theirs later)
@@ -266,15 +267,15 @@ GET  /api/leads   - user sees their leads (agents see theirs later)
 - Reads/writes `leads` (status enum: new/contacted/negotiation/closed_won/closed_lost).
 - **Why:** the business model — "the CRM monetizes user intent."
 
-#### 4. Rate limiting — AI routes
+#### 3. Rate limiting — AI routes
 Add a per-user limit (e.g. 10 req/min) on `POST /api/ai/:tool`.
 - Consider `@nestjs/throttler`. Keep it minimal.
 - **Why:** prevent abuse / runaway Gemini cost before production.
 
-#### 5. Wire the remaining frontend flows to the backend
+#### 4. Wire the remaining frontend flows to the backend
 Onboarding, credit-profile, mortgage, **and marketplace** are now wired (see
 Done). Remaining: saved-properties and leads flows — wire those once their API
-routes exist (tasks #2 and #3). Change the relevant
+routes exist (tasks #1 and #2). Change the relevant
 `apps/web/public/assets/js/*.js` so they call the API routes instead of Supabase
 directly.
 - **Why:** turns two separate pieces into one connected platform. After this,

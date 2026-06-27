@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { SupabaseService } from "../supabase/supabase.service";
 
 // The shape of onboarding answers we store. Every field is optional because a
 // user can save partial progress as they move through the form.
@@ -17,11 +16,11 @@ export interface OnboardingInput {
 
 @Injectable()
 export class OnboardingService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly supabase: SupabaseService) {}
 
   // Load the user's onboarding answers, or null if they haven't filled it yet.
   async getOnboarding(userId: string, accessToken: string) {
-    const client = this.getSupabaseClient(accessToken);
+    const client = this.supabase.forUser(accessToken);
 
     const { data, error } = await client
       .from("onboarding_profiles")
@@ -43,7 +42,7 @@ export class OnboardingService {
     accessToken: string,
     input: OnboardingInput
   ) {
-    const client = this.getSupabaseClient(accessToken);
+    const client = this.supabase.forUser(accessToken);
 
     // We set user_id ourselves from the verified token. Never trust a user_id
     // sent by the client.
@@ -60,22 +59,5 @@ export class OnboardingService {
     }
 
     return data;
-  }
-
-  // Build a Supabase client that acts as the logged-in user, so Row Level
-  // Security allows them to read/write their own onboarding row.
-  private getSupabaseClient(accessToken: string): SupabaseClient {
-    const url = this.config.get<string>("SUPABASE_URL")!;
-    const publishableKey = this.config.get<string>("SUPABASE_PUBLISHABLE_KEY")!;
-
-    return createClient(url, publishableKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      },
-      global: {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      }
-    });
   }
 }

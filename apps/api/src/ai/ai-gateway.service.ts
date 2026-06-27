@@ -10,10 +10,14 @@ import {
   getSafeGatewayErrorCode,
   shapeCreditProfileResponse
 } from "./credit-ai.contract";
+import { AiRequestsService } from "./ai-requests.service";
 
 @Injectable()
 export class AiGatewayService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly aiRequests: AiRequestsService
+  ) {}
 
   async execute(
     tool: string,
@@ -51,6 +55,16 @@ export class AiGatewayService {
       const body = await this.readResponse(response);
 
       if (!response.ok) {
+        // Log the rejected call (it has a response body) before surfacing it.
+        await this.aiRequests.log({
+          userId,
+          engine: tool,
+          requestPayload: input,
+          responsePayload: body,
+          status: "error",
+          errorMessage: `AI Gateway responded ${response.status}`
+        });
+
         throw new BadGatewayException({
           message: "AI Gateway rejected the request",
           requestId,
@@ -61,29 +75,48 @@ export class AiGatewayService {
         });
       }
 
-      if (isCreditProfile) {
-        return shapeCreditProfileResponse(body);
-      }
+      const result = isCreditProfile
+        ? shapeCreditProfileResponse(body)
+        : body;
 
-      return body;
+      // Log the successful call.
+      await this.aiRequests.log({
+        userId,
+        engine: tool,
+        requestPayload: input,
+        responsePayload: body,
+        status: "success"
+      });
+
+      return result;
     } catch (error) {
+      // Gateway rejections were already logged above; just re-throw them.
       if (error instanceof BadGatewayException) throw error;
-      if (
+
+      const isTimeout =
         typeof error === "object" &&
         error !== null &&
         "name" in error &&
-        error.name === "AbortError"
-      ) {
-        throw new GatewayTimeoutException({
-          message: "AI Gateway timed out",
-          requestId
-        });
+        error.name === "AbortError";
+      const errorMessage = isTimeout
+        ? "AI Gateway timed out"
+        : "AI Gateway could not be reached";
+
+      // Log transport-level failures (timeout / unreachable) — no response body.
+      await this.aiRequests.log({
+        userId,
+        engine: tool,
+        requestPayload: input,
+        responsePayload: null,
+        status: "error",
+        errorMessage
+      });
+
+      if (isTimeout) {
+        throw new GatewayTimeoutException({ message: errorMessage, requestId });
       }
 
-      throw new BadGatewayException({
-        message: "AI Gateway could not be reached",
-        requestId
-      });
+      throw new BadGatewayException({ message: errorMessage, requestId });
     } finally {
       clearTimeout(timeout);
     }
