@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "crypto";
@@ -38,6 +38,8 @@ export class CreditConsentsService {
 
   constructor(
     private readonly config: ConfigService,
+    @Optional()
+    @Inject("CREDIT_CONSENTS_SUPABASE_WRITER")
     client?: SupabaseWriter
   ) {
     this.client = client;

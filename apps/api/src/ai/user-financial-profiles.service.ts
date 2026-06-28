@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { NormalizedCreditProfileInput } from "./credit-ai.contract";
@@ -40,6 +40,8 @@ export class UserFinancialProfilesService {
 
   constructor(
     private readonly config: ConfigService,
+    @Optional()
+    @Inject("USER_FINANCIAL_PROFILES_SUPABASE_WRITER")
     client?: SupabaseWriter
   ) {
     this.client = client;
