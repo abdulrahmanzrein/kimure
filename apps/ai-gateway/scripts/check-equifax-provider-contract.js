@@ -286,6 +286,7 @@ function createSandboxStaticTokenEnv() {
     EQUIFAX_RETRY_COUNT: '0',
     EQUIFAX_PRODUCT_CODE: 'portal-product-code',
     EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
     EQUIFAX_SANDBOX_BASE_URL: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
     EQUIFAX_SANDBOX_ACCESS_TOKEN: 'sandbox-token-secret-value',
     EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',

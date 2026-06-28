@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const {
   buildEquifaxRuntimeConfig,
+  ONEVIEW_OAUTH_SCOPE,
   statusContainsSecretValue,
   validateEquifaxProviderConfig
 } = require('../src/services/equifax/equifaxProviderConfig');
@@ -16,8 +17,9 @@ function run() {
   checkProductionRejectsPlaceholders();
   checkProductionRequiresProductionPrefixedKeys();
   checkRuntimeConfigKeepsSecretsInternal();
+  checkGenericSandboxClientCredentialsAreDetectedButBlocked();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider config checks (8 assertion groups)');
+  console.log('[PASS] Equifax provider config checks (9 assertion groups)');
 }
 
 function checkDisabledProvider() {
@@ -38,7 +40,8 @@ function checkSandboxStaticTokenReady() {
     EQUIFAX_RETRY_COUNT: '0',
     EQUIFAX_PRODUCT_CODE: 'portal-product-code',
     EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
-    EQUIFAX_SANDBOX_BASE_URL: 'https://sandbox.equifax.invalid/oneview',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
+    EQUIFAX_SANDBOX_BASE_URL: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
     EQUIFAX_SANDBOX_ACCESS_TOKEN: 'sandbox-token-secret-value',
     EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
     EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
@@ -50,6 +53,11 @@ function checkSandboxStaticTokenReady() {
   assert.equal(status.environment, 'sandbox');
   assert.equal(status.configReady, true);
   assert.equal(status.tokenStrategy, 'sandbox_static_token');
+  assert.equal(status.sandboxTokenConfigured, true);
+  assert.equal(status.clientCredentialsConfigured, false);
+  assert.equal(status.memberNumberConfigured, true);
+  assert.equal(status.securityCodeConfigured, true);
+  assert.equal(status.permissiblePurposeConfigured, true);
   assert.equal(status.canAttemptProviderCall, true);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
@@ -63,8 +71,9 @@ function checkSandboxMissingKeys() {
 
   assert.equal(status.configReady, false);
   assert.ok(status.missingKeys.includes('EQUIFAX_PRODUCT_CODE'));
+  assert.ok(status.missingKeys.includes('EQUIFAX_PERMISSIBLE_PURPOSE_CODE'));
   assert.ok(status.missingKeys.includes('EQUIFAX_SANDBOX_BASE_URL'));
-  assert.ok(status.missingKeys.includes('EQUIFAX_SANDBOX_TOKEN_URL'));
+  assert.equal(status.missingKeys.includes('EQUIFAX_SANDBOX_TOKEN_URL'), false);
   assert.equal(status.missingKeys.some((key) => key.includes('secret-value')), false);
   assert.equal(status.errors.some((message) => message.includes('secret-value')), false);
 }
@@ -121,8 +130,40 @@ function checkRuntimeConfigKeepsSecretsInternal() {
   const status = runtimeConfig.providerConfigStatus;
 
   assert.equal(status.configReady, true);
-  assert.equal(status.tokenStrategy, 'client_credentials');
+  assert.equal(status.tokenStrategy, 'client_credentials_pending_docs');
+  assert.equal(status.oauthBlockedUntilPortalDocs, true);
+  assert.equal(status.clientCredentialsConfigured, true);
   assert.equal(runtimeConfig.clientSecret, env.EQUIFAX_PRODUCTION_CLIENT_SECRET);
+  assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
+  const env = {
+    EQUIFAX_ENABLED: 'true',
+    EQUIFAX_ENVIRONMENT: 'sandbox',
+    EQUIFAX_TIMEOUT_MS: '10000',
+    EQUIFAX_RETRY_COUNT: '0',
+    EQUIFAX_PRODUCT_CODE: 'portal-product-code',
+    EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
+    EQUIFAX_SANDBOX_BASE_URL: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
+    EQUIFAX_CLIENT_ID: 'sandbox-client-id-secret-value',
+    EQUIFAX_CLIENT_SECRET: 'sandbox-client-secret-value',
+    EQUIFAX_SCOPE: ONEVIEW_OAUTH_SCOPE,
+    EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
+    EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
+    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
+  };
+  const runtimeConfig = buildEquifaxRuntimeConfig(env);
+  const status = runtimeConfig.providerConfigStatus;
+
+  assert.equal(status.configReady, true);
+  assert.equal(status.tokenStrategy, 'client_credentials_pending_docs');
+  assert.equal(status.clientCredentialsConfigured, true);
+  assert.equal(status.oauthBlockedUntilPortalDocs, true);
+  assert.equal(runtimeConfig.clientId, env.EQUIFAX_CLIENT_ID);
+  assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
 
@@ -142,11 +183,12 @@ function createProductionEnv() {
     EQUIFAX_RETRY_COUNT: '1',
     EQUIFAX_PRODUCT_CODE: 'portal-product-code',
     EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
-    EQUIFAX_PRODUCTION_BASE_URL: 'https://api.equifax.invalid/oneview',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
+    EQUIFAX_PRODUCTION_BASE_URL: 'https://api.equifax.com/business/oneview/consumer-credit/v1',
     EQUIFAX_PRODUCTION_TOKEN_URL: 'https://auth.equifax.invalid/token',
     EQUIFAX_PRODUCTION_CLIENT_ID: 'production-client-id-secret-value',
     EQUIFAX_PRODUCTION_CLIENT_SECRET: 'production-client-secret-value',
-    EQUIFAX_PRODUCTION_SCOPE: 'production-scope-secret-value',
+    EQUIFAX_PRODUCTION_SCOPE: ONEVIEW_OAUTH_SCOPE,
     EQUIFAX_PRODUCTION_MEMBER_NUMBER: 'production-member-secret-value',
     EQUIFAX_PRODUCTION_SECURITY_CODE: 'production-security-secret-value',
     EQUIFAX_PRODUCTION_CUSTOMER_CODE: 'production-customer-secret-value'

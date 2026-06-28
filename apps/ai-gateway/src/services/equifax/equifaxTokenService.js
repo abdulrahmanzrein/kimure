@@ -81,10 +81,11 @@ async function getEquifaxAccessToken(options = {}) {
     });
   }
 
-  // TODO: Implement the Equifax portal-approved OAuth/client-credential token
-  // flow after signed-in OneView docs confirm token URL, grant type, scopes,
-  // request body, required headers, response body, and expiry semantics.
-  // This skeleton intentionally makes no network call and no guessed token body.
+  // TODO: Implement the Equifax portal-approved Standard STS OAuth/client
+  // credential token flow only after signed-in OneView docs confirm token URL,
+  // grant type, request body, required headers, response body, and expiry
+  // semantics. This skeleton intentionally makes no network call and no
+  // guessed token body.
   updateLastStatus('equifax_token_flow_requires_portal_docs', null);
   return buildTokenResult({
     ok: false,
@@ -146,21 +147,25 @@ function buildTokenResult({
 }
 
 function buildSafeTokenStatus({ config, providerStatus, now }) {
-  const configuredForClientCredentials = Boolean(
-    config.clientId &&
-    config.clientSecret &&
-    config.tokenUrl &&
-    config.scope
-  );
+  const configuredForClientCredentials = Boolean(config.clientId && config.clientSecret && config.scope);
+  const sandboxTokenConfigured = Boolean(config.sandboxAccessToken && providerStatus.environment === 'sandbox');
   const tokenConfigured = providerStatus.tokenStrategy === 'sandbox_static_token'
-    ? Boolean(config.sandboxAccessToken)
+    ? sandboxTokenConfigured
     : configuredForClientCredentials;
 
   return {
     tokenConfigured,
+    sandboxTokenConfigured,
+    clientCredentialsConfigured: configuredForClientCredentials,
+    memberNumberConfigured: Boolean(config.memberNumber),
+    securityCodeConfigured: Boolean(config.securityCode),
+    permissiblePurposeConfigured: Boolean(config.permissiblePurposeCode),
+    scopeConfigured: Boolean(config.scope),
+    oauthBlockedUntilPortalDocs: providerStatus.tokenStrategy === 'client_credentials_pending_docs',
     tokenCached: Boolean(tokenCache.token),
     expiresSoon: doesTokenExpireSoon(now),
     environment: providerStatus.environment,
+    tokenStrategy: providerStatus.tokenStrategy,
     lastTokenStatus: tokenCache.lastTokenStatus,
     lastTokenHttpStatus: tokenCache.lastTokenHttpStatus
   };

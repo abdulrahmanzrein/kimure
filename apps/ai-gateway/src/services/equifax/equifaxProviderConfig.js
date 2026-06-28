@@ -1,8 +1,17 @@
-const SUPPORTED_ENVIRONMENTS = new Set(['sandbox', 'test', 'production']);
+const ONEVIEW_OAUTH_SCOPE = 'https://api.equifax.com/business/oneview/consumer-credit/v1';
+
+const OFFICIAL_ONEVIEW_BASE_URLS = Object.freeze({
+  sandbox: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
+  uat: 'https://api.uat.equifax.com/business/oneview/consumer-credit/v1',
+  production: 'https://api.equifax.com/business/oneview/consumer-credit/v1'
+});
+
+const SUPPORTED_ENVIRONMENTS = new Set(['sandbox', 'test', 'uat', 'production']);
 
 const ENVIRONMENT_PREFIXES = Object.freeze({
   sandbox: 'EQUIFAX_SANDBOX',
   test: 'EQUIFAX_TEST',
+  uat: 'EQUIFAX_UAT',
   production: 'EQUIFAX_PRODUCTION'
 });
 
@@ -10,12 +19,12 @@ const SHARED_REQUIRED_KEYS = Object.freeze([
   'EQUIFAX_TIMEOUT_MS',
   'EQUIFAX_RETRY_COUNT',
   'EQUIFAX_PRODUCT_CODE',
-  'EQUIFAX_CONSENT_VERSION'
+  'EQUIFAX_CONSENT_VERSION',
+  'EQUIFAX_PERMISSIBLE_PURPOSE_CODE'
 ]);
 
 const ENVIRONMENT_REQUIRED_SUFFIXES = Object.freeze([
   'BASE_URL',
-  'TOKEN_URL',
   'CLIENT_ID',
   'CLIENT_SECRET',
   'SCOPE',
@@ -33,7 +42,8 @@ const SECRET_KEY_PATTERNS = [
   /CUSTOMER_CODE/i,
   /PRODUCT_CODE/i,
   /SCOPE/i,
-  /BASE_URL/i
+  /BASE_URL/i,
+  /PERMISSIBLE_PURPOSE_CODE/i
 ];
 
 function validateEquifaxProviderConfig(env = process.env) {
@@ -54,29 +64,42 @@ function validateEquifaxProviderConfig(env = process.env) {
       errors,
       mode,
       tokenStrategy: 'none',
+      sandboxTokenConfigured: false,
+      clientCredentialsConfigured: false,
+      memberNumberConfigured: false,
+      securityCodeConfigured: false,
+      permissiblePurposeConfigured: false,
+      scopeConfigured: false,
+      oauthBlockedUntilPortalDocs: false,
       canAttemptProviderCall: false
     });
   }
 
   if (!SUPPORTED_ENVIRONMENTS.has(environment)) {
-    errors.push('EQUIFAX_ENVIRONMENT must be one of: sandbox, test, production.');
+    errors.push('EQUIFAX_ENVIRONMENT must be one of: sandbox, test, uat, production.');
   }
 
   requirePresentKeys(env, ['EQUIFAX_ENABLED', 'EQUIFAX_ENVIRONMENT', ...SHARED_REQUIRED_KEYS], missingKeys);
 
   const prefix = ENVIRONMENT_PREFIXES[environment] || ENVIRONMENT_PREFIXES.sandbox;
   const environmentKeys = ENVIRONMENT_REQUIRED_SUFFIXES.map((suffix) => `${prefix}_${suffix}`);
+  const credentials = readEnvironmentCredentials(env, prefix);
   const staticSandboxTokenPresent = hasValue(env.EQUIFAX_SANDBOX_ACCESS_TOKEN);
   const staticSandboxTokenAllowed = environment === 'sandbox' && staticSandboxTokenPresent;
-  const tokenStrategy = staticSandboxTokenAllowed ? 'sandbox_static_token' : 'client_credentials';
+  const clientCredentialsConfigured = Boolean(credentials.clientId && credentials.clientSecret && credentials.scope);
+  const tokenStrategy = staticSandboxTokenAllowed ? 'sandbox_static_token' : 'client_credentials_pending_docs';
   const requiredEnvironmentKeys = staticSandboxTokenAllowed
     ? environmentKeys.filter((key) => ![
-      'EQUIFAX_SANDBOX_TOKEN_URL',
       'EQUIFAX_SANDBOX_CLIENT_ID',
       'EQUIFAX_SANDBOX_CLIENT_SECRET',
       'EQUIFAX_SANDBOX_SCOPE'
     ].includes(key))
-    : environmentKeys;
+    : environmentKeys.filter((key) => {
+      if (key === `${prefix}_CLIENT_ID` && hasValue(env.EQUIFAX_CLIENT_ID)) return false;
+      if (key === `${prefix}_CLIENT_SECRET` && hasValue(env.EQUIFAX_CLIENT_SECRET)) return false;
+      if (key === `${prefix}_SCOPE` && hasValue(env.EQUIFAX_SCOPE)) return false;
+      return true;
+    });
 
   requirePresentKeys(env, requiredEnvironmentKeys, missingKeys);
 
@@ -100,6 +123,7 @@ function validateEquifaxProviderConfig(env = process.env) {
   const uniqueWarnings = uniqueStrings(warnings);
   const uniqueErrors = uniqueStrings(errors);
   const configReady = enabled && uniqueMissingKeys.length === 0 && uniqueErrors.length === 0;
+  const tokenConfigured = staticSandboxTokenAllowed || clientCredentialsConfigured;
 
   return safeStatus({
     enabled,
@@ -110,7 +134,15 @@ function validateEquifaxProviderConfig(env = process.env) {
     errors: uniqueErrors,
     mode,
     tokenStrategy,
-    canAttemptProviderCall: configReady
+    tokenConfigured,
+    sandboxTokenConfigured: staticSandboxTokenAllowed,
+    clientCredentialsConfigured,
+    memberNumberConfigured: Boolean(credentials.memberNumber),
+    securityCodeConfigured: Boolean(credentials.securityCode),
+    permissiblePurposeConfigured: hasValue(env.EQUIFAX_PERMISSIBLE_PURPOSE_CODE),
+    scopeConfigured: Boolean(credentials.scope),
+    oauthBlockedUntilPortalDocs: tokenStrategy === 'client_credentials_pending_docs',
+    canAttemptProviderCall: configReady && tokenConfigured
   });
 }
 
@@ -128,18 +160,20 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     providerConfigStatus: status,
     baseUrl: valueOrNull(env[`${prefix}_BASE_URL`]),
     reportPath: valueOrNull(env.EQUIFAX_REPORT_PATH) || '/reports/credit-report',
-    scope: valueOrNull(env[`${prefix}_SCOPE`]),
+    officialScope: ONEVIEW_OAUTH_SCOPE,
+    scope: valueOrNull(env[`${prefix}_SCOPE`]) || valueOrNull(env.EQUIFAX_SCOPE),
     sandboxAccessToken: environment === 'sandbox'
       ? valueOrNull(env.EQUIFAX_SANDBOX_ACCESS_TOKEN)
       : null,
-    clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]),
-    clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]),
+    clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
+    clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
     tokenUrl: valueOrNull(env[`${prefix}_TOKEN_URL`]),
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
     securityCode: valueOrNull(env[`${prefix}_SECURITY_CODE`]),
     customerCode: valueOrNull(env[`${prefix}_CUSTOMER_CODE`]),
     productCode: valueOrNull(env.EQUIFAX_PRODUCT_CODE),
     consentVersion: valueOrNull(env.EQUIFAX_CONSENT_VERSION),
+    permissiblePurposeCode: valueOrNull(env.EQUIFAX_PERMISSIBLE_PURPOSE_CODE),
     timeoutMs: parsePositiveInteger(env.EQUIFAX_TIMEOUT_MS, 10000),
     retryCount: parseNonNegativeInteger(env.EQUIFAX_RETRY_COUNT, 0)
   };
@@ -177,7 +211,9 @@ function addProductionGuardrails(env, errors) {
     'EQUIFAX_SANDBOX_SCOPE',
     'EQUIFAX_SANDBOX_MEMBER_NUMBER',
     'EQUIFAX_SANDBOX_SECURITY_CODE',
-    'EQUIFAX_SANDBOX_CUSTOMER_CODE'
+    'EQUIFAX_SANDBOX_CUSTOMER_CODE',
+    'EQUIFAX_CLIENT_ID',
+    'EQUIFAX_CLIENT_SECRET'
   ].forEach((key) => {
     if (hasValue(env[key])) {
       errors.push(`Production mode must use production-prefixed Equifax config, not ${key}.`);
@@ -215,7 +251,25 @@ function safeStatus(status) {
     errors: sanitizeMessages(status.errors || []),
     mode: status.mode,
     tokenStrategy: status.tokenStrategy,
+    tokenConfigured: Boolean(status.tokenConfigured),
+    sandboxTokenConfigured: Boolean(status.sandboxTokenConfigured),
+    clientCredentialsConfigured: Boolean(status.clientCredentialsConfigured),
+    memberNumberConfigured: Boolean(status.memberNumberConfigured),
+    securityCodeConfigured: Boolean(status.securityCodeConfigured),
+    permissiblePurposeConfigured: Boolean(status.permissiblePurposeConfigured),
+    scopeConfigured: Boolean(status.scopeConfigured),
+    oauthBlockedUntilPortalDocs: Boolean(status.oauthBlockedUntilPortalDocs),
     canAttemptProviderCall: Boolean(status.canAttemptProviderCall)
+  };
+}
+
+function readEnvironmentCredentials(env, prefix) {
+  return {
+    clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
+    clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
+    scope: valueOrNull(env[`${prefix}_SCOPE`]) || valueOrNull(env.EQUIFAX_SCOPE),
+    memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
+    securityCode: valueOrNull(env[`${prefix}_SECURITY_CODE`])
   };
 }
 
@@ -282,6 +336,8 @@ function statusContainsSecretValue(status, env) {
 
 module.exports = {
   buildEquifaxRuntimeConfig,
+  OFFICIAL_ONEVIEW_BASE_URLS,
+  ONEVIEW_OAUTH_SCOPE,
   validateEquifaxProviderConfig,
   statusContainsSecretValue
 };
