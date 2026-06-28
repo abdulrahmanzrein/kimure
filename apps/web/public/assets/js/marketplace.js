@@ -75,6 +75,164 @@
     return "http://localhost:3001/api";
   }
 
+  function setProviderStatus(statusEl, state, message) {
+    if (!statusEl) return;
+    statusEl.className = "mp-provider-status";
+    if (state) statusEl.classList.add("is-" + state);
+    statusEl.textContent = message || "";
+  }
+
+  function clearNode(node) {
+    if (!node) return;
+    while (node.firstChild) node.removeChild(node.firstChild);
+  }
+
+  function appendNode(parent, tag, className, text) {
+    var el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined && text !== null) el.textContent = String(text);
+    parent.appendChild(el);
+    return el;
+  }
+
+  function formatMoney(value, listing) {
+    var amount = Number(value);
+    if (!Number.isFinite(amount)) return "Price unavailable";
+    var formatted = new Intl.NumberFormat("en-CA", {
+      style: "currency",
+      currency: "CAD",
+      maximumFractionDigits: 0
+    }).format(amount);
+    var signals = Array.isArray(listing.matchSignals) ? listing.matchSignals.join(" ").toLowerCase() : "";
+    return signals.indexOf("rental") >= 0 && amount < 10000 ? formatted + " /mo" : formatted;
+  }
+
+  function formatProviderLabel(value) {
+    return String(value || "mock_provider").replace(/_/g, " ");
+  }
+
+  function buildProviderListingsQuery(formToRead) {
+    var params = new URLSearchParams();
+    var location = textValue(formToRead, "location");
+    var type = textValue(formToRead, "type");
+    var maxPrice = parseMoney(textValue(formToRead, "maxPrice"));
+    var intent = textValue(formToRead, "intent");
+
+    if (location) params.set("location", location);
+    if (type) params.set("type", type);
+    if (maxPrice !== null) params.set("maxPrice", String(maxPrice));
+    if (intent) params.set("intent", intent);
+
+    return params;
+  }
+
+  async function requestProviderListings(params) {
+    var baseUrl = getApiBaseUrl().replace(/\/$/, "");
+    var query = params && params.toString() ? "?" + params.toString() : "";
+    var response = await fetch(baseUrl + "/listings/search" + query);
+    var body = await response.json().catch(function () { return {}; });
+
+    if (!response.ok) {
+      throw new Error("listings_unavailable");
+    }
+
+    return body;
+  }
+
+  function renderProviderListingCard(grid, listing) {
+    var card = appendNode(grid, "article", "mp-provider-card");
+    var top = appendNode(card, "div", "mp-provider-card-top");
+    var titleWrap = appendNode(top, "div");
+    var badges = appendNode(top, "div", "mp-provider-badges");
+
+    appendNode(titleWrap, "h3", null, listing.title || "Sample listing");
+    appendNode(titleWrap, "p", "mp-provider-price", formatMoney(listing.price, listing));
+
+    appendNode(badges, "span", "mp-provider-badge", formatProviderLabel(listing.sourceProvider || "mock_provider"));
+    appendNode(
+      badges,
+      "span",
+      "mp-provider-badge mp-provider-badge--mock",
+      "Mock data"
+    );
+
+    appendNode(card, "p", "mp-provider-location", listing.location || "Location unavailable");
+    appendNode(card, "p", "mp-provider-address", listing.addressSummary || "Address summary unavailable");
+
+    var meta = [];
+    if (listing.type) meta.push(String(listing.type));
+    if (Number(listing.bedrooms) > 0) meta.push(String(listing.bedrooms) + " bed");
+    if (Number(listing.bathrooms) > 0) meta.push(String(listing.bathrooms) + " bath");
+    if (listing.propertySize) meta.push(String(listing.propertySize));
+    appendNode(card, "p", "mp-provider-meta", meta.join(" • "));
+
+    var signals = Array.isArray(listing.matchSignals) ? listing.matchSignals : [];
+    if (signals.length) {
+      var signalWrap = appendNode(card, "div", "mp-provider-signals");
+      signals.slice(0, 4).forEach(function (signal) {
+        appendNode(signalWrap, "span", "mp-provider-signal", signal);
+      });
+    }
+  }
+
+  function renderProviderListings(response) {
+    var grid = document.getElementById("mpProviderListingsGrid");
+    var emptyEl = document.getElementById("mpProviderListingsEmpty");
+    var statusEl = document.getElementById("mpProviderListingsStatus");
+    var results = Array.isArray(response.results) ? response.results : [];
+
+    clearNode(grid);
+    if (emptyEl) emptyEl.hidden = results.length > 0;
+    setProviderStatus(statusEl, "ready", response.disclaimer || "Sample listings are shown from Kimure's provider-ready listings contract.");
+
+    results.forEach(function (listing) {
+      renderProviderListingCard(grid, listing && typeof listing === "object" ? listing : {});
+    });
+  }
+
+  function initProviderListingsPreview() {
+    var listingsForm = document.getElementById("mpProviderListingsForm");
+    var grid = document.getElementById("mpProviderListingsGrid");
+    var emptyEl = document.getElementById("mpProviderListingsEmpty");
+    var statusEl = document.getElementById("mpProviderListingsStatus");
+
+    if (!listingsForm || !grid || !emptyEl || !statusEl) return;
+
+    async function runSearch() {
+      var submit = listingsForm.querySelector("button[type='submit']");
+      var originalText = submit ? submit.textContent : "";
+
+      if (submit) {
+        submit.disabled = true;
+        submit.textContent = "Searching...";
+      }
+      emptyEl.hidden = true;
+      clearNode(grid);
+      setProviderStatus(statusEl, "loading", "Loading sample listings...");
+
+      try {
+        var response = await requestProviderListings(buildProviderListingsQuery(listingsForm));
+        renderProviderListings(response);
+      } catch (err) {
+        setProviderStatus(statusEl, "error", "Listing preview could not be reached right now. Please try again.");
+        clearNode(grid);
+        emptyEl.hidden = true;
+      } finally {
+        if (submit) {
+          submit.disabled = false;
+          submit.textContent = originalText;
+        }
+      }
+    }
+
+    listingsForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      runSearch();
+    });
+
+    runSearch();
+  }
+
   async function getAccessToken() {
     if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.getSupabaseClient) return null;
     var client = window.KIMURE_AUTH.getSupabaseClient();
@@ -402,6 +560,7 @@
   }
 
   setQueryFromUrl();
+  initProviderListingsPreview();
   initAiWorkspaceTabs();
   initAiTools();
 })();
