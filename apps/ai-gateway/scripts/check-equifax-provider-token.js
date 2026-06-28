@@ -5,6 +5,8 @@ const {
   resetEquifaxTokenCache
 } = require('../src/services/equifax/equifaxTokenService');
 const {
+  OAUTH_GRANT_TYPE,
+  OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE
 } = require('../src/services/equifax/equifaxProviderConfig');
 const {
@@ -74,7 +76,14 @@ async function checkSandboxStaticTokenWorksOnlyInSandbox() {
   assert.equal(result.status.memberNumberConfigured, true);
   assert.equal(result.status.securityCodeConfigured, true);
   assert.equal(result.status.permissiblePurposeConfigured, true);
+  assert.equal(result.status.oauthGrantTypeConfirmed, true);
+  assert.equal(result.status.oauthTokenPostConfirmed, true);
+  assert.equal(result.status.oauthTokenEndpointConfigured, false);
+  assert.equal(result.status.oauthRequestFormatConfirmed, false);
+  assert.equal(result.status.providerCallsEnabled, false);
   assert.equal(result.status.tokenStrategy, 'sandbox_static_token');
+  assert.equal(OAUTH_GRANT_TYPE, 'client_credentials');
+  assert.equal(OAUTH_TOKEN_METHOD, 'POST');
   assert.equal(result.status.tokenCached, true);
   assert.equal(result.status.lastTokenStatus, 'sandbox_static_token');
   assertSafeStatus(result, env);
@@ -117,6 +126,10 @@ async function checkPortalBackedTokenTodoIsSafe() {
   assert.equal(result.status.tokenConfigured, true);
   assert.equal(result.status.clientCredentialsConfigured, true);
   assert.equal(result.status.oauthBlockedUntilPortalDocs, true);
+  assert.equal(result.status.oauthGrantTypeConfirmed, true);
+  assert.equal(result.status.oauthTokenPostConfirmed, true);
+  assert.equal(result.status.oauthTokenEndpointConfigured, false);
+  assert.equal(result.status.oauthRequestFormatConfirmed, false);
   assert.equal(result.status.tokenStrategy, 'client_credentials_pending_docs');
   assertSafeStatus(result, env);
 }
@@ -154,6 +167,8 @@ function checkCacheMetadataIsSafe() {
     assert.equal(result.ok, true);
     assert.equal(after.tokenCached, true);
     assert.equal(after.expiresSoon, false);
+    assert.equal(after.oauthGrantTypeConfirmed, true);
+    assert.equal(after.oauthTokenPostConfirmed, true);
     assert.equal(JSON.stringify(after).includes(env.EQUIFAX_SANDBOX_ACCESS_TOKEN), false);
   });
 }
@@ -186,8 +201,8 @@ async function checkEquifaxServiceDoesNotCallNetworkWithoutPortalTokenFlow() {
     assert.equal(fetchCalled, false);
     assert.equal(result.verified, false);
     assert.equal(result.status, 'configuration_missing');
-    assert.equal(result.config.tokenStatus.lastTokenStatus, 'equifax_token_flow_requires_portal_docs');
-    assert.equal(JSON.stringify(result.config.tokenStatus).includes('secret-value'), false);
+    assert.equal(result.config.tokenStatus, null);
+    assert.equal(JSON.stringify(result).includes('secret-value'), false);
   } finally {
     global.fetch = originalFetch;
   }

@@ -25,7 +25,7 @@ async function getEquifaxAccessToken(options = {}) {
     });
   }
 
-  if (!providerStatus.canAttemptProviderCall) {
+  if (!providerStatus.configReady) {
     updateLastStatus('configuration_not_ready', null);
     return buildTokenResult({
       ok: false,
@@ -81,11 +81,11 @@ async function getEquifaxAccessToken(options = {}) {
     });
   }
 
-  // TODO: Implement the Equifax portal-approved Standard STS OAuth/client
-  // credential token flow only after signed-in OneView docs confirm token URL,
-  // grant type, request body, required headers, response body, and expiry
-  // semantics. This skeleton intentionally makes no network call and no
-  // guessed token body.
+  // Equifax portal docs confirm OAuth 2.0 client credentials, a POST token
+  // call, and use of client_id, client_secret, and scope. The exact token
+  // endpoint URL, Content-Type, auth placement (body vs Basic Auth), request
+  // body fields, response fields, and expiry semantics are still not visible.
+  // This skeleton intentionally makes no network call and no guessed token body.
   updateLastStatus('equifax_token_flow_requires_portal_docs', null);
   return buildTokenResult({
     ok: false,
@@ -161,7 +161,12 @@ function buildSafeTokenStatus({ config, providerStatus, now }) {
     securityCodeConfigured: Boolean(config.securityCode),
     permissiblePurposeConfigured: Boolean(config.permissiblePurposeCode),
     scopeConfigured: Boolean(config.scope),
+    oauthGrantTypeConfirmed: true,
+    oauthTokenPostConfirmed: true,
+    oauthTokenEndpointConfigured: Boolean(config.tokenUrl),
+    oauthRequestFormatConfirmed: Boolean(config.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: providerStatus.tokenStrategy === 'client_credentials_pending_docs',
+    providerCallsEnabled: Boolean(providerStatus.providerCallsEnabled),
     tokenCached: Boolean(tokenCache.token),
     expiresSoon: doesTokenExpireSoon(now),
     environment: providerStatus.environment,

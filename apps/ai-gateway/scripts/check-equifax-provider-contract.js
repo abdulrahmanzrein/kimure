@@ -282,6 +282,7 @@ function createSandboxStaticTokenEnv() {
   return {
     EQUIFAX_ENABLED: 'true',
     EQUIFAX_ENVIRONMENT: 'sandbox',
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true',
     EQUIFAX_TIMEOUT_MS: '10000',
     EQUIFAX_RETRY_COUNT: '0',
     EQUIFAX_PRODUCT_CODE: 'portal-product-code',

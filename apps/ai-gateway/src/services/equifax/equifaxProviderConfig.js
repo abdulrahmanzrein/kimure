@@ -1,4 +1,6 @@
 const ONEVIEW_OAUTH_SCOPE = 'https://api.equifax.com/business/oneview/consumer-credit/v1';
+const OAUTH_GRANT_TYPE = 'client_credentials';
+const OAUTH_TOKEN_METHOD = 'POST';
 
 const OFFICIAL_ONEVIEW_BASE_URLS = Object.freeze({
   sandbox: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
@@ -71,6 +73,11 @@ function validateEquifaxProviderConfig(env = process.env) {
       permissiblePurposeConfigured: false,
       scopeConfigured: false,
       oauthBlockedUntilPortalDocs: false,
+      oauthGrantTypeConfirmed: true,
+      oauthTokenPostConfirmed: true,
+      oauthTokenEndpointConfigured: false,
+      oauthRequestFormatConfirmed: false,
+      providerCallsEnabled: false,
       canAttemptProviderCall: false
     });
   }
@@ -88,6 +95,7 @@ function validateEquifaxProviderConfig(env = process.env) {
   const staticSandboxTokenAllowed = environment === 'sandbox' && staticSandboxTokenPresent;
   const clientCredentialsConfigured = Boolean(credentials.clientId && credentials.clientSecret && credentials.scope);
   const tokenStrategy = staticSandboxTokenAllowed ? 'sandbox_static_token' : 'client_credentials_pending_docs';
+  const providerCallsEnabled = env.EQUIFAX_PROVIDER_CALLS_ENABLED === 'true';
   const requiredEnvironmentKeys = staticSandboxTokenAllowed
     ? environmentKeys.filter((key) => ![
       'EQUIFAX_SANDBOX_CLIENT_ID',
@@ -124,6 +132,9 @@ function validateEquifaxProviderConfig(env = process.env) {
   const uniqueErrors = uniqueStrings(errors);
   const configReady = enabled && uniqueMissingKeys.length === 0 && uniqueErrors.length === 0;
   const tokenConfigured = staticSandboxTokenAllowed || clientCredentialsConfigured;
+  const oauthTokenEndpointConfigured = Boolean(credentials.tokenUrl);
+  const oauthRequestFormatConfirmed = false;
+  const tokenAvailableForProviderCall = staticSandboxTokenAllowed;
 
   return safeStatus({
     enabled,
@@ -141,8 +152,18 @@ function validateEquifaxProviderConfig(env = process.env) {
     securityCodeConfigured: Boolean(credentials.securityCode),
     permissiblePurposeConfigured: hasValue(env.EQUIFAX_PERMISSIBLE_PURPOSE_CODE),
     scopeConfigured: Boolean(credentials.scope),
+    oauthGrantTypeConfirmed: true,
+    oauthTokenPostConfirmed: true,
+    oauthTokenEndpointConfigured,
+    oauthRequestFormatConfirmed,
     oauthBlockedUntilPortalDocs: tokenStrategy === 'client_credentials_pending_docs',
-    canAttemptProviderCall: configReady && tokenConfigured
+    providerCallsEnabled,
+    canAttemptProviderCall: configReady &&
+      providerCallsEnabled &&
+      tokenAvailableForProviderCall &&
+      Boolean(credentials.memberNumber) &&
+      Boolean(credentials.securityCode) &&
+      hasValue(env.EQUIFAX_PERMISSIBLE_PURPOSE_CODE)
   });
 }
 
@@ -158,6 +179,7 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     mode: status.mode,
     tokenStrategy: status.tokenStrategy,
     providerConfigStatus: status,
+    providerCallsEnabled: status.providerCallsEnabled,
     baseUrl: valueOrNull(env[`${prefix}_BASE_URL`]),
     reportPath: valueOrNull(env.EQUIFAX_REPORT_PATH) || '/reports/credit-report',
     officialScope: ONEVIEW_OAUTH_SCOPE,
@@ -167,7 +189,11 @@ function buildEquifaxRuntimeConfig(env = process.env) {
       : null,
     clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
     clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
-    tokenUrl: valueOrNull(env[`${prefix}_TOKEN_URL`]),
+    tokenUrl: valueOrNull(env[`${prefix}_TOKEN_URL`]) || valueOrNull(env.EQUIFAX_TOKEN_URL),
+    oauthGrantType: OAUTH_GRANT_TYPE,
+    oauthTokenMethod: OAUTH_TOKEN_METHOD,
+    oauthTokenEndpointConfigured: status.oauthTokenEndpointConfigured,
+    oauthRequestFormatConfirmed: status.oauthRequestFormatConfirmed,
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
     securityCode: valueOrNull(env[`${prefix}_SECURITY_CODE`]),
     customerCode: valueOrNull(env[`${prefix}_CUSTOMER_CODE`]),
@@ -258,7 +284,12 @@ function safeStatus(status) {
     securityCodeConfigured: Boolean(status.securityCodeConfigured),
     permissiblePurposeConfigured: Boolean(status.permissiblePurposeConfigured),
     scopeConfigured: Boolean(status.scopeConfigured),
+    oauthGrantTypeConfirmed: Boolean(status.oauthGrantTypeConfirmed),
+    oauthTokenPostConfirmed: Boolean(status.oauthTokenPostConfirmed),
+    oauthTokenEndpointConfigured: Boolean(status.oauthTokenEndpointConfigured),
+    oauthRequestFormatConfirmed: Boolean(status.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: Boolean(status.oauthBlockedUntilPortalDocs),
+    providerCallsEnabled: Boolean(status.providerCallsEnabled),
     canAttemptProviderCall: Boolean(status.canAttemptProviderCall)
   };
 }
@@ -268,6 +299,7 @@ function readEnvironmentCredentials(env, prefix) {
     clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
     clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
     scope: valueOrNull(env[`${prefix}_SCOPE`]) || valueOrNull(env.EQUIFAX_SCOPE),
+    tokenUrl: valueOrNull(env[`${prefix}_TOKEN_URL`]) || valueOrNull(env.EQUIFAX_TOKEN_URL),
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
     securityCode: valueOrNull(env[`${prefix}_SECURITY_CODE`])
   };
@@ -336,6 +368,8 @@ function statusContainsSecretValue(status, env) {
 
 module.exports = {
   buildEquifaxRuntimeConfig,
+  OAUTH_GRANT_TYPE,
+  OAUTH_TOKEN_METHOD,
   OFFICIAL_ONEVIEW_BASE_URLS,
   ONEVIEW_OAUTH_SCOPE,
   validateEquifaxProviderConfig,

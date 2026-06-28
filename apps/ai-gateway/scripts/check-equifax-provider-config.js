@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
 const {
   buildEquifaxRuntimeConfig,
+  OAUTH_GRANT_TYPE,
+  OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE,
   statusContainsSecretValue,
   validateEquifaxProviderConfig
@@ -18,8 +20,9 @@ function run() {
   checkProductionRequiresProductionPrefixedKeys();
   checkRuntimeConfigKeepsSecretsInternal();
   checkGenericSandboxClientCredentialsAreDetectedButBlocked();
+  checkExplicitProviderCallGateRequired();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider config checks (9 assertion groups)');
+  console.log('[PASS] Equifax provider config checks (10 assertion groups)');
 }
 
 function checkDisabledProvider() {
@@ -33,7 +36,29 @@ function checkDisabledProvider() {
 }
 
 function checkSandboxStaticTokenReady() {
-  const env = {
+  const env = createSandboxStaticTokenEnv();
+  const status = validateEquifaxProviderConfig(env);
+
+  assert.equal(status.enabled, true);
+  assert.equal(status.environment, 'sandbox');
+  assert.equal(status.configReady, true);
+  assert.equal(status.tokenStrategy, 'sandbox_static_token');
+  assert.equal(status.sandboxTokenConfigured, true);
+  assert.equal(status.clientCredentialsConfigured, false);
+  assert.equal(status.memberNumberConfigured, true);
+  assert.equal(status.securityCodeConfigured, true);
+  assert.equal(status.permissiblePurposeConfigured, true);
+  assert.equal(status.oauthGrantTypeConfirmed, true);
+  assert.equal(status.oauthTokenPostConfirmed, true);
+  assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthRequestFormatConfirmed, false);
+  assert.equal(status.providerCallsEnabled, false);
+  assert.equal(status.canAttemptProviderCall, false);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function createSandboxStaticTokenEnv() {
+  return {
     EQUIFAX_ENABLED: 'true',
     EQUIFAX_ENVIRONMENT: 'sandbox',
     EQUIFAX_TIMEOUT_MS: '10000',
@@ -47,19 +72,6 @@ function checkSandboxStaticTokenReady() {
     EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
     EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
   };
-  const status = validateEquifaxProviderConfig(env);
-
-  assert.equal(status.enabled, true);
-  assert.equal(status.environment, 'sandbox');
-  assert.equal(status.configReady, true);
-  assert.equal(status.tokenStrategy, 'sandbox_static_token');
-  assert.equal(status.sandboxTokenConfigured, true);
-  assert.equal(status.clientCredentialsConfigured, false);
-  assert.equal(status.memberNumberConfigured, true);
-  assert.equal(status.securityCodeConfigured, true);
-  assert.equal(status.permissiblePurposeConfigured, true);
-  assert.equal(status.canAttemptProviderCall, true);
-  assert.equal(statusContainsSecretValue(status, env), false);
 }
 
 function checkSandboxMissingKeys() {
@@ -133,7 +145,13 @@ function checkRuntimeConfigKeepsSecretsInternal() {
   assert.equal(status.tokenStrategy, 'client_credentials_pending_docs');
   assert.equal(status.oauthBlockedUntilPortalDocs, true);
   assert.equal(status.clientCredentialsConfigured, true);
+  assert.equal(status.oauthGrantTypeConfirmed, true);
+  assert.equal(status.oauthTokenPostConfirmed, true);
+  assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(runtimeConfig.clientSecret, env.EQUIFAX_PRODUCTION_CLIENT_SECRET);
+  assert.equal(runtimeConfig.oauthGrantType, OAUTH_GRANT_TYPE);
+  assert.equal(runtimeConfig.oauthTokenMethod, OAUTH_TOKEN_METHOD);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
@@ -153,7 +171,8 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
     EQUIFAX_SCOPE: ONEVIEW_OAUTH_SCOPE,
     EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
     EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
-    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
+    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value',
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true'
   };
   const runtimeConfig = buildEquifaxRuntimeConfig(env);
   const status = runtimeConfig.providerConfigStatus;
@@ -162,8 +181,26 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(status.tokenStrategy, 'client_credentials_pending_docs');
   assert.equal(status.clientCredentialsConfigured, true);
   assert.equal(status.oauthBlockedUntilPortalDocs, true);
+  assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthRequestFormatConfirmed, false);
+  assert.equal(status.providerCallsEnabled, true);
+  assert.equal(status.canAttemptProviderCall, false);
   assert.equal(runtimeConfig.clientId, env.EQUIFAX_CLIENT_ID);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkExplicitProviderCallGateRequired() {
+  const env = {
+    ...createSandboxStaticTokenEnv(),
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true'
+  };
+  const status = validateEquifaxProviderConfig(env);
+
+  assert.equal(status.configReady, true);
+  assert.equal(status.providerCallsEnabled, true);
+  assert.equal(status.tokenStrategy, 'sandbox_static_token');
+  assert.equal(status.canAttemptProviderCall, true);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
 
@@ -185,7 +222,6 @@ function createProductionEnv() {
     EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
     EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
     EQUIFAX_PRODUCTION_BASE_URL: 'https://api.equifax.com/business/oneview/consumer-credit/v1',
-    EQUIFAX_PRODUCTION_TOKEN_URL: 'https://auth.equifax.invalid/token',
     EQUIFAX_PRODUCTION_CLIENT_ID: 'production-client-id-secret-value',
     EQUIFAX_PRODUCTION_CLIENT_SECRET: 'production-client-secret-value',
     EQUIFAX_PRODUCTION_SCOPE: ONEVIEW_OAUTH_SCOPE,
