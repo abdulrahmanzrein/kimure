@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav dashboard-nav" aria-label="Primary navigation">
+        <a href="platform.html" class="nav-link">Platform</a>
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+        <a href="credit-profile.html" class="nav-link">Credit profile</a>
+        <a href="mortgage.html" class="nav-link">Mortgage</a>
+      </nav>
+      <div class="actions">
+        <button class="toggle" id="themeToggle" type="button" aria-label="Toggle dark/light mode">
+          <span class="toggle-dot" aria-hidden="true"></span>
+          <span id="themeText">Dark</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="dashboard-page">
+      <a class="dashboard-back-link" href="platform.html">← Back to platform</a>
+
+      <header class="dashboard-intro">
+        <p class="dashboard-eyebrow">User dashboard</p>
+        <h1>Your Kimure readiness hub</h1>
+        <p>
+          Review your saved credit-readiness, financial profile, mortgage, consent,
+          and AI insight summaries in one safe account view.
+        </p>
+      </header>
+
+      <section class="dashboard-state-card" id="dashboardStateCard" aria-live="polite">
+        <div>
+          <p class="dashboard-eyebrow">Status</p>
+          <h2 id="dashboardStateTitle">Loading dashboard…</h2>
+          <p id="dashboardStateMessage">Kimure is loading your safe account summaries.</p>
+        </div>
+        <a class="btn btn-ghost" href="onboarding-form.html">Complete onboarding</a>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="dashboard-card dashboard-card-wide" id="dashboardOverviewCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Overview</p>
+              <h2>Next best action</h2>
+            </div>
+            <a class="dashboard-card-link" href="onboarding-form.html">Update onboarding</a>
+          </div>
+          <ul class="dashboard-action-list" id="dashboardNextActions">
+            <li>Loading your next actions…</li>
+          </ul>
+        </article>
+
+        <article class="dashboard-card" id="dashboardCreditCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Credit readiness</p>
+              <h2>No credit readiness yet</h2>
+            </div>
+            <a class="dashboard-card-link" href="credit-profile.html">Update credit readiness</a>
+          </div>
+          <div class="dashboard-metric-row">
+            <div><span>Score</span><strong id="dashboardCreditScore">—</strong></div>
+            <div><span>Risk</span><strong id="dashboardCreditRisk">—</strong></div>
+          </div>
+          <dl class="dashboard-detail-list">
+            <div><dt>Provider</dt><dd id="dashboardCreditProvider">—</dd></div>
+            <div><dt>Bureau</dt><dd id="dashboardCreditBureau">—</dd></div>
+            <div><dt>Verification</dt><dd id="dashboardCreditVerification">—</dd></div>
+            <div><dt>Expires</dt><dd id="dashboardCreditExpiry">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="dashboard-card" id="dashboardFinancialCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Financial profile</p>
+              <h2>No saved financial profile yet</h2>
+            </div>
+            <a class="dashboard-card-link" href="credit-profile.html">Update profile</a>
+          </div>
+          <dl class="dashboard-detail-list">
+            <div><dt>Annual income</dt><dd id="dashboardAnnualIncome">—</dd></div>
+            <div><dt>Monthly debt</dt><dd id="dashboardMonthlyDebt">—</dd></div>
+            <div><dt>Savings</dt><dd id="dashboardSavings">—</dd></div>
+            <div><dt>Down payment</dt><dd id="dashboardDownPayment">—</dd></div>
+            <div><dt>Target price</dt><dd id="dashboardTargetPrice">—</dd></div>
+            <div><dt>Employment</dt><dd id="dashboardEmployment">—</dd></div>
+            <div><dt>Timeline</dt><dd id="dashboardTimeline">—</dd></div>
+            <div><dt>Target location</dt><dd id="dashboardTargetLocation">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="dashboard-card" id="dashboardMortgageCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Mortgage readiness</p>
+              <h2>No mortgage estimate yet</h2>
+            </div>
+            <a class="dashboard-card-link" href="mortgage.html">Run mortgage estimate</a>
+          </div>
+          <div class="dashboard-metric-row">
+            <div><span>Score</span><strong id="dashboardMortgageScore">—</strong></div>
+            <div><span>Risk</span><strong id="dashboardMortgageRisk">—</strong></div>
+          </div>
+          <dl class="dashboard-detail-list">
+            <div><dt>Affordability</dt><dd id="dashboardAffordability">—</dd></div>
+            <div><dt>Payment range</dt><dd id="dashboardPaymentRange">—</dd></div>
+            <div><dt>Credit reference</dt><dd id="dashboardCreditReference">—</dd></div>
+          </dl>
+        </article>
+
+        <article class="dashboard-card" id="dashboardConsentCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Consent status</p>
+              <h2>Provider consent</h2>
+            </div>
+            <a class="dashboard-card-link" href="credit-profile.html">Review consent</a>
+          </div>
+          <div class="dashboard-list" id="dashboardConsents">
+            <p class="dashboard-empty">No bureau consent on file.</p>
+          </div>
+        </article>
+
+        <article class="dashboard-card dashboard-card-wide" id="dashboardInsightsCard">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">AI insights</p>
+              <h2>No AI insights yet</h2>
+            </div>
+            <a class="dashboard-card-link" href="marketplace.html#marketplace-ai-tools">Explore marketplace tools</a>
+          </div>
+          <div class="dashboard-insights" id="dashboardAiInsights">
+            <p class="dashboard-empty">No AI insights yet.</p>
+          </div>
+        </article>
+
+        <article class="dashboard-card dashboard-card-wide">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Marketplace personalization</p>
+              <h2>Personalized property ranking</h2>
+            </div>
+            <a class="dashboard-card-link" href="marketplace.html#marketplace-ai-tools">Explore marketplace tools</a>
+          </div>
+          <p class="dashboard-muted">
+            Future listing search will use your saved goals, financial profile, readiness signals,
+            and location preferences to rank real properties once approved listing providers are connected.
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> Kimure. All rights reserved.</div>
+      <div class="foot-links">
+        <a href="about.html">About</a>
+        <a href="platform.html">Platform</a>
+        <a href="legal.html">Legal</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script src="assets/js/dashboard.js"></script>
+</body>
+</html>

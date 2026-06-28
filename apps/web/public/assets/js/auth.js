@@ -449,6 +449,45 @@
     return { ok: true, data: body };
   }
 
+  // Read dashboard-safe AI, credit, mortgage, and financial profile summaries
+  // from the Kimure API. The dashboard never reads raw Supabase credit tables
+  // or talks to the AI Gateway directly.
+  async function fetchDashboardAiCredit() {
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in to view your dashboard."
+      };
+    }
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/dashboard/ai-credit", {
+        method: "GET",
+        headers: {
+          Authorization: "Bearer " + token
+        }
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "Dashboard data could not be loaded.";
+      return { ok: false, message: message };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -536,6 +575,7 @@
     saveOnboardingProfile: saveOnboardingProfile,
     requestCreditProfile: requestCreditProfile,
     requestMortgage: requestMortgage,
+    fetchDashboardAiCredit: fetchDashboardAiCredit,
     saveCreditAssessmentReference: saveCreditAssessmentReference,
     getCreditAssessmentReference: getCreditAssessmentReference,
     clearCreditAssessmentReference: clearCreditAssessmentReference

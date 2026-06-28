@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:dashboard-ai-credit": "node scripts/check-dashboard-ai-credit.js",
     "start": "next start",
     "lint": "next lint"
   },
