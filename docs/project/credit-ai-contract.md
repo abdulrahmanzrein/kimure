@@ -166,6 +166,12 @@ signed-in Equifax portal documentation before live provider calls are enabled.
 Thirdstream, TransUnion, and other provider adapters remain future/disabled
 multi-provider options.
 
+The Gateway includes an Equifax token-service boundary with safe token status
+metadata and in-memory cache plumbing. It does not perform a live token exchange
+until the Equifax portal confirms token URL, grant type, scopes, request body,
+headers, response fields, and expiry behavior. Production requires approved
+portal-backed credentials; static sandbox tokens remain sandbox-only.
+
 Future dashboard UI should call `GET /api/dashboard/ai-credit` for sanitized
 account, credit, consent, mortgage, and AI insight summaries. Browser clients
 should not read raw Supabase credit tables, Gateway responses, or provider

@@ -33,6 +33,12 @@ credentials. Exact OneView token flow, scopes, request body, response schema,
 and live endpoints still require signed-in Equifax portal documentation before
 live provider calls are enabled.
 
+The Gateway has an Equifax token-service skeleton for safe status metadata,
+internal token caching, and sandbox-only static token handling. It intentionally
+does not implement a guessed OAuth/token request. Portal-backed token exchange
+must wait for signed-in Equifax docs covering token URL, grant type, scopes,
+request body, required headers, token response, and expiry semantics.
+
 ## Client Routes
 
 All routes use `POST` and require a Supabase access token.

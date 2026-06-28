@@ -3,6 +3,9 @@ const {
   buildEquifaxRuntimeConfig,
   validateEquifaxProviderConfig
 } = require('./equifax/equifaxProviderConfig');
+const {
+  getEquifaxAccessToken
+} = require('./equifax/equifaxTokenService');
 
 // Equifax OneView integration boundary.
 // Keep all Equifax credentials, tokens, raw payloads, and provider-specific request details here.
@@ -97,6 +100,27 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 
   try {
     const oneViewUrl = buildOneViewUrl(config);
+    const tokenResult = await getEquifaxAccessToken({ config, env });
+
+    if (!tokenResult.ok) {
+      logWarn('Equifax token unavailable; using safe fallback', {
+        tokenStatus: tokenResult.status.lastTokenStatus,
+        environment: tokenResult.status.environment
+      });
+
+      return createUnavailableEquifaxResult({
+        equifaxStatus: 'configuration_missing',
+        unavailableReason: `Equifax token is not available: ${tokenResult.errorCode}.`,
+        config: {
+          ...config,
+          tokenStatus: tokenResult.status
+        },
+        request,
+        startedAt,
+        nextIntegrationStep: 'Implement the Equifax portal-approved token flow after signed-in OneView documentation is available.'
+      });
+    }
+
     logInfo('Equifax request start', {
       endpoint: oneViewUrl,
       requestMode: request.requestMode,
@@ -105,7 +129,7 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 
     const response = await postOneViewCreditReport({
       url: oneViewUrl,
-      token: await getEquifaxAccessToken(config),
+      token: tokenResult.accessToken,
       body: request.oneViewRequestBody,
       timeoutMs: config.timeoutMs
     });
@@ -336,16 +360,6 @@ function validateEquifaxConfig(config) {
   };
 }
 
-async function getEquifaxAccessToken(config) {
-  if (config.sandboxAccessToken) {
-    return config.sandboxAccessToken;
-  }
-
-  // TODO: Implement OAuth2 token generation from EQUIFAX_CLIENT_ID, EQUIFAX_CLIENT_SECRET,
-  // EQUIFAX_SCOPE, and EQUIFAX_TOKEN_URL after confirming the account-specific auth docs.
-  throw new Error('Equifax access token is not configured');
-}
-
 async function postOneViewCreditReport({ url, token, body, timeoutMs }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -541,6 +555,7 @@ function sanitizeEquifaxConfig(config) {
     retryCount: config.retryCount,
     configReady: Boolean(config.configReady),
     tokenStrategy: config.tokenStrategy || 'none',
+    tokenStatus: config.tokenStatus || null,
     warnings: config.providerConfigStatus ? config.providerConfigStatus.warnings : [],
     errors: config.providerConfigStatus ? config.providerConfigStatus.errors : []
   };
