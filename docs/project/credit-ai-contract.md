@@ -152,6 +152,10 @@ and safe derived credit summary fields for dashboard, mortgage, marketplace, and
 future listing personalization. It must not store raw Equifax, Thirdstream,
 Gemini, provider, or bureau payloads.
 
+The API includes service helpers for these tables, but live Equifax calls still
+remain disabled until approved Equifax credentials, product documentation,
+consent wording, and operating controls are configured server-side.
+
 ## Remaining blocker
 
 Live bureau pulls remain blocked until approved Equifax platform credentials,

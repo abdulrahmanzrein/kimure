@@ -6,6 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check:credit-contract": "node -r ts-node/register scripts/check-credit-ai-contract.js",
+    "check:credit-profile-storage": "node -r ts-node/register scripts/check-credit-profile-storage.js",
     "start": "node dist/main.js",
     "start:dev": "node --watch -r ts-node/register src/main.ts",
     "typecheck": "tsc --noEmit"

@@ -221,3 +221,6 @@ Live bureau pulls remain blocked until approved Equifax platform credentials,
 product/API documentation, consent wording, and production operating controls
 are available in the Gateway environment. Thirdstream and other provider paths
 remain future/disabled options until separately approved.
+
+The API owns consent and reusable financial profile writes. Browser clients and
+the Gateway should not write those Supabase tables directly.
