@@ -12,6 +12,7 @@ import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
 import { OnboardingController } from "./onboarding/onboarding.controller";
 import { OnboardingService } from "./onboarding/onboarding.service";
+import { ListingsModule } from "./listings/listings.module";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -30,7 +31,8 @@ class HealthController {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true
-    })
+    }),
+    ListingsModule
   ],
   controllers: [
     HealthController,
