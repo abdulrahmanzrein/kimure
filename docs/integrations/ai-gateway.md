@@ -25,6 +25,14 @@ priority. The Gateway should keep its multi-provider boundary intact so
 Thirdstream, TransUnion, and other provider adapters can remain disabled or
 future options without changing client contracts.
 
+Equifax provider configuration is environment-aware: Sandbox, Test, and
+Production must use separate Equifax portal credentials. Static sandbox tokens
+are accepted only for sandbox validation, and production must not use sandbox
+URLs, sandbox tokens, placeholder/demo values, or non-production-prefixed
+credentials. Exact OneView token flow, scopes, request body, response schema,
+and live endpoints still require signed-in Equifax portal documentation before
+live provider calls are enabled.
+
 ## Client Routes
 
 All routes use `POST` and require a Supabase access token.

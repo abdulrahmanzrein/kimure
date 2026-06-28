@@ -156,6 +156,16 @@ The API includes service helpers for these tables, but live Equifax calls still
 remain disabled until approved Equifax credentials, product documentation,
 consent wording, and operating controls are configured server-side.
 
+Direct Equifax OneView integration must use environment-aware Gateway
+configuration. Sandbox, Test, and Production require separate Equifax
+portal-provided credentials and must not share tokens, base URLs, member
+numbers, product details, or approval status. Static sandbox access tokens are
+allowed only for sandbox validation workflows. Exact OneView token details,
+request schema, response mapping, and retention/display rules still require
+signed-in Equifax portal documentation before live provider calls are enabled.
+Thirdstream, TransUnion, and other provider adapters remain future/disabled
+multi-provider options.
+
 Future dashboard UI should call `GET /api/dashboard/ai-credit` for sanitized
 account, credit, consent, mortgage, and AI insight summaries. Browser clients
 should not read raw Supabase credit tables, Gateway responses, or provider
