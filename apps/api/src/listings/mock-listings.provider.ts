@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ListingSearchQuery, NormalizedListing } from "./listing.types";
+import { ListingProviderAdapter } from "./listings-provider.interface";
 
 const MOCK_LISTINGS: NormalizedListing[] = [
   {
@@ -73,7 +74,10 @@ function includesText(value: string, search: string) {
 }
 
 @Injectable()
-export class MockListingsProvider {
+export class MockListingsProvider implements ListingProviderAdapter {
+  readonly source = "mock_provider" as const;
+  readonly providerStatus = "mock_only" as const;
+
   // This provider is intentionally mock-only. A licensed provider such as CREA
   // DDF, MLS/IDX, or another approved listing API can later replace this class
   // while keeping the controller response contract stable.

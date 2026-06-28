@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { MockListingsProvider, MOCK_LISTINGS } = require("../src/listings/mock-listings.provider");
+const { ListingsProviderRegistry } = require("../src/listings/listings-provider.registry");
 const {
   ListingsService,
   MOCK_LISTINGS_DISCLAIMER,
@@ -14,6 +15,8 @@ const requiredFiles = [
   "src/listings/listings.service.ts",
   "src/listings/listings.module.ts",
   "src/listings/listing.types.ts",
+  "src/listings/listings-provider.interface.ts",
+  "src/listings/listings-provider.registry.ts",
   "src/listings/mock-listings.provider.ts"
 ];
 
@@ -21,7 +24,9 @@ requiredFiles.forEach((file) => {
   assert.equal(fs.existsSync(path.join(apiRoot, file)), true, `${file} should exist`);
 });
 
-const service = new ListingsService(new MockListingsProvider());
+const mockProvider = new MockListingsProvider();
+const registry = new ListingsProviderRegistry(mockProvider);
+const service = new ListingsService(registry);
 const response = service.search({
   location: "Ottawa",
   maxPrice: "$700,000",
@@ -36,6 +41,10 @@ assert.equal(response.disclaimer.includes("mock/sample records"), true);
 assert.equal(response.disclaimer.includes("licensed listing provider"), true);
 assert.equal(response.results.length > 0, true);
 assert.equal(parseNumber("$650,000"), 650000);
+assert.equal(registry.getActiveProvider().source, "mock_provider");
+assert.equal(registry.getActiveProvider().providerStatus, "mock_only");
+assert.equal(mockProvider.source, "mock_provider");
+assert.equal(mockProvider.providerStatus, "mock_only");
 
 const requiredResultFields = [
   "id",

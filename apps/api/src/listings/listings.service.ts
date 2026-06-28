@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ListingSearchQuery, ListingsSearchResponse } from "./listing.types";
-import { MockListingsProvider } from "./mock-listings.provider";
+import { ListingsProviderRegistry } from "./listings-provider.registry";
 
 const MOCK_LISTINGS_DISCLAIMER =
   "These listings are mock/sample records until a licensed listing provider is connected.";
@@ -19,7 +19,7 @@ function parseText(value: unknown): string | undefined {
 
 @Injectable()
 export class ListingsService {
-  constructor(private readonly mockProvider: MockListingsProvider) {}
+  constructor(private readonly providers: ListingsProviderRegistry) {}
 
   // GET /api/listings/search currently uses mock data only. This keeps the API
   // contract ready for a licensed listing provider without implying that live
@@ -36,12 +36,13 @@ export class ListingsService {
       bedrooms: parseNumber(rawQuery.bedrooms),
       intent: parseText(rawQuery.intent)
     };
+    const provider = this.providers.getActiveProvider();
 
     return {
-      source: "mock_provider",
-      providerStatus: "mock_only",
+      source: provider.source,
+      providerStatus: provider.providerStatus,
       disclaimer: MOCK_LISTINGS_DISCLAIMER,
-      results: this.mockProvider.search(query)
+      results: provider.search(query)
     };
   }
 }

@@ -6,6 +6,7 @@ const {
   buildSafeListingContext
 } = require("../src/ai/ai.controller");
 const { ListingsService } = require("../src/listings/listings.service");
+const { ListingsProviderRegistry } = require("../src/listings/listings-provider.registry");
 const { MockListingsProvider } = require("../src/listings/mock-listings.provider");
 
 const controllerPath = path.resolve(__dirname, "../src/ai/ai.controller.ts");
@@ -40,7 +41,9 @@ assert.equal(query.type, "detached");
 assert.equal(query.bedrooms, 3);
 assert.equal(query.intent, "primary residence");
 
-const listings = new ListingsService(new MockListingsProvider()).search(query);
+const listings = new ListingsService(
+  new ListingsProviderRegistry(new MockListingsProvider())
+).search(query);
 const context = buildSafeListingContext(listings, query);
 const serialized = JSON.stringify(context);
 
