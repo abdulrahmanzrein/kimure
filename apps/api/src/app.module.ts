@@ -6,6 +6,8 @@ import { CreditConsentsService } from "./ai/credit-consents.service";
 import { CreditAssessmentsService } from "./ai/credit-assessments.service";
 import { UserFinancialProfilesService } from "./ai/user-financial-profiles.service";
 import { SupabaseAuthGuard } from "./auth/supabase-auth.guard";
+import { DashboardController } from "./dashboard/dashboard.controller";
+import { DashboardService } from "./dashboard/dashboard.service";
 import { UsersController } from "./users/users.controller";
 import { UsersService } from "./users/users.service";
 import { OnboardingController } from "./onboarding/onboarding.controller";
@@ -33,6 +35,7 @@ class HealthController {
   controllers: [
     HealthController,
     AiController,
+    DashboardController,
     UsersController,
     OnboardingController
   ],
@@ -41,6 +44,7 @@ class HealthController {
     CreditAssessmentsService,
     CreditConsentsService,
     UserFinancialProfilesService,
+    DashboardService,
     SupabaseAuthGuard,
     UsersService,
     OnboardingService

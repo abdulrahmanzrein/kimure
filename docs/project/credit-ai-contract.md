@@ -156,6 +156,11 @@ The API includes service helpers for these tables, but live Equifax calls still
 remain disabled until approved Equifax credentials, product documentation,
 consent wording, and operating controls are configured server-side.
 
+Future dashboard UI should call `GET /api/dashboard/ai-credit` for sanitized
+account, credit, consent, mortgage, and AI insight summaries. Browser clients
+should not read raw Supabase credit tables, Gateway responses, or provider
+payloads directly.
+
 ## Remaining blocker
 
 Live bureau pulls remain blocked until approved Equifax platform credentials,

@@ -224,3 +224,7 @@ remain future/disabled options until separately approved.
 
 The API owns consent and reusable financial profile writes. Browser clients and
 the Gateway should not write those Supabase tables directly.
+
+Dashboard clients should read sanitized account and AI/credit summaries through
+`GET /api/dashboard/ai-credit`. They should not call the Gateway directly or
+parse raw `ai_requests`, provider responses, or bureau payloads.
