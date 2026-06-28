@@ -6,6 +6,12 @@ const {
 const {
   getEquifaxAccessToken
 } = require('./equifax/equifaxTokenService');
+const {
+  buildEquifaxOneViewRequestV1
+} = require('./equifax/equifaxOneViewRequestBuilder');
+const {
+  normalizeEquifaxOneViewResponseV1
+} = require('./equifax/equifaxOneViewResponseNormalizer');
 
 // Equifax OneView integration boundary.
 // Keep all Equifax credentials, tokens, raw payloads, and provider-specific request details here.
@@ -121,6 +127,25 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
       });
     }
 
+    if (!request.providerCallReady) {
+      logWarn('Equifax request contract unconfirmed; using safe fallback', {
+        blockedReason: request.providerCallBlockedReason,
+        builderVersion: request.requestVersion
+      });
+
+      return createUnavailableEquifaxResult({
+        equifaxStatus: 'configuration_missing',
+        unavailableReason: `Equifax OneView request contract is not ready: ${request.providerCallBlockedReason}.`,
+        config: {
+          ...config,
+          tokenStatus: tokenResult.status
+        },
+        request,
+        startedAt,
+        nextIntegrationStep: 'Confirm the signed-in Equifax OneView endpoint, headers, request body, response schema, and retention/display rules before live provider calls.'
+      });
+    }
+
     logInfo('Equifax request start', {
       endpoint: oneViewUrl,
       requestMode: request.requestMode,
@@ -152,7 +177,9 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
       });
     }
 
-    const verifiedData = normalizeEquifaxVerifiedData(response.body);
+    const verifiedData = normalizeEquifaxVerifiedData(response.body, {
+      environment: config.environment
+    });
 
     return {
       provider: 'equifax',
@@ -197,50 +224,12 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 }
 
 function buildEquifaxCreditRequest({ providedData, requestContext = {}, config = getEquifaxConfig() }) {
-  const applicant = normalizeApplicantInput({
+  return buildEquifaxOneViewRequestV1({
     providedData,
     requestContext
+  }, {
+    config
   });
-  const consentInput = requestContext.consent || providedData.consent || {};
-  const missingRequestFields = getMissingEquifaxRequestFields(applicant);
-  const requestReady = missingRequestFields.length === 0;
-  const requestMode = applicant.socialNumber ? 'social_number' : 'name_address';
-  const oneViewRequestBody = requestReady
-    ? buildOneViewRequestBody({
-      applicant,
-      requestContext,
-      config
-    })
-    : null;
-
-  return {
-    requestType: 'credit_profile',
-    providerProduct: 'oneview_consumer_credit_report',
-    endpointPath: config.reportPath,
-    consumerReferenceId: requestContext.consumerReferenceId || null,
-    permissiblePurpose: requestContext.permissiblePurpose || consentInput.permissiblePurpose || null,
-    consent: {
-      provided: consentInput.provided === true || consentInput.accepted === true,
-      capturedAt: consentInput.capturedAt || null,
-      version: consentInput.version || null
-    },
-    requestedProducts: [
-      'oneview_consumer_credit_report'
-    ],
-    applicantSnapshot: {
-      firstNameProvided: Boolean(applicant.firstName),
-      lastNameProvided: Boolean(applicant.lastName),
-      dateOfBirthProvided: Boolean(applicant.dateOfBirth),
-      addressProvided: Boolean(applicant.address && applicant.address.addressLine1 && applicant.address.city && applicant.address.region && applicant.address.postalCode),
-      socialNumberProvided: Boolean(applicant.socialNumber),
-      incomeProvided: Boolean(providedData.income && (providedData.income.annualGross || providedData.income.monthlyGross)),
-      liabilitiesProvided: hasLiabilityData(providedData.liabilities)
-    },
-    requestMode,
-    requestReady,
-    missingRequestFields,
-    oneViewRequestBody
-  };
 }
 
 function normalizeApplicantInput({ providedData, requestContext }) {
@@ -392,90 +381,8 @@ async function postOneViewCreditReport({ url, token, body, timeoutMs }) {
   }
 }
 
-function normalizeEquifaxVerifiedData(responseBody) {
-  return {
-    referenceIds: {
-      transactionId: findFirstValue(responseBody, [
-        'transactionId',
-        'transactionID',
-        'correlationId',
-        'customerReferenceIdentifier'
-      ]),
-      reportId: findFirstValue(responseBody, [
-        'reportId',
-        'reportID',
-        'consumerReportId',
-        'identifier'
-      ])
-    },
-    creditScore: normalizeCreditScore(responseBody),
-    fileSummary: {
-      totalTradelines: findFirstNumber(responseBody, [
-        'totalTradelines',
-        'numberOfTradeLines',
-        'totalTradeLineCount'
-      ]),
-      openAccounts: findFirstNumber(responseBody, [
-        'openAccounts',
-        'openAccountCount',
-        'numberOfOpenAccounts'
-      ]),
-      totalInquiries: findFirstNumber(responseBody, [
-        'totalInquiries',
-        'inquiryCount',
-        'numberOfInquiries'
-      ]),
-      publicRecords: findFirstNumber(responseBody, [
-        'publicRecords',
-        'publicRecordCount',
-        'numberOfPublicRecords'
-      ]),
-      collections: findFirstNumber(responseBody, [
-        'collections',
-        'collectionCount',
-        'numberOfCollections'
-      ])
-    },
-    debtSummary: {
-      totalBalance: findFirstMoney(responseBody, [
-        'totalBalance',
-        'totalDebt',
-        'aggregateBalance'
-      ]),
-      totalMonthlyPayment: findFirstMoney(responseBody, [
-        'totalMonthlyPayment',
-        'monthlyPaymentAmount',
-        'aggregateMonthlyPayment'
-      ]),
-      revolvingUtilization: findFirstNumber(responseBody, [
-        'revolvingUtilization',
-        'utilization',
-        'debtToCreditRatio'
-      ])
-    },
-    riskSignals: {
-      delinquencyCount: findFirstNumber(responseBody, [
-        'delinquencyCount',
-        'delinquencies',
-        'numberOfDelinquencies'
-      ]),
-      bankruptcyIndicator: findFirstBoolean(responseBody, [
-        'bankruptcyIndicator',
-        'bankruptcy',
-        'hasBankruptcy'
-      ]),
-      fraudAlertIndicator: findFirstBoolean(responseBody, [
-        'fraudAlertIndicator',
-        'fraudAlert',
-        'hasFraudAlert'
-      ])
-    },
-    extractionNotes: [
-      'VerifiedData is sanitized from the Equifax OneView sandbox response.',
-      'Raw bureau response is not stored or returned by this gateway.',
-      'Field names should be reviewed against the account-specific OneView API schema before production.'
-    ]
-  };
+function normalizeEquifaxVerifiedData(responseBody, options = {}) {
+  return normalizeEquifaxOneViewResponseV1(responseBody, options);
 }
 
 function normalizeCreditScore(responseBody) {
@@ -574,6 +481,10 @@ function sanitizeEquifaxRequest(request) {
     requestMode: request.requestMode,
     requestReady: request.requestReady,
     missingRequestFields: request.missingRequestFields,
+    providerCallReady: request.providerCallReady,
+    providerCallBlockedReason: request.providerCallBlockedReason,
+    portalDependency: request.portalDependency,
+    safeDebugMetadata: request.safeDebugMetadata,
     requestBodyFieldsSent: request.oneViewRequestBody ? Object.keys(request.oneViewRequestBody) : []
   };
 }

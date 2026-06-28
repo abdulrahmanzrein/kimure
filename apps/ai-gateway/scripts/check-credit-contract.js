@@ -147,12 +147,16 @@ function checkDirectEquifaxCanonicalAddress() {
       customerCode: null
     }
   });
-  const address = request.oneViewRequestBody.consumers[0].addresses[0];
+  const serialized = JSON.stringify(request);
 
   assert.equal(request.requestReady, true);
-  assert.equal(address.addressLine1, '100 Example Street');
-  assert.equal(address.province, 'ON');
-  assert.equal(address.cityName, 'Ottawa');
+  assert.equal(request.providerCallReady, false);
+  assert.equal(request.oneViewRequestBody, null);
+  assert.equal(request.addressSnapshot.addressLine1Provided, true);
+  assert.equal(request.addressSnapshot.cityProvided, true);
+  assert.equal(request.addressSnapshot.regionProvided, true);
+  assert.equal(serialized.includes('100 Example Street'), false);
+  assert.equal(serialized.includes('K1A0B1'), false);
 }
 
 async function checkDirectionalResponseAndSensitiveData() {
