@@ -12,6 +12,9 @@ const {
 const {
   normalizeCreditProfileInput
 } = require("../src/ai/credit-ai.contract");
+const {
+  AiController
+} = require("../src/ai/ai.controller");
 
 const userId = "00000000-0000-4000-8000-000000000001";
 const providerInput = normalizeCreditProfileInput({
@@ -239,8 +242,172 @@ async function runServiceChecks() {
     ),
     { status: "failed" }
   );
+
+  const providerControllerChecks = await runControllerFlow({
+    input: providerInput,
+    gatewayResponse: shapedCreditResponse
+  });
+
+  assert.equal(providerControllerChecks.response, shapedCreditResponse);
+  assert.equal(providerControllerChecks.consentCalls.length, 1);
+  assert.equal(providerControllerChecks.consentCalls[0].providerChoice, "equifax_oneview");
+  assert.equal(providerControllerChecks.creditAssessmentCalls.length, 1);
+  assert.equal(providerControllerChecks.creditProfileCalls.length, 1);
+  assert.equal(providerControllerChecks.creditProfileCalls[0].providerChoice, "equifax_oneview");
+
+  const directionalControllerChecks = await runControllerFlow({
+    input: directionalInput,
+    gatewayResponse: shapedCreditResponse
+  });
+
+  assert.equal(directionalControllerChecks.response, shapedCreditResponse);
+  assert.equal(directionalControllerChecks.consentCalls.length, 0);
+  assert.equal(directionalControllerChecks.creditProfileCalls.length, 1);
+
+  const mortgageControllerChecks = await runMortgageControllerFlow();
+  assert.equal(mortgageControllerChecks.response.summary, "Mortgage estimate");
+  assert.equal(mortgageControllerChecks.mortgageCalls.length, 1);
+  assert.equal(mortgageControllerChecks.mortgageCalls[0].request.annualGross, 110000);
+  assert.equal(
+    JSON.stringify(mortgageControllerChecks.mortgageCalls[0]).includes("creditMortgageHandoff"),
+    false
+  );
+
+  const failureSafeChecks = await runControllerFlow({
+    input: providerInput,
+    gatewayResponse: shapedCreditResponse,
+    throwFromPersistence: true
+  });
+  assert.equal(failureSafeChecks.response, shapedCreditResponse);
 }
 
 runServiceChecks().then(() => {
   console.log("Credit consent and financial profile storage checks passed.");
 });
+
+async function runControllerFlow({
+  input,
+  gatewayResponse,
+  throwFromPersistence = false
+}) {
+  const consentCalls = [];
+  const creditAssessmentCalls = [];
+  const creditProfileCalls = [];
+  const gateway = {
+    execute(tool, payload) {
+      assert.equal(tool, "credit-profile");
+      return Promise.resolve(gatewayResponse);
+    }
+  };
+  const creditAssessments = {
+    persistCreditProfileResponse(id, response) {
+      creditAssessmentCalls.push({ id, response });
+      if (throwFromPersistence) throw new Error("persist failed");
+      return Promise.resolve({ status: "stored", response });
+    }
+  };
+  const creditConsents = {
+    persistConsent(id, normalized) {
+      consentCalls.push({
+        id,
+        providerChoice: normalized.providerChoice
+      });
+      if (throwFromPersistence) throw new Error("consent failed");
+      return Promise.resolve({ status: normalized.providerChoice === "directional" ? "skipped" : "stored" });
+    }
+  };
+  const userFinancialProfiles = {
+    upsertFromCreditProfile(id, normalized, response) {
+      creditProfileCalls.push({
+        id,
+        providerChoice: normalized.providerChoice,
+        response
+      });
+      if (throwFromPersistence) throw new Error("profile failed");
+      return Promise.resolve({ status: "stored" });
+    },
+    upsertFromMortgage() {
+      throw new Error("unexpected mortgage upsert");
+    }
+  };
+
+  const controller = new AiController(
+    gateway,
+    creditAssessments,
+    creditConsents,
+    userFinancialProfiles
+  );
+  const response = await controller.runTool("credit-profile", input, buildRequest());
+
+  return {
+    response,
+    consentCalls,
+    creditAssessmentCalls,
+    creditProfileCalls
+  };
+}
+
+async function runMortgageControllerFlow() {
+  const mortgageCalls = [];
+  const gateway = {
+    execute(tool) {
+      assert.equal(tool, "mortgage");
+      return Promise.resolve({
+        summary: "Mortgage estimate",
+        reportData: {
+          sourceResponse: "drop-this"
+        }
+      });
+    }
+  };
+  const creditAssessments = {
+    resolveForMortgage() {
+      return Promise.resolve({ status: "not_provided" });
+    },
+    buildMortgageGatewayInput(input) {
+      return input;
+    }
+  };
+  const creditConsents = {
+    persistConsent() {
+      throw new Error("unexpected consent persist");
+    }
+  };
+  const userFinancialProfiles = {
+    upsertFromCreditProfile() {
+      throw new Error("unexpected credit upsert");
+    },
+    upsertFromMortgage(id, request, response) {
+      mortgageCalls.push({ id, request, response });
+      return Promise.resolve({ status: "stored" });
+    }
+  };
+  const controller = new AiController(
+    gateway,
+    creditAssessments,
+    creditConsents,
+    userFinancialProfiles
+  );
+  const response = await controller.runTool(
+    "mortgage",
+    {
+      annualGross: 110000,
+      monthlyDebtPayments: 700,
+      creditMortgageHandoff: {
+        rawProviderPayload: "drop-this"
+      }
+    },
+    buildRequest()
+  );
+
+  return { response, mortgageCalls };
+}
+
+function buildRequest() {
+  return {
+    user: { id: userId },
+    headers: {
+      authorization: "Bearer test-token"
+    }
+  };
+}
