@@ -33,7 +33,7 @@ function normalizeEquifaxOneViewResponseV1(rawResponse, options = {}) {
   const environment = options.environment || 'sandbox';
   const warnings = [
     'Mapper uses safe allowlisted fields only.',
-    'Exact OneView response paths must be confirmed in signed-in Equifax portal docs before live use.'
+    'Raw consumers, trades, full reports, links, identity, address, and social number fields are never returned.'
   ];
 
   if (!rawResponse || typeof rawResponse !== 'object') {
@@ -41,6 +41,7 @@ function normalizeEquifaxOneViewResponseV1(rawResponse, options = {}) {
       provider: 'equifax_oneview',
       bureau: 'equifax',
       environment,
+      status: null,
       verificationStatus: {
         status: 'unusable_response',
         bureauDataVerified: false
@@ -49,33 +50,56 @@ function normalizeEquifaxOneViewResponseV1(rawResponse, options = {}) {
       debtSummary: null,
       riskFlags: {},
       referenceIds: {},
+      linkSummary: {
+        pdfLinkAvailable: false,
+        linkCount: 0
+      },
       extractionVersion: RESPONSE_EXTRACTION_VERSION,
       mapperStatus: 'empty_response',
       warnings
     };
   }
 
-  const scoreSummary = normalizeScoreSummary(rawResponse);
-  const debtSummary = normalizeDebtSummary(rawResponse);
-  const riskFlags = normalizeRiskFlags(rawResponse);
-  const referenceIds = normalizeReferenceIds(rawResponse);
+  const report = extractEquifaxUsConsumerCreditReport(rawResponse) || rawResponse;
+  const responseStatus = safeString(rawResponse.status);
+  const scoreSummary = normalizeScoreSummary(report);
+  const debtSummary = normalizeDebtSummary(report);
+  const riskFlags = normalizeRiskFlags(report);
+  const referenceIds = normalizeReferenceIds(rawResponse, report, options);
+  const linkSummary = normalizeLinkSummary(rawResponse.links);
 
   return {
     provider: 'equifax_oneview',
     bureau: 'equifax',
     environment,
+    status: responseStatus,
     verificationStatus: {
-      status: 'verified_provider',
+      status: responseStatus || 'verified_provider',
       bureauDataVerified: true
     },
     scoreSummary,
     debtSummary,
     riskFlags,
     referenceIds,
+    linkSummary,
     extractionVersion: RESPONSE_EXTRACTION_VERSION,
     mapperStatus: 'normalized',
     warnings
   };
+}
+
+function extractEquifaxUsConsumerCreditReport(source) {
+  const consumers = source && source.consumers;
+  if (!consumers) return null;
+
+  const consumerList = Array.isArray(consumers) ? consumers : [consumers];
+  for (const consumer of consumerList) {
+    if (!consumer || typeof consumer !== 'object') continue;
+    const report = consumer.equifaxUSConsumerCreditReport;
+    if (report && typeof report === 'object') return report;
+  }
+
+  return null;
 }
 
 function normalizeScoreSummary(source) {
@@ -83,7 +107,9 @@ function normalizeScoreSummary(source) {
     'creditScore',
     'score',
     'riskScore',
-    'beaconScore'
+    'beaconScore',
+    'modelScore',
+    'scoreValue'
   ]);
 
   if (value === null) return null;
@@ -93,9 +119,15 @@ function normalizeScoreSummary(source) {
     model: findFirstString(source, [
       'scoreModel',
       'model',
+      'modelName',
       'scoreName',
       'scoreType'
     ]),
+    reasonCodes: safeStringList(findFirstByKey(source, [
+      'reasonCodes',
+      'scoreReasons',
+      'riskBasedPricingReasons'
+    ])),
     source: 'equifax_oneview'
   });
 }
@@ -105,18 +137,21 @@ function normalizeDebtSummary(source) {
     totalBalance: findFirstMoney(source, [
       'totalBalance',
       'totalDebt',
-      'aggregateBalance'
+      'aggregateBalance',
+      'totalCurrentBalance'
     ]),
     totalMonthlyPayment: findFirstMoney(source, [
       'totalMonthlyPayment',
       'monthlyPaymentAmount',
-      'aggregateMonthlyPayment'
+      'aggregateMonthlyPayment',
+      'totalMonthlyPaymentAmount'
     ]),
     revolvingUtilization: findFirstNumber(source, [
       'revolvingUtilization',
       'utilization',
       'debtToCreditRatio'
-    ])
+    ]),
+    tradeCount: summarizeTradeCount(source)
   });
 }
 
@@ -137,6 +172,17 @@ function normalizeRiskFlags(source) {
       'fraudAlert',
       'hasFraudAlert'
     ]),
+    securityFreezeIndicator: findFirstBoolean(source, [
+      'securityFreezeIndicator',
+      'securityFreeze',
+      'hasSecurityFreeze',
+      'consumerStatementIndicator'
+    ]),
+    identityAlertIndicator: findFirstBoolean(source, [
+      'identityAlertIndicator',
+      'identityAlert',
+      'identityScanAlert'
+    ]),
     collectionsCount: findFirstNumber(source, [
       'collections',
       'collectionCount',
@@ -145,21 +191,56 @@ function normalizeRiskFlags(source) {
   });
 }
 
-function normalizeReferenceIds(source) {
+function normalizeReferenceIds(rawResponse, report, options) {
   return compactObject({
-    transactionId: findFirstString(source, [
-      'transactionId',
-      'transactionID',
-      'correlationId',
-      'customerReferenceIdentifier'
-    ]),
-    reportId: findFirstString(source, [
+    transactionId: safeString(options.transactionId) ||
+      getHeaderValue(options.headers, 'efx-transaction-id') ||
+      findFirstString(rawResponse, [
+        'transactionId',
+        'transactionID',
+        'correlationId',
+        'customerReferenceIdentifier'
+      ]),
+    reportId: findFirstString(report, [
       'reportId',
       'reportID',
       'consumerReportId',
       'identifier'
-    ])
+    ]),
+    pdfRequestId: extractPdfRequestId(rawResponse.links)
   });
+}
+
+function normalizeLinkSummary(links) {
+  const linkList = Array.isArray(links) ? links : [];
+  return {
+    pdfLinkAvailable: Boolean(extractPdfRequestId(linkList)),
+    linkCount: linkList.length,
+    linkTypes: linkList
+      .map((link) => safeString(link && (link.rel || link.type || link.name)))
+      .filter(Boolean)
+      .slice(0, 5)
+  };
+}
+
+function extractPdfRequestId(links) {
+  const linkList = Array.isArray(links) ? links : [];
+  for (const link of linkList) {
+    if (!link || typeof link !== 'object') continue;
+    const requestId = safeString(link.pdfRequestId || link.pdfRequestID || link.id);
+    if (requestId) return requestId.slice(0, 120);
+    const href = safeString(link.href || link.url);
+    const match = href && href.match(/\/reports\/credit-report\/([^/?#]+)/);
+    if (match) return match[1].slice(0, 120);
+  }
+
+  return null;
+}
+
+function summarizeTradeCount(source) {
+  if (!source || typeof source !== 'object') return null;
+  const rawTrades = source.trades || source.tradeLines || source.tradelines;
+  return Array.isArray(rawTrades) ? rawTrades.length : null;
 }
 
 function findFirstString(source, keys) {
@@ -223,6 +304,30 @@ function findFirstByKey(source, keys) {
   }
 
   return undefined;
+}
+
+function getHeaderValue(headers, name) {
+  if (!headers) return null;
+  if (typeof headers.get === 'function') return safeString(headers.get(name));
+
+  const normalizedName = name.toLowerCase();
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === normalizedName) return safeString(value);
+  }
+
+  return null;
+}
+
+function safeStringList(value) {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .map((item) => safeString(item && (item.code || item.reason || item.description || item)))
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function safeString(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
 function compactObject(value) {
