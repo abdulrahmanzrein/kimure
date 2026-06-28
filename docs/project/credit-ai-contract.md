@@ -13,6 +13,12 @@ Website / Mobile -> Kimure API -> AI Gateway -> Gemini / credit providers
 
 Clients must never call the Gateway, Gemini, or a credit provider directly.
 
+Direct Equifax integration through the Equifax platform is the active credit
+provider priority. The architecture remains multi-provider: Thirdstream,
+TransUnion, and other future provider adapters should stay in the provider
+registry as disabled or future options until approved credentials and product
+access are available.
+
 ## Credit-profile request
 
 `POST /api/ai/credit-profile` accepts a directional or provider request.
@@ -133,11 +139,26 @@ The Gateway accepts API-resolved handoff only when the API marks it with
 `creditMortgageHandoffTrust: "api_resolved_trusted"`. Its in-memory assessment
 store remains a development-only fallback for standalone local Gateway checks.
 
+## Consent and financial profile persistence
+
+Live bureau personalization requires API-owned consent and financial profile
+storage before provider calls are enabled. `public.credit_consents` records the
+provider, bureau, permissible purpose, consent version, consent text hash,
+status, and expiry for explicit bureau consent. It must not store SIN, raw
+identity, full address, raw provider request/response bodies, or bureau data.
+
+`public.user_financial_profiles` stores reusable user-provided financial inputs
+and safe derived credit summary fields for dashboard, mortgage, marketplace, and
+future listing personalization. It must not store raw Equifax, Thirdstream,
+Gemini, provider, or bureau payloads.
+
 ## Remaining blocker
 
-Live bureau pulls remain blocked until the approved Thirdstream subscription,
-API key, product access, consent wording, and production operating controls are
-available in the external AI Gateway environment.
+Live bureau pulls remain blocked until approved Equifax platform credentials,
+product/API documentation, consent wording, and production operating controls
+are available in the external AI Gateway environment. Thirdstream and other
+provider options remain available only as future/disabled adapters until their
+own subscriptions, API keys, and operating controls are approved.
 
 The current bearer-token forwarding behavior is unchanged. Whether the Gateway
 needs the user's bearer token remains a future trust-boundary review item.
