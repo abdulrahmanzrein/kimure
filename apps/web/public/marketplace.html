@@ -121,98 +121,144 @@
           <div>
             <div class="tag">
               <span class="tag-dot"></span>
-              <span>AI tools</span>
+              <span>AI workspace</span>
             </div>
-            <h2 class="mp-ai-tools-title" id="marketplaceAiToolsTitle">Marketplace AI Tools</h2>
+            <h2 class="mp-ai-tools-title" id="marketplaceAiToolsTitle">Kimure AI Marketplace Workspace</h2>
             <p class="mp-ai-tools-lead">
-              Explore property fit, deal quality, rental needs, value range, and investment strategy through Kimure’s API-backed AI tools.
+              Explore listings, evaluate properties, estimate value, plan investments, find rental fit, and ask Kimure from one focused workspace.
             </p>
           </div>
           <p class="mp-ai-tools-note">
-            Results are informational and never represent lender approval, appraisal certification, live MLS data, or verified provider data.
+            Live listing and provider integrations are coming later. Current results are AI-generated from available platform signals and user-entered details.
           </p>
         </div>
 
-        <div class="mp-ai-tools-grid">
-          <article class="mp-ai-card">
-            <h3>Property Scout</h3>
-            <p>Find property matches based on budget, location, goals, and preferences.</p>
-            <form class="mp-ai-form" data-ai-tool="scout" data-ai-label="Property Scout">
-              <label>Location <input name="location" type="text" placeholder="Ottawa, Ontario" required></label>
-              <label>Purchase budget <input name="budget" type="text" inputmode="decimal" placeholder="$650,000" required></label>
-              <label>Property goals <input name="goals" type="text" placeholder="Primary residence, rural land, investment"></label>
-              <button type="submit" class="btn btn-primary">Generate matches</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+        <div class="mp-ai-workspace">
+          <div class="mp-ai-workspace-main">
+            <div class="mp-ai-tabs" role="tablist" aria-label="Marketplace AI tools">
+              <button class="mp-ai-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="mp-ai-panel-scout" id="mp-ai-tab-scout" data-ai-tab="scout">Property Scout</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-analyze" id="mp-ai-tab-analyze" data-ai-tab="analyze">Property Analyzer</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-rental" id="mp-ai-tab-rental" data-ai-tab="rental">Rental Finder</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-valuate" id="mp-ai-tab-valuate" data-ai-tab="valuate">Property Evaluator</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-investment-planner" id="mp-ai-tab-investment-planner" data-ai-tab="investment-planner">Investment Planner</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-chat" id="mp-ai-tab-chat" data-ai-tab="chat">Ask Kimure</button>
+            </div>
 
-          <article class="mp-ai-card">
-            <h3>Property Analyzer</h3>
-            <p>Review a specific property for fit, risks, and investment-style reasoning.</p>
-            <form class="mp-ai-form" data-ai-tool="analyze" data-ai-label="Property Analyzer">
-              <label>Property or address <input name="address" type="text" placeholder="123 Example Road" required></label>
-              <label>Asking price <input name="price" type="text" inputmode="decimal" placeholder="$725,000"></label>
-              <label>Use case <input name="goals" type="text" placeholder="Buy, hold, rent, renovate"></label>
-              <button type="submit" class="btn btn-primary">Analyze property</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+            <div class="mp-ai-panels">
+              <article class="mp-ai-card mp-ai-panel is-active" id="mp-ai-panel-scout" role="tabpanel" aria-labelledby="mp-ai-tab-scout" data-ai-panel="scout">
+                <div class="mp-ai-card-head">
+                  <h3>Property Scout</h3>
+                  <p>Find property matches based on budget, location, goals, and preferences.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="scout" data-ai-label="Property Scout">
+                  <label>Location <input name="location" type="text" placeholder="Ottawa, Ontario" required></label>
+                  <label>Purchase budget <input name="budget" type="text" inputmode="decimal" placeholder="$650,000" required></label>
+                  <label>Property goals <input name="goals" type="text" placeholder="Primary residence, rural land, investment"></label>
+                  <button type="submit" class="btn btn-primary">Generate matches</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
 
-          <article class="mp-ai-card">
-            <h3>Rental Finder</h3>
-            <p>Match rental needs against lifestyle, location, budget, and timing.</p>
-            <form class="mp-ai-form" data-ai-tool="rental" data-ai-label="Rental Finder">
-              <label>Location <input name="location" type="text" placeholder="Toronto, Ontario" required></label>
-              <label>Monthly budget <input name="monthlyBudget" type="text" inputmode="decimal" placeholder="$2,500" required></label>
-              <label>Needs <input name="needs" type="text" placeholder="2 bedrooms, transit, pet friendly"></label>
-              <button type="submit" class="btn btn-primary">Find rental fit</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-analyze" role="tabpanel" aria-labelledby="mp-ai-tab-analyze" data-ai-panel="analyze" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Property Analyzer</h3>
+                  <p>Review a specific property for fit, risks, and investment-style reasoning.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="analyze" data-ai-label="Property Analyzer">
+                  <label>Property or address <input name="address" type="text" placeholder="123 Example Road" required></label>
+                  <label>Asking price <input name="price" type="text" inputmode="decimal" placeholder="$725,000"></label>
+                  <label>Use case <input name="goals" type="text" placeholder="Buy, hold, rent, renovate"></label>
+                  <button type="submit" class="btn btn-primary">Analyze property</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
 
-          <article class="mp-ai-card">
-            <h3>Property Evaluator</h3>
-            <p>Estimate a fair value range using user-entered property details.</p>
-            <form class="mp-ai-form" data-ai-tool="valuate" data-ai-label="Property Evaluator">
-              <label>Property or address <input name="address" type="text" placeholder="456 Market Street" required></label>
-              <label>Property details <input name="details" type="text" placeholder="3 bed, 2 bath, detached"></label>
-              <label>Known price <input name="price" type="text" inputmode="decimal" placeholder="$640,000"></label>
-              <button type="submit" class="btn btn-primary">Evaluate value</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-rental" role="tabpanel" aria-labelledby="mp-ai-tab-rental" data-ai-panel="rental" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Rental Finder</h3>
+                  <p>Match rental needs against lifestyle, location, budget, and timing.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="rental" data-ai-label="Rental Finder">
+                  <label>Location <input name="location" type="text" placeholder="Toronto, Ontario" required></label>
+                  <label>Monthly budget <input name="monthlyBudget" type="text" inputmode="decimal" placeholder="$2,500" required></label>
+                  <label>Needs <input name="needs" type="text" placeholder="2 bedrooms, transit, pet friendly"></label>
+                  <button type="submit" class="btn btn-primary">Find rental fit</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
 
-          <article class="mp-ai-card">
-            <h3>Investment Planner</h3>
-            <p>Plan a property investment path around capital, timeline, and risk tolerance.</p>
-            <form class="mp-ai-form" data-ai-tool="investment-planner" data-ai-label="Investment Planner">
-              <label>Investment goal <input name="goals" type="text" placeholder="Long-term rental portfolio" required></label>
-              <label>Available capital <input name="availableFunds" type="text" inputmode="decimal" placeholder="$120,000"></label>
-              <label>Timeline <input name="timeline" type="text" placeholder="12–24 months"></label>
-              <button type="submit" class="btn btn-primary">Plan strategy</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-valuate" role="tabpanel" aria-labelledby="mp-ai-tab-valuate" data-ai-panel="valuate" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Property Evaluator</h3>
+                  <p>Estimate a fair value range using user-entered property details.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="valuate" data-ai-label="Property Evaluator">
+                  <label>Property or address <input name="address" type="text" placeholder="456 Market Street" required></label>
+                  <label>Property details <input name="details" type="text" placeholder="3 bed, 2 bath, detached"></label>
+                  <label>Known price <input name="price" type="text" inputmode="decimal" placeholder="$640,000"></label>
+                  <button type="submit" class="btn btn-primary">Evaluate value</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
 
-          <article class="mp-ai-card">
-            <h3>Ask Kimure</h3>
-            <p>Ask a general property, finance, or marketplace question.</p>
-            <form class="mp-ai-form" data-ai-tool="chat" data-ai-label="Ask Kimure">
-              <label>Your question <textarea name="question" rows="4" placeholder="What should I compare before buying rural land?" required></textarea></label>
-              <button type="submit" class="btn btn-primary">Ask Kimure</button>
-            </form>
-            <div class="mp-ai-result" aria-live="polite"></div>
-          </article>
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-investment-planner" role="tabpanel" aria-labelledby="mp-ai-tab-investment-planner" data-ai-panel="investment-planner" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Investment Planner</h3>
+                  <p>Plan a property investment path around capital, timeline, and risk tolerance.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="investment-planner" data-ai-label="Investment Planner">
+                  <label>Investment goal <input name="goals" type="text" placeholder="Long-term rental portfolio" required></label>
+                  <label>Available capital <input name="availableFunds" type="text" inputmode="decimal" placeholder="$120,000"></label>
+                  <label>Timeline <input name="timeline" type="text" placeholder="12–24 months"></label>
+                  <button type="submit" class="btn btn-primary">Plan strategy</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
 
-          <article class="mp-ai-card mp-ai-card--cta">
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-chat" role="tabpanel" aria-labelledby="mp-ai-tab-chat" data-ai-panel="chat" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Ask Kimure</h3>
+                  <p>Ask a general property, finance, or marketplace question.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="chat" data-ai-label="Ask Kimure">
+                  <label>Your question <textarea name="question" rows="4" placeholder="What should I compare before buying rural land?" required></textarea></label>
+                  <button type="submit" class="btn btn-primary">Ask Kimure</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+            </div>
+          </div>
+
+          <aside class="mp-ai-help-panel" aria-labelledby="mpAiHelpTitle">
+            <p class="mp-ai-help-kicker">How it helps</p>
+            <h3 id="mpAiHelpTitle">Property Scout</h3>
+            <p id="mpAiHelpText">
+              Turns your budget, location, and property goals into a practical matching brief.
+            </p>
+            <div class="mp-ai-output-preview">
+              <p>Output preview</p>
+              <ul id="mpAiOutputPreview">
+                <li>Suggested property fit</li>
+                <li>Important tradeoffs</li>
+                <li>Next steps before live listing search</li>
+              </ul>
+            </div>
+            <p class="mp-ai-live-note">
+              Future versions will rank real listings with connected listing/provider data. Today’s workspace uses AI guidance from available platform signals.
+            </p>
+          </aside>
+        </div>
+
+        <article class="mp-ai-readiness-card">
+          <div>
             <h3>Mortgage / Credit Readiness</h3>
             <p>Use the dedicated readiness flows for credit profile and mortgage estimate handoff.</p>
-            <div class="mp-ai-cta-actions">
-              <a class="btn btn-primary" href="credit-profile.html">Credit readiness</a>
-              <a class="btn btn-outline" href="mortgage.html">Mortgage estimate</a>
-            </div>
-          </article>
-        </div>
+          </div>
+          <div class="mp-ai-cta-actions">
+            <a class="btn btn-primary" href="credit-profile.html">Credit readiness</a>
+            <a class="btn btn-outline" href="mortgage.html">Mortgage estimate</a>
+          </div>
+        </article>
       </section>
 
       <section class="mp-listings mp-listings--featured" id="browse-listings" data-i18n-aria-label="aria.featuredListings" aria-label="Featured listings">

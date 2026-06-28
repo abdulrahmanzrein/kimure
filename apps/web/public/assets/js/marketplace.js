@@ -188,6 +188,87 @@
     };
   }
 
+  var aiToolHelp = {
+    scout: {
+      title: "Property Scout",
+      text: "Turns your budget, location, and property goals into a practical matching brief.",
+      preview: ["Suggested property fit", "Important tradeoffs", "Next steps before live listing search"]
+    },
+    analyze: {
+      title: "Property Analyzer",
+      text: "Reviews a specific property or address for fit, risks, and investment-style reasoning.",
+      preview: ["Fit and risk summary", "Deal-quality considerations", "Questions to verify before acting"]
+    },
+    rental: {
+      title: "Rental Finder",
+      text: "Helps organize rental needs around location, lifestyle, monthly budget, and timing.",
+      preview: ["Rental fit snapshot", "Lifestyle and budget tradeoffs", "Search priorities"]
+    },
+    valuate: {
+      title: "Property Evaluator",
+      text: "Creates a directional value discussion from the property details you enter.",
+      preview: ["Directional value context", "Key value drivers", "Cautions before formal appraisal"]
+    },
+    "investment-planner": {
+      title: "Investment Planner",
+      text: "Builds a planning snapshot around capital, timeline, goals, and risk tolerance.",
+      preview: ["Strategy direction", "Capital and timing considerations", "Practical next steps"]
+    },
+    chat: {
+      title: "Ask Kimure",
+      text: "Answers general property, finance, and marketplace questions in the Kimure context.",
+      preview: ["Clear answer summary", "Relevant considerations", "Suggested follow-up questions"]
+    }
+  };
+
+  function updateAiHelpPanel(tool) {
+    var help = aiToolHelp[tool] || aiToolHelp.scout;
+    var titleEl = document.getElementById("mpAiHelpTitle");
+    var textEl = document.getElementById("mpAiHelpText");
+    var previewEl = document.getElementById("mpAiOutputPreview");
+
+    if (titleEl) titleEl.textContent = help.title;
+    if (textEl) textEl.textContent = help.text;
+    if (previewEl) {
+      previewEl.innerHTML = "";
+      help.preview.forEach(function (item) {
+        var li = document.createElement("li");
+        li.textContent = item;
+        previewEl.appendChild(li);
+      });
+    }
+  }
+
+  function activateAiToolTab(tool) {
+    document.querySelectorAll("[data-ai-tab]").forEach(function (tab) {
+      var isActive = tab.getAttribute("data-ai-tab") === tool;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+
+    document.querySelectorAll("[data-ai-panel]").forEach(function (panel) {
+      var isActive = panel.getAttribute("data-ai-panel") === tool;
+      panel.classList.toggle("is-active", isActive);
+      panel.hidden = !isActive;
+    });
+
+    updateAiHelpPanel(tool);
+  }
+
+  function initAiWorkspaceTabs() {
+    var tabs = document.querySelectorAll("[data-ai-tab]");
+    if (!tabs.length) return;
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        activateAiToolTab(tab.getAttribute("data-ai-tab"));
+      });
+    });
+
+    var activeTab = document.querySelector("[data-ai-tab].is-active") || tabs[0];
+    activateAiToolTab(activeTab.getAttribute("data-ai-tab"));
+  }
+
   function safeObject(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
   }
@@ -321,5 +402,6 @@
   }
 
   setQueryFromUrl();
+  initAiWorkspaceTabs();
   initAiTools();
 })();
