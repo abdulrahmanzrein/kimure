@@ -24,7 +24,9 @@ export class ListingsService {
   // GET /api/listings/search currently uses mock data only. This keeps the API
   // contract ready for a licensed listing provider without implying that live
   // MLS, CREA DDF, IDX, Realtor.ca, or other provider data is connected.
-  search(rawQuery: Record<string, unknown>): ListingsSearchResponse {
+  search(
+    rawQuery: Record<string, unknown> | ListingSearchQuery
+  ): ListingsSearchResponse {
     const query: ListingSearchQuery = {
       q: parseText(rawQuery.q),
       location: parseText(rawQuery.location),

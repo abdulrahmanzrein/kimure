@@ -19,6 +19,11 @@ import {
 import { CreditAssessmentsService } from "./credit-assessments.service";
 import { CreditConsentsService } from "./credit-consents.service";
 import { UserFinancialProfilesService } from "./user-financial-profiles.service";
+import { ListingsService } from "../listings/listings.service";
+import {
+  ListingSearchQuery,
+  ListingsSearchResponse
+} from "../listings/listing.types";
 
 const allowedTools = [
   "chat",
@@ -31,6 +36,18 @@ const allowedTools = [
   "investment-planner"
 ] as const;
 
+const marketplaceListingContextTools = [
+  "scout",
+  "rental",
+  "analyze",
+  "valuate",
+  "investment-planner",
+  "chat"
+] as const;
+
+type MarketplaceListingContextTool =
+  (typeof marketplaceListingContextTools)[number];
+
 @Controller("ai")
 @UseGuards(SupabaseAuthGuard)
 export class AiController {
@@ -38,7 +55,8 @@ export class AiController {
     private readonly gateway: AiGatewayService,
     private readonly creditAssessments: CreditAssessmentsService,
     private readonly creditConsents: CreditConsentsService,
-    private readonly userFinancialProfiles: UserFinancialProfilesService
+    private readonly userFinancialProfiles: UserFinancialProfilesService,
+    private readonly listings: ListingsService
   ) {}
 
   // This one method handles POST /api/ai/chat, /scout, /mortgage, and the
@@ -121,12 +139,38 @@ export class AiController {
       return response;
     }
 
+    const gatewayInput = await this.withListingContext(tool, input);
+
     return this.gateway.execute(
       tool,
-      input,
+      gatewayInput,
       userId,
       request.headers.authorization
     );
+  }
+
+  private async withListingContext(
+    tool: string,
+    input: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
+    if (!isMarketplaceListingContextTool(tool)) return input;
+
+    try {
+      const query = buildListingContextQuery(input);
+      const listingsResponse = this.listings.search(query);
+
+      return {
+        ...input,
+        // Safe provider-ready context only. A real licensed CREA DDF, MLS/IDX,
+        // or third-party provider can later replace the mock provider behind
+        // ListingsService without changing this AI request boundary.
+        listingContext: buildSafeListingContext(listingsResponse, query)
+      };
+    } catch {
+      // Listing context is helpful, but marketplace AI should still work if the
+      // provider-ready listing layer is temporarily unavailable.
+      return input;
+    }
   }
 
   private async runBestEffort(action: () => Promise<unknown>) {
@@ -148,4 +192,102 @@ export class AiController {
       return fallback;
     }
   }
+}
+
+function isMarketplaceListingContextTool(
+  tool: string
+): tool is MarketplaceListingContextTool {
+  return marketplaceListingContextTools.includes(
+    tool as MarketplaceListingContextTool
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function firstText(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (Array.isArray(value)) {
+      const first = value.find((item) => typeof item === "string" && item.trim());
+      if (typeof first === "string") return first.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function firstNumber(...values: unknown[]): number | undefined {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsed = Number(value.replace(/[$,\s]/g, ""));
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+export function buildListingContextQuery(
+  input: Record<string, unknown>
+): ListingSearchQuery {
+  const filters = asRecord(input.filters);
+  const listing = asRecord(input.listing);
+  const property = asRecord(input.property);
+  const context = asRecord(input.context);
+  const financials = asRecord(input.financials);
+
+  return {
+    q: firstText(input.q, input.search, listing.address, property.address),
+    location: firstText(
+      filters.location,
+      input.location,
+      context.location,
+      property.location
+    ),
+    type: firstText(filters.type, filters.propertyType, input.type, input.propertyType),
+    maxPrice: firstNumber(
+      filters.maxPrice,
+      filters.budget,
+      input.maxPrice,
+      input.budget,
+      listing.price,
+      property.price,
+      financials.availableFunds
+    ),
+    bedrooms: firstNumber(filters.bedrooms, input.bedrooms, property.bedrooms),
+    intent: firstText(input.intent, input.goals, filters.intent, filters.preferences)
+  };
+}
+
+export function buildSafeListingContext(
+  listingsResponse: ListingsSearchResponse,
+  query: ListingSearchQuery
+) {
+  return {
+    source: listingsResponse.source,
+    providerStatus: listingsResponse.providerStatus,
+    isLiveProviderData: false,
+    disclaimer: listingsResponse.disclaimer,
+    query,
+    results: listingsResponse.results.map((listing) => ({
+      id: listing.id,
+      title: listing.title,
+      type: listing.type,
+      price: listing.price,
+      location: listing.location,
+      addressSummary: listing.addressSummary,
+      bedrooms: listing.bedrooms,
+      bathrooms: listing.bathrooms,
+      propertySize: listing.propertySize,
+      listingStatus: listing.listingStatus,
+      sourceProvider: listing.sourceProvider,
+      isLiveProviderData: false,
+      matchSignals: listing.matchSignals
+    }))
+  };
 }
