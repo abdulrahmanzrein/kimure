@@ -16,6 +16,14 @@ const OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES = Object.freeze({
   formBody: 'form_body'
 });
 const ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS = new Set(Object.values(OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES));
+const TOKEN_STRATEGY_MODES = Object.freeze({
+  auto: 'auto',
+  sandboxStaticToken: 'sandbox_static_token',
+  clientCredentialsPendingDocs: 'client_credentials_pending_docs'
+});
+const ALLOWED_TOKEN_STRATEGIES = new Set(Object.values(TOKEN_STRATEGY_MODES));
+const SANDBOX_STATIC_TOKEN_TEST_FLAG = 'EQUIFAX_SANDBOX_STATIC_TOKEN_TEST_ENABLED';
+const SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG = 'EQUIFAX_SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_ENABLED';
 
 const OFFICIAL_ONEVIEW_BASE_URLS = Object.freeze({
   sandbox: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
@@ -81,6 +89,7 @@ function validateEquifaxProviderConfig(env = process.env) {
       errors,
       mode,
       tokenStrategy: 'none',
+      requestedTokenStrategy: TOKEN_STRATEGY_MODES.auto,
       sandboxTokenConfigured: false,
       clientCredentialsConfigured: false,
       memberNumberConfigured: false,
@@ -104,6 +113,12 @@ function validateEquifaxProviderConfig(env = process.env) {
       oauthBlockedUntilCredentialPlacement: false,
       oauthBlockedUntilResponseExpiry: false,
       oauthBlockedUntilProviderCallsEnabled: false,
+      sandboxStaticTokenTestEnabled: false,
+      sandboxStaticTokenLiveSmokeTestEnabled: false,
+      sandboxStaticTokenTestReady: false,
+      sandboxStaticTokenTestUrlAllowed: false,
+      sandboxStaticTokenTestBlockedReason: 'equifax_provider_disabled',
+      tokenReady: false,
       providerCallsEnabled: false,
       canAttemptProviderCall: false
     });
@@ -118,17 +133,26 @@ function validateEquifaxProviderConfig(env = process.env) {
   const prefix = ENVIRONMENT_PREFIXES[environment] || ENVIRONMENT_PREFIXES.sandbox;
   const environmentKeys = ENVIRONMENT_REQUIRED_SUFFIXES.map((suffix) => `${prefix}_${suffix}`);
   const credentials = readEnvironmentCredentials(env, prefix);
+  const requestedTokenStrategy = resolveTokenStrategy(env);
   const requestedOauthClientCredentialPlacementMode = resolveClientCredentialPlacement(env, prefix);
   const oauthClientCredentialPlacementMode = ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(requestedOauthClientCredentialPlacementMode)
     ? requestedOauthClientCredentialPlacementMode
     : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
   const oauthClientCredentialPlacementConfigured = oauthClientCredentialPlacementMode !== OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
   const staticSandboxTokenPresent = hasValue(env.EQUIFAX_SANDBOX_ACCESS_TOKEN);
+  const sandboxStaticTokenStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken;
+  const clientCredentialsStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
   const staticSandboxTokenAllowed = environment === 'sandbox' && staticSandboxTokenPresent;
   const clientCredentialsConfigured = Boolean(credentials.clientId && credentials.clientSecret && credentials.scope);
-  const tokenStrategy = staticSandboxTokenAllowed ? 'sandbox_static_token' : 'client_credentials_pending_docs';
+  const tokenStrategy = sandboxStaticTokenStrategyRequested || (staticSandboxTokenAllowed && !clientCredentialsStrategyRequested)
+    ? TOKEN_STRATEGY_MODES.sandboxStaticToken
+    : TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
   const providerCallsEnabled = env.EQUIFAX_PROVIDER_CALLS_ENABLED === 'true';
-  const requiredEnvironmentKeys = staticSandboxTokenAllowed
+  const sandboxStaticTokenMode = tokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken;
+  const sandboxStaticTokenTestEnabled = env[SANDBOX_STATIC_TOKEN_TEST_FLAG] === 'true';
+  const sandboxStaticTokenLiveSmokeTestEnabled = env[SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG] === 'true';
+  const sandboxStaticTokenTestUrlAllowed = isOfficialSandboxBaseUrl(credentials.baseUrl);
+  const requiredEnvironmentKeys = sandboxStaticTokenMode
     ? environmentKeys.filter((key) => ![
       'EQUIFAX_SANDBOX_CLIENT_ID',
       'EQUIFAX_SANDBOX_CLIENT_SECRET',
@@ -149,6 +173,22 @@ function validateEquifaxProviderConfig(env = process.env) {
 
   if (!ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(requestedOauthClientCredentialPlacementMode)) {
     errors.push('EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT must be one of: unset, basic_auth, form_body.');
+  }
+
+  if (!ALLOWED_TOKEN_STRATEGIES.has(requestedTokenStrategy)) {
+    errors.push('EQUIFAX_TOKEN_STRATEGY must be one of: auto, sandbox_static_token, client_credentials_pending_docs.');
+  }
+
+  if (sandboxStaticTokenStrategyRequested && environment !== 'sandbox') {
+    errors.push('EQUIFAX_TOKEN_STRATEGY=sandbox_static_token is only allowed when EQUIFAX_ENVIRONMENT is sandbox.');
+  }
+
+  if (sandboxStaticTokenMode && !staticSandboxTokenPresent) {
+    missingKeys.push('EQUIFAX_SANDBOX_ACCESS_TOKEN');
+  }
+
+  if (sandboxStaticTokenTestEnabled && !sandboxStaticTokenTestUrlAllowed) {
+    errors.push('Sandbox static-token test path requires the official Equifax sandbox OneView base URL.');
   }
 
   if (environment === 'production') {
@@ -174,12 +214,25 @@ function validateEquifaxProviderConfig(env = process.env) {
   const oauthClientCredentialPlacementConfirmed = false;
   const oauthResponseExpiryConfirmed = false;
   const oauthRequestFormatConfirmed = false;
-  const tokenAvailableForProviderCall = staticSandboxTokenAllowed;
+  const tokenReady = tokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken
+    ? staticSandboxTokenAllowed
+    : false;
+  const tokenAvailableForProviderCall = tokenReady;
   const oauthBlockedUntilCredentialPlacement = tokenStrategy === 'client_credentials_pending_docs' &&
     !oauthClientCredentialPlacementConfigured;
   const oauthBlockedUntilResponseExpiry = tokenStrategy === 'client_credentials_pending_docs' &&
     !oauthResponseExpiryConfirmed;
   const oauthBlockedUntilProviderCallsEnabled = !providerCallsEnabled;
+  const sandboxStaticTokenTestBlockedReason = getSandboxStaticTokenTestBlockedReason({
+    environment,
+    tokenStrategy,
+    staticSandboxTokenPresent,
+    providerCallsEnabled,
+    sandboxStaticTokenTestEnabled,
+    sandboxStaticTokenTestUrlAllowed,
+    sandboxStaticTokenLiveSmokeTestEnabled
+  });
+  const sandboxStaticTokenTestReady = configReady && sandboxStaticTokenTestBlockedReason === null;
 
   return safeStatus({
     enabled,
@@ -190,6 +243,7 @@ function validateEquifaxProviderConfig(env = process.env) {
     errors: uniqueErrors,
     mode,
     tokenStrategy,
+    requestedTokenStrategy,
     tokenConfigured,
     sandboxTokenConfigured: staticSandboxTokenAllowed,
     clientCredentialsConfigured,
@@ -214,9 +268,16 @@ function validateEquifaxProviderConfig(env = process.env) {
     oauthBlockedUntilCredentialPlacement,
     oauthBlockedUntilResponseExpiry,
     oauthBlockedUntilProviderCallsEnabled,
+    sandboxStaticTokenTestEnabled,
+    sandboxStaticTokenLiveSmokeTestEnabled,
+    sandboxStaticTokenTestReady,
+    sandboxStaticTokenTestUrlAllowed,
+    sandboxStaticTokenTestBlockedReason,
+    tokenReady,
     providerCallsEnabled,
     canAttemptProviderCall: configReady &&
       providerCallsEnabled &&
+      !sandboxStaticTokenLiveSmokeTestEnabled &&
       tokenAvailableForProviderCall &&
       Boolean(credentials.memberNumber) &&
       Boolean(credentials.securityCode) &&
@@ -235,6 +296,7 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     configReady: status.configReady,
     mode: status.mode,
     tokenStrategy: status.tokenStrategy,
+    requestedTokenStrategy: status.requestedTokenStrategy,
     providerConfigStatus: status,
     providerCallsEnabled: status.providerCallsEnabled,
     baseUrl: valueOrNull(env[`${prefix}_BASE_URL`]),
@@ -260,6 +322,12 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     postmanTokenRequestAuthMode: status.postmanTokenRequestAuthMode,
     postmanCollectionAuthMode: status.postmanCollectionAuthMode,
     postmanCredentialPlacementConfirmed: status.postmanCredentialPlacementConfirmed,
+    sandboxStaticTokenTestEnabled: status.sandboxStaticTokenTestEnabled,
+    sandboxStaticTokenLiveSmokeTestEnabled: status.sandboxStaticTokenLiveSmokeTestEnabled,
+    sandboxStaticTokenTestReady: status.sandboxStaticTokenTestReady,
+    sandboxStaticTokenTestUrlAllowed: status.sandboxStaticTokenTestUrlAllowed,
+    sandboxStaticTokenTestBlockedReason: status.sandboxStaticTokenTestBlockedReason,
+    tokenReady: status.tokenReady,
     oauthResponseExpiryConfirmed: status.oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed: status.oauthRequestFormatConfirmed,
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
@@ -345,6 +413,9 @@ function safeStatus(status) {
     errors: sanitizeMessages(status.errors || []),
     mode: status.mode,
     tokenStrategy: status.tokenStrategy,
+    requestedTokenStrategy: ALLOWED_TOKEN_STRATEGIES.has(status.requestedTokenStrategy)
+      ? status.requestedTokenStrategy
+      : TOKEN_STRATEGY_MODES.auto,
     tokenConfigured: Boolean(status.tokenConfigured),
     sandboxTokenConfigured: Boolean(status.sandboxTokenConfigured),
     clientCredentialsConfigured: Boolean(status.clientCredentialsConfigured),
@@ -375,6 +446,12 @@ function safeStatus(status) {
     oauthBlockedUntilCredentialPlacement: Boolean(status.oauthBlockedUntilCredentialPlacement),
     oauthBlockedUntilResponseExpiry: Boolean(status.oauthBlockedUntilResponseExpiry),
     oauthBlockedUntilProviderCallsEnabled: Boolean(status.oauthBlockedUntilProviderCallsEnabled),
+    sandboxStaticTokenTestEnabled: Boolean(status.sandboxStaticTokenTestEnabled),
+    sandboxStaticTokenLiveSmokeTestEnabled: Boolean(status.sandboxStaticTokenLiveSmokeTestEnabled),
+    sandboxStaticTokenTestReady: Boolean(status.sandboxStaticTokenTestReady),
+    sandboxStaticTokenTestUrlAllowed: Boolean(status.sandboxStaticTokenTestUrlAllowed),
+    sandboxStaticTokenTestBlockedReason: status.sandboxStaticTokenTestBlockedReason || null,
+    tokenReady: Boolean(status.tokenReady),
     providerCallsEnabled: Boolean(status.providerCallsEnabled),
     canAttemptProviderCall: Boolean(status.canAttemptProviderCall)
   };
@@ -382,6 +459,7 @@ function safeStatus(status) {
 
 function readEnvironmentCredentials(env, prefix) {
   return {
+    baseUrl: valueOrNull(env[`${prefix}_BASE_URL`]),
     clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
     clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
     scope: valueOrNull(env[`${prefix}_SCOPE`]) || valueOrNull(env.EQUIFAX_SCOPE),
@@ -403,6 +481,36 @@ function resolveClientCredentialPlacement(env, prefix) {
   return value
     ? value.toLowerCase()
     : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
+}
+
+function resolveTokenStrategy(env) {
+  const value = valueOrNull(env.EQUIFAX_TOKEN_STRATEGY);
+  return value
+    ? value.toLowerCase()
+    : TOKEN_STRATEGY_MODES.auto;
+}
+
+function isOfficialSandboxBaseUrl(value) {
+  return valueOrNull(value) === OFFICIAL_ONEVIEW_BASE_URLS.sandbox;
+}
+
+function getSandboxStaticTokenTestBlockedReason({
+  environment,
+  tokenStrategy,
+  staticSandboxTokenPresent,
+  providerCallsEnabled,
+  sandboxStaticTokenTestEnabled,
+  sandboxStaticTokenTestUrlAllowed,
+  sandboxStaticTokenLiveSmokeTestEnabled
+}) {
+  if (!sandboxStaticTokenTestEnabled) return 'sandbox_static_token_test_disabled';
+  if (sandboxStaticTokenLiveSmokeTestEnabled) return 'sandbox_static_token_live_smoke_test_not_implemented';
+  if (environment !== 'sandbox') return 'sandbox_environment_required';
+  if (tokenStrategy !== TOKEN_STRATEGY_MODES.sandboxStaticToken) return 'sandbox_static_token_strategy_required';
+  if (!staticSandboxTokenPresent) return 'sandbox_access_token_required';
+  if (!providerCallsEnabled) return 'provider_calls_enabled_required';
+  if (!sandboxStaticTokenTestUrlAllowed) return 'official_sandbox_base_url_required';
+  return null;
 }
 
 function sanitizeMessages(values) {
@@ -461,9 +569,17 @@ function statusContainsSecretValue(status, env) {
   const serialized = JSON.stringify(status);
 
   return Object.entries(env).some(([key, value]) => {
+    if (isSafeControlKey(key)) return false;
     if (!SECRET_KEY_PATTERNS.some((pattern) => pattern.test(key))) return false;
     return hasValue(value) && serialized.includes(value);
   });
+}
+
+function isSafeControlKey(key) {
+  return key === 'EQUIFAX_TOKEN_STRATEGY' ||
+    key === SANDBOX_STATIC_TOKEN_TEST_FLAG ||
+    key === SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG ||
+    /_ENABLED$/.test(key);
 }
 
 module.exports = {
@@ -473,6 +589,9 @@ module.exports = {
   OAUTH_TOKEN_CONTENT_TYPE,
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
+  TOKEN_STRATEGY_MODES,
+  SANDBOX_STATIC_TOKEN_TEST_FLAG,
+  SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG,
   POSTMAN_TOKEN_REQUEST_AUTH_MODE,
   POSTMAN_COLLECTION_AUTH_MODE,
   POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,

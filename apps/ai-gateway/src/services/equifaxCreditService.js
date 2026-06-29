@@ -462,6 +462,10 @@ function sanitizeEquifaxConfig(config) {
     retryCount: config.retryCount,
     configReady: Boolean(config.configReady),
     tokenStrategy: config.tokenStrategy || 'none',
+    tokenReady: Boolean(config.tokenReady),
+    sandboxStaticTokenTestEnabled: Boolean(config.sandboxStaticTokenTestEnabled),
+    sandboxStaticTokenTestReady: Boolean(config.sandboxStaticTokenTestReady),
+    sandboxStaticTokenTestBlockedReason: config.sandboxStaticTokenTestBlockedReason || null,
     tokenStatus: config.tokenStatus || null,
     warnings: config.providerConfigStatus ? config.providerConfigStatus.warnings : [],
     errors: config.providerConfigStatus ? config.providerConfigStatus.errors : []
