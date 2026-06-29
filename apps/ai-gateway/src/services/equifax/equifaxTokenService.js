@@ -84,9 +84,11 @@ async function getEquifaxAccessToken(options = {}) {
   // Equifax docs confirm OAuth 2.0 client credentials and a POST token call.
   // The OneView Sandbox Postman collection confirms the sandbox token endpoint,
   // application/x-www-form-urlencoded content type, and form fields:
-  // grant_type=client_credentials and the OneView scope. Client credential
-  // placement is explicitly configurable as basic_auth or form_body, but the
-  // exported collection does not confirm which one Equifax expects. Response
+  // grant_type=client_credentials and the OneView scope. Manual Postman
+  // inspection found request auth inherits from a parent collection with no
+  // auth configured, so client credential placement remains unconfirmed even
+  // though client_id/client_secret variables exist. Placement is configurable
+  // as basic_auth or form_body for future portal-confirmed setup. Response
   // fields and expiry semantics are also still not confirmed. This skeleton
   // intentionally makes no network call and no guessed credential placement.
   updateLastStatus('equifax_token_flow_requires_portal_docs', null);
@@ -172,6 +174,9 @@ function buildSafeTokenStatus({ config, providerStatus, now }) {
     oauthClientCredentialPlacementConfirmed: Boolean(config.oauthClientCredentialPlacementConfirmed),
     oauthClientCredentialPlacementConfigured: Boolean(config.oauthClientCredentialPlacementConfigured),
     oauthClientCredentialPlacementMode: config.oauthClientCredentialPlacementMode || 'unset',
+    postmanTokenRequestAuthMode: config.postmanTokenRequestAuthMode || null,
+    postmanCollectionAuthMode: config.postmanCollectionAuthMode || null,
+    postmanCredentialPlacementConfirmed: Boolean(config.postmanCredentialPlacementConfirmed),
     oauthResponseExpiryConfirmed: Boolean(config.oauthResponseExpiryConfirmed),
     oauthRequestFormatConfirmed: Boolean(config.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: providerStatus.tokenStrategy === 'client_credentials_pending_docs',

@@ -7,6 +7,9 @@ const {
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE,
+  POSTMAN_COLLECTION_AUTH_MODE,
+  POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
+  POSTMAN_TOKEN_REQUEST_AUTH_MODE,
   SANDBOX_OAUTH_TOKEN_URL,
   statusContainsSecretValue,
   validateEquifaxProviderConfig
@@ -24,12 +27,13 @@ function run() {
   checkProductionRequiresProductionPrefixedKeys();
   checkRuntimeConfigKeepsSecretsInternal();
   checkGenericSandboxClientCredentialsAreDetectedButBlocked();
+  checkPostmanAuthFindingIsRecorded();
   checkCredentialPlacementDefaultsToUnset();
   checkCredentialPlacementCanBeConfiguredSafely();
   checkInvalidCredentialPlacementFailsSafe();
   checkExplicitProviderCallGateRequired();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider config checks (13 assertion groups)');
+  console.log('[PASS] Equifax provider config checks (14 assertion groups)');
 }
 
 function checkDisabledProvider() {
@@ -63,6 +67,9 @@ function checkSandboxStaticTokenReady() {
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
   assert.equal(status.oauthClientCredentialPlacementConfigured, false);
   assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.postmanTokenRequestAuthMode, 'inherit_auth_from_parent');
+  assert.equal(status.postmanCollectionAuthMode, 'no_auth');
+  assert.equal(status.postmanCredentialPlacementConfirmed, false);
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(status.oauthBlockedUntilCredentialPlacement, false);
@@ -169,6 +176,9 @@ function checkRuntimeConfigKeepsSecretsInternal() {
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
   assert.equal(status.oauthClientCredentialPlacementConfigured, false);
   assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(status.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(status.postmanCredentialPlacementConfirmed, POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED);
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
@@ -215,6 +225,9 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
   assert.equal(status.oauthClientCredentialPlacementConfigured, false);
   assert.equal(status.oauthClientCredentialPlacementMode, OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset);
+  assert.equal(status.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(status.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(status.postmanCredentialPlacementConfirmed, false);
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
@@ -227,6 +240,26 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(runtimeConfig.oauthTokenContentType, 'application/x-www-form-urlencoded');
   assert.deepEqual(runtimeConfig.oauthTokenFormFields, OAUTH_TOKEN_FORM_FIELDS);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkPostmanAuthFindingIsRecorded() {
+  const env = createProductionEnv();
+  const runtimeConfig = buildEquifaxRuntimeConfig(env);
+  const status = runtimeConfig.providerConfigStatus;
+
+  assert.equal(POSTMAN_TOKEN_REQUEST_AUTH_MODE, 'inherit_auth_from_parent');
+  assert.equal(POSTMAN_COLLECTION_AUTH_MODE, 'no_auth');
+  assert.equal(POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED, false);
+  assert.equal(runtimeConfig.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(runtimeConfig.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(runtimeConfig.postmanCredentialPlacementConfirmed, false);
+  assert.equal(status.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(status.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(status.postmanCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.canAttemptProviderCall, false);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
 

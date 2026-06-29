@@ -7,6 +7,9 @@ const OAUTH_TOKEN_FORM_FIELDS = Object.freeze({
   grant_type: OAUTH_GRANT_TYPE,
   scope: ONEVIEW_OAUTH_SCOPE
 });
+const POSTMAN_TOKEN_REQUEST_AUTH_MODE = 'inherit_auth_from_parent';
+const POSTMAN_COLLECTION_AUTH_MODE = 'no_auth';
+const POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED = false;
 const OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES = Object.freeze({
   unset: 'unset',
   basicAuth: 'basic_auth',
@@ -93,6 +96,9 @@ function validateEquifaxProviderConfig(env = process.env) {
       oauthClientCredentialPlacementConfirmed: false,
       oauthClientCredentialPlacementConfigured: false,
       oauthClientCredentialPlacementMode: OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset,
+      postmanTokenRequestAuthMode: POSTMAN_TOKEN_REQUEST_AUTH_MODE,
+      postmanCollectionAuthMode: POSTMAN_COLLECTION_AUTH_MODE,
+      postmanCredentialPlacementConfirmed: POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
       oauthResponseExpiryConfirmed: false,
       oauthRequestFormatConfirmed: false,
       oauthBlockedUntilCredentialPlacement: false,
@@ -199,6 +205,9 @@ function validateEquifaxProviderConfig(env = process.env) {
     oauthClientCredentialPlacementConfirmed,
     oauthClientCredentialPlacementConfigured,
     oauthClientCredentialPlacementMode,
+    postmanTokenRequestAuthMode: POSTMAN_TOKEN_REQUEST_AUTH_MODE,
+    postmanCollectionAuthMode: POSTMAN_COLLECTION_AUTH_MODE,
+    postmanCredentialPlacementConfirmed: POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
     oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed,
     oauthBlockedUntilPortalDocs: tokenStrategy === 'client_credentials_pending_docs',
@@ -248,6 +257,9 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     oauthClientCredentialPlacementConfirmed: status.oauthClientCredentialPlacementConfirmed,
     oauthClientCredentialPlacementConfigured: status.oauthClientCredentialPlacementConfigured,
     oauthClientCredentialPlacementMode: status.oauthClientCredentialPlacementMode,
+    postmanTokenRequestAuthMode: status.postmanTokenRequestAuthMode,
+    postmanCollectionAuthMode: status.postmanCollectionAuthMode,
+    postmanCredentialPlacementConfirmed: status.postmanCredentialPlacementConfirmed,
     oauthResponseExpiryConfirmed: status.oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed: status.oauthRequestFormatConfirmed,
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
@@ -350,6 +362,13 @@ function safeStatus(status) {
     oauthClientCredentialPlacementMode: ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(status.oauthClientCredentialPlacementMode)
       ? status.oauthClientCredentialPlacementMode
       : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset,
+    postmanTokenRequestAuthMode: status.postmanTokenRequestAuthMode === POSTMAN_TOKEN_REQUEST_AUTH_MODE
+      ? POSTMAN_TOKEN_REQUEST_AUTH_MODE
+      : null,
+    postmanCollectionAuthMode: status.postmanCollectionAuthMode === POSTMAN_COLLECTION_AUTH_MODE
+      ? POSTMAN_COLLECTION_AUTH_MODE
+      : null,
+    postmanCredentialPlacementConfirmed: Boolean(status.postmanCredentialPlacementConfirmed),
     oauthResponseExpiryConfirmed: Boolean(status.oauthResponseExpiryConfirmed),
     oauthRequestFormatConfirmed: Boolean(status.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: Boolean(status.oauthBlockedUntilPortalDocs),
@@ -454,6 +473,9 @@ module.exports = {
   OAUTH_TOKEN_CONTENT_TYPE,
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
+  POSTMAN_TOKEN_REQUEST_AUTH_MODE,
+  POSTMAN_COLLECTION_AUTH_MODE,
+  POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
   OFFICIAL_ONEVIEW_BASE_URLS,
   ONEVIEW_OAUTH_SCOPE,
   SANDBOX_OAUTH_TOKEN_URL,

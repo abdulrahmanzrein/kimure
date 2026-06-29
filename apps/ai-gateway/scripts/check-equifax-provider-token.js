@@ -11,6 +11,9 @@ const {
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE,
+  POSTMAN_COLLECTION_AUTH_MODE,
+  POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
+  POSTMAN_TOKEN_REQUEST_AUTH_MODE,
   SANDBOX_OAUTH_TOKEN_URL
 } = require('../src/services/equifax/equifaxProviderConfig');
 const {
@@ -26,12 +29,13 @@ async function run() {
   await checkSandboxStaticTokenWorksOnlyInSandbox();
   await checkSandboxStaticTokenRejectedOutsideSandbox();
   await checkPortalBackedTokenTodoIsSafe();
+  checkPostmanAuthFindingIsReflectedInTokenStatus();
   await checkConfiguredCredentialPlacementStillDoesNotCallNetwork();
   await checkMissingSecureRequestConfigBlocksTokenAttempt();
   await checkCacheMetadataIsSafe();
   await checkEquifaxServiceDoesNotCallNetworkWithoutPortalTokenFlow();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax token service checks (10 assertion groups)');
+  console.log('[PASS] Equifax token service checks (11 assertion groups)');
 }
 
 async function checkDisabledProviderDoesNotAttemptToken() {
@@ -89,6 +93,9 @@ async function checkSandboxStaticTokenWorksOnlyInSandbox() {
   assert.equal(result.status.oauthClientCredentialPlacementConfirmed, false);
   assert.equal(result.status.oauthClientCredentialPlacementConfigured, false);
   assert.equal(result.status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(result.status.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(result.status.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(result.status.postmanCredentialPlacementConfirmed, POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED);
   assert.equal(result.status.oauthResponseExpiryConfirmed, false);
   assert.equal(result.status.oauthRequestFormatConfirmed, false);
   assert.equal(result.status.oauthBlockedUntilCredentialPlacement, false);
@@ -154,6 +161,9 @@ async function checkPortalBackedTokenTodoIsSafe() {
   assert.equal(result.status.oauthClientCredentialPlacementConfirmed, false);
   assert.equal(result.status.oauthClientCredentialPlacementConfigured, false);
   assert.equal(result.status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(result.status.postmanTokenRequestAuthMode, POSTMAN_TOKEN_REQUEST_AUTH_MODE);
+  assert.equal(result.status.postmanCollectionAuthMode, POSTMAN_COLLECTION_AUTH_MODE);
+  assert.equal(result.status.postmanCredentialPlacementConfirmed, false);
   assert.equal(result.status.oauthResponseExpiryConfirmed, false);
   assert.equal(result.status.oauthRequestFormatConfirmed, false);
   assert.equal(result.status.oauthBlockedUntilCredentialPlacement, true);
@@ -161,6 +171,21 @@ async function checkPortalBackedTokenTodoIsSafe() {
   assert.equal(result.status.tokenStrategy, 'client_credentials_pending_docs');
   assert.equal(runtimeConfig.tokenUrl, SANDBOX_OAUTH_TOKEN_URL);
   assertSafeStatus(result, env);
+}
+
+function checkPostmanAuthFindingIsReflectedInTokenStatus() {
+  resetEquifaxTokenCache();
+  const env = createSandboxClientCredentialEnv();
+  const status = getEquifaxTokenStatus({ env });
+
+  assert.equal(status.postmanTokenRequestAuthMode, 'inherit_auth_from_parent');
+  assert.equal(status.postmanCollectionAuthMode, 'no_auth');
+  assert.equal(status.postmanCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
+  assert.equal(status.providerCallsEnabled, false);
+  assertSafeStatus({ status, errorCode: null }, env);
 }
 
 async function checkConfiguredCredentialPlacementStillDoesNotCallNetwork() {
@@ -180,6 +205,7 @@ async function checkConfiguredCredentialPlacementStillDoesNotCallNetwork() {
   assert.equal(result.status.oauthClientCredentialPlacementConfigured, true);
   assert.equal(result.status.oauthClientCredentialPlacementMode, 'basic_auth');
   assert.equal(result.status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(result.status.postmanCredentialPlacementConfirmed, false);
   assert.equal(result.status.oauthBlockedUntilCredentialPlacement, false);
   assert.equal(result.status.oauthBlockedUntilResponseExpiry, true);
   assert.equal(result.status.oauthRequestFormatConfirmed, false);
@@ -225,6 +251,7 @@ function checkCacheMetadataIsSafe() {
     assert.equal(after.oauthTokenEndpointConfigured, true);
     assert.equal(after.oauthTokenContentTypeConfirmed, true);
     assert.equal(after.oauthClientCredentialPlacementMode, 'unset');
+    assert.equal(after.postmanCredentialPlacementConfirmed, false);
     assert.equal(JSON.stringify(after).includes(env.EQUIFAX_SANDBOX_ACCESS_TOKEN), false);
   });
 }
