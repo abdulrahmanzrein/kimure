@@ -25,6 +25,9 @@ const REQUIRED_SMOKE_TEST_GATES = Object.freeze([
   'EQUIFAX_SANDBOX_MEMBER_NUMBER',
   'EQUIFAX_SANDBOX_SECURITY_CODE',
   'EQUIFAX_SANDBOX_CUSTOMER_CODE',
+  'EQUIFAX_TIMEOUT_MS',
+  'EQUIFAX_RETRY_COUNT',
+  'EQUIFAX_PRODUCT_CODE',
   'EQUIFAX_PERMISSIBLE_PURPOSE_CODE',
   'EQUIFAX_CONSENT_VERSION'
 ]);
@@ -39,6 +42,7 @@ async function run() {
       environment: config.environment,
       endpointPath,
       blockedReason: gate.blockedReason,
+      missingKeys: gate.missingKeys,
       safeToRunLiveCall: false
     }, true);
     process.exitCode = 1;
@@ -56,6 +60,7 @@ async function run() {
       environment: config.environment,
       endpointPath,
       blockedReason: tokenResult.errorCode || 'equifax_access_token_unavailable',
+      missingKeys: tokenResult.status && tokenResult.status.missingKeys,
       safeToRunLiveCall: false
     }, true);
     process.exitCode = 1;
@@ -154,11 +159,26 @@ function validateSmokeTestGates(config, env) {
     return blocked('consent_version_required');
   }
 
+  const status = config.providerConfigStatus || {};
+  if (!status.configReady) {
+    const missingKeys = Array.isArray(status.missingKeys) ? status.missingKeys : [];
+    return blocked(
+      missingKeys.length > 0
+        ? 'equifax_configuration_missing_required_keys'
+        : 'equifax_configuration_invalid',
+      { missingKeys }
+    );
+  }
+
   return { ok: true, blockedReason: null };
 }
 
-function blocked(blockedReason) {
-  return { ok: false, blockedReason };
+function blocked(blockedReason, metadata = {}) {
+  return {
+    ok: false,
+    blockedReason,
+    missingKeys: Array.isArray(metadata.missingKeys) ? metadata.missingKeys : undefined
+  };
 }
 
 function buildSandboxRequestBody(config) {

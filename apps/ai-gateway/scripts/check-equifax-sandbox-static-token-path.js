@@ -46,6 +46,9 @@ function checkSmokeScriptExistsAndIsGated() {
   assert.ok(source.includes('EQUIFAX_PROVIDER_CALLS_ENABLED'));
   assert.ok(source.includes(SANDBOX_STATIC_TOKEN_TEST_FLAG));
   assert.ok(source.includes(SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG));
+  assert.ok(source.includes('EQUIFAX_TIMEOUT_MS'));
+  assert.ok(source.includes('EQUIFAX_RETRY_COUNT'));
+  assert.ok(source.includes('EQUIFAX_PRODUCT_CODE'));
   assert.ok(source.includes('OFFICIAL_ONEVIEW_BASE_URLS.sandbox'));
   assert.ok(source.includes("env.EQUIFAX_TOKEN_STRATEGY !== TOKEN_STRATEGY_MODES.sandboxStaticToken"));
   assert.ok(source.includes("config.baseUrl !== OFFICIAL_ONEVIEW_BASE_URLS.sandbox"));
@@ -110,6 +113,16 @@ function checkSmokeScriptRuntimeGates() {
   const missingLiveFlagGate = validateSmokeTestGates(buildEquifaxRuntimeConfig(missingLiveFlagEnv), missingLiveFlagEnv);
   assert.equal(missingLiveFlagGate.ok, false);
   assert.equal(missingLiveFlagGate.blockedReason, 'sandbox_static_token_live_smoke_test_disabled');
+
+  const missingSharedConfigEnv = { ...validEnv };
+  delete missingSharedConfigEnv.EQUIFAX_PRODUCT_CODE;
+  const missingSharedConfigGate = validateSmokeTestGates(
+    buildEquifaxRuntimeConfig(missingSharedConfigEnv),
+    missingSharedConfigEnv
+  );
+  assert.equal(missingSharedConfigGate.ok, false);
+  assert.equal(missingSharedConfigGate.blockedReason, 'equifax_configuration_missing_required_keys');
+  assert.deepEqual(missingSharedConfigGate.missingKeys, ['EQUIFAX_PRODUCT_CODE']);
 }
 
 function checkSandboxStaticTokenTestDisabledByDefault() {
