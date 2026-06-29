@@ -13,6 +13,8 @@ import { UsersService } from "./users/users.service";
 import { OnboardingController } from "./onboarding/onboarding.controller";
 import { OnboardingService } from "./onboarding/onboarding.service";
 import { ListingsModule } from "./listings/listings.module";
+import { CreditProviderStatusController } from "./credit/credit-provider-status.controller";
+import { CreditProviderStatusService } from "./credit/credit-provider-status.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -37,6 +39,7 @@ class HealthController {
   controllers: [
     HealthController,
     AiController,
+    CreditProviderStatusController,
     DashboardController,
     UsersController,
     OnboardingController
@@ -45,6 +48,7 @@ class HealthController {
     AiGatewayService,
     CreditAssessmentsService,
     CreditConsentsService,
+    CreditProviderStatusService,
     UserFinancialProfilesService,
     DashboardService,
     SupabaseAuthGuard,
