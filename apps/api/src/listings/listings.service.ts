@@ -11,7 +11,11 @@ const MOCK_LISTINGS_DISCLAIMER =
 
 function parseNumber(value: unknown): number | undefined {
   if (value === undefined || value === null || value === "") return undefined;
-  const parsed = Number(String(value).replace(/[$,\s]/g, ""));
+  const cleaned = String(value).trim().replace(/[$\s]/g, "");
+  const normalized = /^\d{3},\d{2}$/.test(cleaned)
+    ? `${cleaned.replace(/,/g, "")}0`
+    : cleaned.replace(/,/g, "");
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 

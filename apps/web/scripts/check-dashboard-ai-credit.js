@@ -6,9 +6,14 @@ const root = path.join(__dirname, "..");
 const html = read("public/dashboard.html");
 const js = read("public/assets/js/dashboard.js");
 const auth = read("public/assets/js/auth.js");
+const main = read("public/assets/js/main.js");
 
 [
   "dashboardStateTitle",
+  "dashboardAccountCard",
+  "dashboardOnboardingCard",
+  "dashboardProfileName",
+  "dashboardOnboardingGoal",
   "dashboardCreditCard",
   "dashboardFinancialCard",
   "dashboardMortgageCard",
@@ -31,8 +36,28 @@ const auth = read("public/assets/js/auth.js");
 });
 
 [
+  "ensureDashboardLink",
+  "dashboard.html",
+  "js-auth-dashboard",
+  "nav.dashboard",
+  "dashLink.hidden = !user"
+].forEach((required) => {
+  assert.equal(main.includes(required), true, `${required} is missing from signed-in nav`);
+});
+
+[
+  "renderProfile",
+  "renderOnboarding",
+  "normalizeOnboardingFallback",
+  "fetchOnboardingProfile",
+  "Not added yet",
+  "Please sign in to view your dashboard.",
   "readinessScore",
   "riskLevel",
+  "locationPreferences",
+  "propertyPreferences",
+  "budgetMin",
+  "budgetMax",
   "annualIncome",
   "monthlyDebt",
   "recommendations",
@@ -59,6 +84,7 @@ const auth = read("public/assets/js/auth.js");
 ].forEach((forbidden) => {
   assert.equal(html.includes(forbidden), false, `${forbidden} should not appear in dashboard HTML`);
   assert.equal(js.includes(forbidden), false, `${forbidden} should not appear in dashboard JS`);
+  assert.equal(main.includes(forbidden), false, `${forbidden} should not appear in main nav JS`);
 });
 
 console.log("Dashboard AI credit browser checks passed.");

@@ -449,6 +449,51 @@
     return { ok: true, data: body };
   }
 
+  // Generic authenticated Kimure AI request helper. Frontend flows call our
+  // NestJS API only; the API owns AI Gateway forwarding and provider boundaries.
+  async function requestAiTool(tool, payload) {
+    var safeTool = String(tool || "").trim();
+    if (!/^[a-z0-9-]+$/i.test(safeTool)) {
+      return { ok: false, message: "AI tool could not be selected." };
+    }
+
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in before requesting AI recommendations."
+      };
+    }
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/ai/" + safeTool, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload || {})
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "AI recommendations could not be generated right now. Please try again."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "AI recommendations could not be generated right now. Please try again.";
+      return { ok: false, message: message };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Read dashboard-safe AI, credit, mortgage, and financial profile summaries
   // from the Kimure API. The dashboard never reads raw Supabase credit tables
   // or talks to the AI Gateway directly.
@@ -648,6 +693,7 @@
     saveOnboardingProfile: saveOnboardingProfile,
     requestCreditProfile: requestCreditProfile,
     requestMortgage: requestMortgage,
+    requestAiTool: requestAiTool,
     fetchDashboardAiCredit: fetchDashboardAiCredit,
     fetchCreditProviderStatus: fetchCreditProviderStatus,
     requestCreditProviderSandboxVerification: requestCreditProviderSandboxVerification,

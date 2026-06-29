@@ -5,6 +5,7 @@
   if (!stateTitle) return;
 
   var stateMessage = document.getElementById("dashboardStateMessage");
+  var currentUser = null;
 
   function safeObject(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -35,6 +36,10 @@
     if (heading) heading.textContent = title;
   }
 
+  function displayText(value) {
+    return safeText(value, "Not added yet");
+  }
+
   function humanize(value, fallback) {
     return safeText(value, fallback || "—")
       .replace(/[_-]+/g, " ")
@@ -49,6 +54,15 @@
       currency: "CAD",
       maximumFractionDigits: 0
     }).format(Math.round(number));
+  }
+
+  function formatBudgetRange(min, max) {
+    var minNumber = safeNumber(min);
+    var maxNumber = safeNumber(max);
+    if (minNumber === null && maxNumber === null) return "Not added yet";
+    if (minNumber !== null && maxNumber !== null) return formatMoney(minNumber) + " – " + formatMoney(maxNumber);
+    if (minNumber !== null) return formatMoney(minNumber) + "+";
+    return "Up to " + formatMoney(maxNumber);
   }
 
   function formatDate(value) {
@@ -91,6 +105,45 @@
       actions.length ? actions : ["Review your credit readiness and mortgage estimate."],
       "Review your credit readiness and mortgage estimate."
     );
+  }
+
+  function renderProfile(data) {
+    var profile = safeObject(data.profile);
+    var userMetadata = currentUser && currentUser.user_metadata && typeof currentUser.user_metadata === "object"
+      ? currentUser.user_metadata
+      : {};
+    var fullName = safeText(profile.fullName, "") || safeText(userMetadata.full_name, "");
+    var role = safeText(profile.role, "") || safeText(userMetadata.role, "");
+    var city = safeText(profile.city, "");
+    var country = safeText(profile.country, "");
+    var location = [city, country].filter(Boolean).join(", ");
+
+    setCardTitle("dashboardAccountCard", fullName ? "Account profile" : "Account profile incomplete");
+    setText("dashboardProfileName", displayText(fullName));
+    setText("dashboardProfileRole", humanize(role, "Not added yet"));
+    setText("dashboardProfileLocation", displayText(location));
+    setText("dashboardProfileKyc", humanize(profile.kycStatus, "Not added yet"));
+  }
+
+  function renderOnboarding(data) {
+    var onboarding = safeObject(data.onboarding);
+    var hasOnboarding = Object.keys(onboarding).length > 0;
+    var locations = Array.isArray(onboarding.locationPreferences)
+      ? onboarding.locationPreferences.filter(Boolean)
+      : [];
+    var propertyPreferences = Array.isArray(onboarding.propertyPreferences)
+      ? onboarding.propertyPreferences.filter(Boolean)
+      : [];
+
+    setCardTitle("dashboardOnboardingCard", hasOnboarding ? "Smart onboarding profile" : "No onboarding profile yet");
+    setText("dashboardOnboardingGoal", humanize(onboarding.intent, "Not added yet"));
+    setText("dashboardOnboardingBudget", formatBudgetRange(onboarding.budgetMin, onboarding.budgetMax));
+    setText("dashboardOnboardingLocation", locations.length ? locations.join(", ") : "Not added yet");
+    setText("dashboardOnboardingProperties", propertyPreferences.length ? propertyPreferences.map(function (item) {
+      return humanize(item, item);
+    }).join(", ") : "Not added yet");
+    setText("dashboardOnboardingTimeline", humanize(onboarding.timeline, "Not added yet"));
+    setText("dashboardOnboardingUpdated", formatDate(onboarding.updatedAt) === "—" ? "Not added yet" : formatDate(onboarding.updatedAt));
   }
 
   function renderCredit(data) {
@@ -228,6 +281,8 @@
     stateMessage.textContent = "Only sanitized account and AI summary fields are shown here.";
 
     renderNextActions(dashboard);
+    renderProfile(dashboard);
+    renderOnboarding(dashboard);
     renderCredit(dashboard);
     renderFinancial(dashboard);
     renderMortgage(dashboard);
@@ -247,7 +302,11 @@
     }
 
     if (window.KIMURE_AUTH.getCurrentUser) {
-      await window.KIMURE_AUTH.getCurrentUser();
+      currentUser = await window.KIMURE_AUTH.getCurrentUser();
+      if (!currentUser) {
+        renderError("Please sign in to view your dashboard.");
+        return;
+      }
     }
 
     var result = await window.KIMURE_AUTH.fetchDashboardAiCredit();
@@ -256,8 +315,46 @@
       return;
     }
 
-    renderDashboard(result.data);
+    var dashboard = safeObject(result.data);
+    if (!dashboard.onboarding && window.KIMURE_AUTH.fetchOnboardingProfile) {
+      var onboardingProfile = await window.KIMURE_AUTH.fetchOnboardingProfile();
+      if (onboardingProfile) {
+        dashboard.onboarding = normalizeOnboardingFallback(onboardingProfile);
+      }
+    }
+
+    renderDashboard(dashboard);
   }
 
   loadDashboard();
+
+  function normalizeOnboardingFallback(profile) {
+    var source = safeObject(profile);
+    var locations = Array.isArray(source.location_preferences)
+      ? source.location_preferences.map(function (item) {
+        var location = safeObject(item);
+        return [safeText(location.city, ""), safeText(location.country, "")]
+          .filter(Boolean)
+          .join(", ");
+      }).filter(Boolean)
+      : [];
+    var financialInputs = safeObject(source.financial_inputs);
+
+    return {
+      intent: safeText(source.intent, ""),
+      budgetMin: safeNumber(source.budget_min),
+      budgetMax: safeNumber(source.budget_max),
+      timeline: safeText(source.timeline, ""),
+      riskLevel: safeText(source.risk_level, ""),
+      locationPreferences: locations,
+      propertyPreferences: Array.isArray(source.property_preferences)
+        ? source.property_preferences.filter(function (item) { return typeof item === "string" && item.trim(); })
+        : [],
+      financialInputs: {
+        availableFunds: safeNumber(financialInputs.available_funds),
+        monthlyRentalIncome: safeNumber(financialInputs.monthly_rental_income)
+      },
+      updatedAt: safeText(source.updated_at, "")
+    };
+  }
 })();

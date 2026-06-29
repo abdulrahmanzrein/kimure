@@ -270,20 +270,17 @@
             </div>
             <h2 class="mp-listings-title" id="marketplaceListingsPreviewTitle">Marketplace Listings Preview</h2>
             <p class="mp-provider-listings-note">
-              Sample listings are shown from Kimure's provider-ready listings contract. Provider-backed listing data can be connected as approved access is configured.
-              Repliers preview data is sample data for integration testing. No live MLS data is displayed in preview mode.
+              Browse listings from Kimure's provider-ready Repliers integration. Current access is preview-only, so results remain labeled as preview data and are not live MLS data.
             </p>
           </div>
         </div>
 
         <form class="mp-provider-search" id="mpProviderListingsForm">
-          <label>
-            Listing provider
-            <select name="provider" id="mpProviderSelector">
-              <option value="">Sample provider</option>
-              <option value="repliers_preview">Repliers preview data</option>
-            </select>
-          </label>
+          <input type="hidden" name="provider" id="mpProviderSelector" value="repliers_preview">
+          <div class="mp-provider-pill" aria-label="Listing provider">
+            <span>Provider: Repliers</span>
+            <small>Preview access</small>
+          </div>
           <label>
             Location
             <input name="location" type="text" placeholder="Ottawa, Toronto, Calgary">
@@ -316,6 +313,7 @@
         </form>
 
         <div class="mp-provider-status" id="mpProviderListingsStatus" aria-live="polite"></div>
+        <div class="mp-provider-filter-summary" id="mpProviderFilterSummary"></div>
         <div class="mp-provider-grid" id="mpProviderListingsGrid"></div>
         <div class="mp-provider-empty" id="mpProviderListingsEmpty" hidden>No listings match those filters yet.</div>
       </section>

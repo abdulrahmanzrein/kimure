@@ -13,6 +13,8 @@ export const REPLIERS_PROVIDER_DISCLAIMER =
   "Provider listings are returned from configured Repliers provider access. Availability, compliance, and use restrictions should be verified before user action.";
 export const REPLIERS_INTERNAL_DISCLAIMER =
   "Internal provider listings are shown for team-controlled review and should be verified before user action.";
+export const REPLIERS_NO_FILTER_MATCHES_DISCLAIMER =
+  "No provider listings matched these filters in the current access mode. Try a broader location, higher max price, or different property type.";
 
 export type RepliersBlockedReason =
   | "repliers_provider_disabled"
@@ -133,11 +135,16 @@ export class RepliersPreviewProvider implements ListingProviderAdapter {
         }
 
         const body = await response.json().catch(() => ({}));
+        const normalizedResults = normalizeRepliersListings(body, readiness.providerStatus);
+        const filteredResults = filterRepliersListings(normalizedResults, query);
+
         return {
           source: this.source,
           providerStatus: readiness.providerStatus,
-          disclaimer: getRepliersDisclaimer(readiness.providerStatus),
-          results: normalizeRepliersListings(body, readiness.providerStatus)
+          disclaimer: filteredResults.length
+            ? getRepliersDisclaimer(readiness.providerStatus)
+            : REPLIERS_NO_FILTER_MATCHES_DISCLAIMER,
+          results: filteredResults
         };
       } finally {
         clearTimeout(timeout);
@@ -221,12 +228,51 @@ function buildRepliersSearchBody(query: ListingSearchQuery) {
     ]
   };
 
-  if (query.location) body.city = query.location;
-  if (query.type) body.type = query.type;
+  const location = normalizeLocationFilter(query.location);
+  const propertyType = mapRepliersPropertyType(query.type);
+
+  if (location) body.city = location;
+  if (propertyType) body.type = propertyType;
+  if (typeof query.minPrice === "number") body.minPrice = query.minPrice;
   if (typeof query.maxPrice === "number") body.maxPrice = query.maxPrice;
+  if (typeof query.bedrooms === "number") body.bedrooms = query.bedrooms;
   if (query.intent) body.keywords = query.intent;
 
   return body;
+}
+
+function normalizeLocationFilter(value: unknown): string | undefined {
+  const text = readString(value);
+  if (!text) return undefined;
+  const firstSegment = text
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)[0];
+  return firstSegment || undefined;
+}
+
+function mapRepliersPropertyType(value: unknown): string | undefined {
+  const text = readString(value);
+  if (!text) return undefined;
+  const normalized = text.toLowerCase().replace(/[\s_-]+/g, " ");
+
+  if (["detached", "single family", "single family home", "house"].includes(normalized)) {
+    return "detached";
+  }
+
+  if (["condo", "condominium", "apartment"].includes(normalized)) {
+    return "condo";
+  }
+
+  if (["townhome", "townhouse", "row house"].includes(normalized)) {
+    return "townhouse";
+  }
+
+  if (["land", "lot", "rural land"].includes(normalized)) {
+    return "land";
+  }
+
+  return text;
 }
 
 function normalizeRepliersListings(
@@ -310,6 +356,94 @@ function getRepliersListingTags(providerStatus: ListingProviderStatus): string[]
   }
 
   return ["repliers preview", "sample data"];
+}
+
+function filterRepliersListings(
+  listings: NormalizedListing[],
+  query: ListingSearchQuery
+): NormalizedListing[] {
+  return listings.filter((listing) => {
+    if (typeof query.minPrice === "number" && listing.price < query.minPrice) return false;
+    if (typeof query.maxPrice === "number" && listing.price > query.maxPrice) return false;
+    if (typeof query.bedrooms === "number" && listing.bedrooms < query.bedrooms) return false;
+    if (!matchesLocation(listing, query.location)) return false;
+    if (!matchesPropertyType(listing, query.type)) return false;
+    return true;
+  });
+}
+
+function matchesLocation(listing: NormalizedListing, location: unknown): boolean {
+  const tokens = normalizeLocationTokens(location);
+  if (!tokens.length) return true;
+  const haystack = normalizeSearchText([
+    listing.location,
+    listing.addressSummary,
+    listing.neighbourhood
+  ]);
+  return tokens.some((token) => haystack.includes(token));
+}
+
+function normalizeLocationTokens(value: unknown): string[] {
+  const text = readString(value);
+  if (!text) return [];
+  return Array.from(
+    new Set(
+      text
+        .split(/[,\n;/|]+/)
+        .map((part) => normalizeToken(part))
+        .filter((part) => part.length >= 2)
+    )
+  );
+}
+
+function matchesPropertyType(listing: NormalizedListing, propertyType: unknown): boolean {
+  const tokens = propertyTypeTokens(propertyType);
+  if (!tokens.length) return true;
+  const haystack = normalizeSearchText([
+    listing.title,
+    listing.type,
+    listing.propertyType,
+    listing.addressSummary,
+    ...(listing.tags || []),
+    ...(listing.matchSignals || [])
+  ]);
+  return tokens.some((token) => haystack.includes(token));
+}
+
+function propertyTypeTokens(value: unknown): string[] {
+  const text = readString(value);
+  if (!text) return [];
+  const normalized = normalizeToken(text);
+
+  if (["condo", "condominium", "condoproperty", "apartment"].includes(normalized)) {
+    return ["condo", "condominium", "condoproperty", "apartment"];
+  }
+
+  if (["townhouse", "townhome", "rowhouse"].includes(normalized)) {
+    return ["townhouse", "townhome", "rowhouse"];
+  }
+
+  if (["detached", "singlefamily", "singlefamilyhome", "house", "residential"].includes(normalized)) {
+    return ["detached", "singlefamily", "singlefamilyhome", "house", "residential"];
+  }
+
+  if (["land", "lot", "ruralland"].includes(normalized)) {
+    return ["land", "lot", "ruralland"];
+  }
+
+  return [normalized];
+}
+
+function normalizeSearchText(values: unknown[]): string {
+  return values.map((value) => normalizeToken(value)).filter(Boolean).join(" ");
+}
+
+function normalizeToken(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
 }
 
 function extractListingArray(body: unknown): unknown[] {
@@ -497,5 +631,6 @@ function formatCurrency(value: number): string {
 
 export {
   buildRepliersSearchBody,
+  filterRepliersListings,
   normalizeRepliersListings
 };

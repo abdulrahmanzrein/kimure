@@ -22,23 +22,24 @@ const listingsPreviewJs = sliceBetween(
   "marketplace-listings-preview",
   "mpProviderListingsForm",
   "mpProviderSelector",
-  '<select name="provider" id="mpProviderSelector">',
-  "Sample provider",
-  '<option value="repliers_preview">Repliers preview data</option>',
-  "Repliers preview data",
+  '<input type="hidden" name="provider" id="mpProviderSelector" value="repliers_preview">',
+  "Provider: Repliers",
+  "Preview access",
   "Marketplace AI uses selected listing provider context when available",
   "preview data clearly labeled",
-  "Repliers preview data is sample data for integration testing",
-  "No live MLS data is displayed in preview mode",
+  "provider-ready Repliers integration",
+  "not live MLS data",
   "No listings match those filters yet"
 ].forEach((required) => {
   assert.equal(html.includes(required), true, `${required} is missing from marketplace.html`);
 });
 
 [
-  'provider === "crea_ddf"',
   'provider === "repliers_preview"',
-  'params.set("provider", provider)',
+  'params.set("provider", provider === "repliers_preview" ? "repliers_preview" : "repliers_preview")',
+  "getProviderListingsFilterState",
+  "renderProviderFilterSummary",
+  "listingFilters: getProviderListingsFilterState()",
   "isRepliersPreviewResponse",
   "REPLIERS PREVIEW",
   "SAMPLE DATA",
@@ -47,7 +48,7 @@ const listingsPreviewJs = sliceBetween(
   "VERIFIED SOURCE",
   "INTERNAL LISTING",
   "TEAM-CONTROLLED",
-  "SAMPLE PROVIDER",
+  "PROVIDER READY",
   "PREVIEW CARD",
   "getListingDisplayMode",
   "getListingBadgeLabels",
@@ -68,20 +69,18 @@ const listingsPreviewJs = sliceBetween(
   "AI provider context:",
   "formatAiProviderContextLabel",
   "Repliers preview",
-  "Repliers preview is not configured or returned no sample listings",
-  "No live MLS listing data is being displayed",
+  "No provider listings matched these filters",
+  "Repliers preview/sample data is not live MLS listing data",
   "getSelectedListingsProvider",
   'document.getElementById("mpProviderSelector")',
   "selectedListingProviderFields",
   "marketplaceAiMetadata",
-  'listingProvider: provider || "mock_provider"',
-  'provider: provider || "mock_provider"',
+  'listingProvider: provider || "repliers_preview"',
+  'provider: provider || "repliers_preview"',
   "var listingProvider = getSelectedListingsProvider()",
   "provider: selectedProviderFields.provider",
   "listingProvider: selectedProviderFields.listingProvider",
   "provider: listingProvider || undefined",
-  'response.providerStatus === "pending_access"',
-  'response.source === "crea_ddf_pending_access"',
   "formatBlockedReason",
   "Loading listings"
 ].forEach((required) => {
@@ -94,6 +93,8 @@ assert.equal(css.includes("aspect-ratio: 16 / 10"), true);
 assert.equal(css.includes(".mp-provider-photo"), true);
 assert.equal(css.includes(".mp-provider-preview-cta"), true);
 assert.equal(css.includes(".mp-ai-context-note"), true);
+assert.equal(css.includes(".mp-provider-pill"), true);
+assert.equal(css.includes(".mp-provider-filter-summary"), true);
 assert.equal(listingsPreviewJs.includes("innerHTML"), false, "listings preview code must not use innerHTML");
 assert.equal(listingsPreviewJs.includes("textContent"), true, "listings preview code should render dynamic values with textContent");
 assert.equal(listingsPreviewJs.includes("appendNode(body, \"p\", \"mp-provider-description\", truncateText"), true);
@@ -102,6 +103,11 @@ assert.equal(html.includes("crea_ddf"), false);
 assert.equal(html.includes("CREA"), false);
 assert.equal(html.includes("DDF"), false);
 assert.equal(html.includes("REALTOR"), false);
+assert.equal(html.includes("Sample provider"), false);
+assert.equal(html.includes("mock provider"), false);
+assert.equal(html.includes('select name="provider"'), false);
+assert.equal(listingsPreviewJs.includes("mock_provider"), false);
+assert.equal(listingsPreviewJs.includes("crea_ddf"), false);
 assert.equal(html.includes("Live CREA listing data is used"), false);
 
 [

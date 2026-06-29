@@ -19,6 +19,9 @@
   var progressWrap = document.querySelector(".onb-progress-wrap");
   var emailConfirmPanel = null;
   var pendingSignupEmail = "";
+  var aiRecommendation = null;
+  var aiRecommendationReady = false;
+  var aiRequestInFlight = false;
 
   function isAwaitingEmailConfirmation() {
     return form.dataset.emailConfirmationPending === "true";
@@ -54,6 +57,290 @@
     var d = window.KIMURE_I18N_DICT;
     if (d && d[key] != null) return d[key];
     return fallback;
+  }
+
+  function selectedValue(name) {
+    var input = form.querySelector('input[name="' + name + '"]:checked');
+    return input ? input.value : "";
+  }
+
+  function checkedValues(name) {
+    return Array.prototype.slice.call(form.querySelectorAll('input[name="' + name + '"]:checked')).map(function (input) {
+      return input.value;
+    });
+  }
+
+  function textValue(selector) {
+    var input = form.querySelector(selector);
+    return input && input.value ? input.value.trim() : "";
+  }
+
+  function numberValue(selector) {
+    var input = form.querySelector(selector);
+    if (!input || input.value === "") return null;
+    var parsed = Number(input.value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function budgetRange(value) {
+    var ranges = {
+      under50k: [0, 50000],
+      "50k-150k": [50000, 150000],
+      "150k-500k": [150000, 500000],
+      "500k-1m": [500000, 1000000],
+      "1mplus": [1000000, null]
+    };
+    return ranges[value] || [null, null];
+  }
+
+  function budgetLabel(value) {
+    var labels = {
+      under50k: "Under $50,000",
+      "50k-150k": "$50,000 – $150,000",
+      "150k-500k": "$150,000 – $500,000",
+      "500k-1m": "$500,000 – $1M",
+      "1mplus": "$1M+"
+    };
+    return labels[value] || "";
+  }
+
+  function chooseOnboardingAiTool(answers) {
+    var goal = answers.goal || "";
+    var propertyTypes = answers.propertyTypes || [];
+    var returnGoals = answers.returnGoals || [];
+
+    if (goal === "renting") return "rental";
+    if (goal === "investing" || returnGoals.length) return "investment-planner";
+    if (propertyTypes.indexOf("land") >= 0 || propertyTypes.indexOf("farm") >= 0 || goal === "building") return "scout";
+    if (goal === "buying") return "scout";
+    return "chat";
+  }
+
+  function plainToolLabel(tool) {
+    var labels = {
+      scout: "Property Match Recommendation",
+      rental: "Rental Fit Recommendation",
+      "investment-planner": "Investment Planning Recommendation",
+      chat: "Kimure Recommendation"
+    };
+    return labels[tool] || "Kimure Recommendation";
+  }
+
+  function collectOnboardingAnswers() {
+    var budgetKey = selectedValue("budget");
+    var range = budgetRange(budgetKey);
+    var locCountry = textValue("#onb-loc-country");
+    var locCity = textValue("#onb-loc-city");
+
+    return {
+      goal: selectedValue("goal"),
+      propertyTypes: checkedValues("property_type"),
+      budgetKey: budgetKey,
+      budgetLabel: budgetLabel(budgetKey),
+      budgetMin: range[0],
+      budgetMax: range[1],
+      locationCountry: locCountry,
+      locationCity: locCity,
+      timeline: selectedValue("timeline"),
+      availableFunds: numberValue("#onb-funds"),
+      monthlyRentalIncome: numberValue("#onb-rental-income"),
+      returnGoals: checkedValues("return_goal")
+    };
+  }
+
+  function buildOnboardingAiPayload() {
+    var answers = collectOnboardingAnswers();
+    var aiTool = chooseOnboardingAiTool(answers);
+    var goals = [answers.goal].concat(answers.returnGoals || []).filter(Boolean);
+    var location = [answers.locationCity, answers.locationCountry].filter(Boolean).join(", ");
+
+    return {
+      tool: aiTool,
+      payload: {
+        question: "Generate a Smart Onboarding recommendation and practical next steps from this Kimure user profile.",
+        onboarding: {
+          goal: answers.goal || null,
+          timeline: answers.timeline || null,
+          budgetLabel: answers.budgetLabel || null,
+          propertyTypes: answers.propertyTypes,
+          locationPreference: location || null
+        },
+        financials: {
+          budgetMin: answers.budgetMin,
+          budgetMax: answers.budgetMax,
+          availableFunds: answers.availableFunds,
+          monthlyRentalIncome: answers.monthlyRentalIncome
+        },
+        goals: goals,
+        filters: {
+          location: location || undefined,
+          maxPrice: answers.budgetMax || undefined,
+          propertyType: answers.propertyTypes[0] || undefined,
+          preferences: answers.propertyTypes
+        },
+        property: {
+          assetTypes: answers.propertyTypes
+        },
+        context: {
+          source: "smart_onboarding",
+          selectedPath: answers.goal || "general",
+          timeline: answers.timeline || null
+        },
+        metadata: {
+          source: "smart_onboarding",
+          smartOnboarding: true,
+          routedTool: aiTool,
+          resultPlacement: "onboarding_step_9"
+        },
+        consent: {
+          userProvidedProfileData: true
+        }
+      }
+    };
+  }
+
+  function setAiStatus(message, type) {
+    var status = document.getElementById("onbAiStatus");
+    if (!status) return;
+    status.textContent = message || "";
+    status.classList.remove("is-loading", "is-error", "is-success");
+    if (type) status.classList.add(type);
+    status.hidden = !message;
+  }
+
+  function appendText(parent, tagName, className, text) {
+    if (!parent || !text) return null;
+    var node = document.createElement(tagName);
+    if (className) node.className = className;
+    node.textContent = text;
+    parent.appendChild(node);
+    return node;
+  }
+
+  function appendList(parent, title, items) {
+    if (!Array.isArray(items) || !items.length) return;
+    appendText(parent, "h4", "", title);
+    var list = document.createElement("ul");
+    items.slice(0, 5).forEach(function (item) {
+      if (typeof item !== "string" || !item.trim()) return;
+      appendText(list, "li", "", item.trim());
+    });
+    if (list.children.length) parent.appendChild(list);
+  }
+
+  function normalizeResultArray(value) {
+    return Array.isArray(value)
+      ? value.filter(function (item) { return typeof item === "string" && item.trim(); })
+      : [];
+  }
+
+  function safeAiSummary(data) {
+    return data && typeof data.summary === "string" && data.summary.trim()
+      ? data.summary.trim()
+      : "Kimure generated a recommendation from your onboarding answers.";
+  }
+
+  function renderAiRecommendationCard(target, result) {
+    if (!target) return;
+    while (target.firstChild) target.removeChild(target.firstChild);
+
+    if (!result || !result.data) {
+      target.hidden = true;
+      return;
+    }
+
+    var data = result.data;
+    var reportData = data.reportData && typeof data.reportData === "object" && !Array.isArray(data.reportData)
+      ? data.reportData
+      : {};
+    var nextSteps = normalizeResultArray(data.nextSteps)
+      .concat(normalizeResultArray(data.nextBestActions))
+      .concat(normalizeResultArray(reportData.nextSteps))
+      .concat(normalizeResultArray(reportData.nextBestActions));
+
+    appendText(target, "h3", "", result.label || plainToolLabel(data.tool));
+    appendText(target, "p", "", safeAiSummary(data));
+
+    var meta = document.createElement("div");
+    meta.className = "onb-ai-result-meta";
+    if (typeof data.score === "number") appendText(meta, "span", "onb-ai-pill", "Fit score: " + data.score);
+    if (typeof data.riskLevel === "string" && data.riskLevel) appendText(meta, "span", "onb-ai-pill", "Risk: " + data.riskLevel);
+    if (data.tool) appendText(meta, "span", "onb-ai-pill", "Path: " + plainToolLabel(data.tool));
+    if (meta.children.length) target.appendChild(meta);
+
+    appendList(target, "Key reasons", normalizeResultArray(data.keyInsights));
+    appendList(target, "Recommendations", normalizeResultArray(data.recommendations));
+    appendList(target, "Next steps", nextSteps);
+    appendText(target, "p", "onb-step-note onb-step-note--tight", typeof data.disclaimer === "string" ? data.disclaimer : "");
+    target.hidden = false;
+  }
+
+  function renderAiRecommendationResults() {
+    renderAiRecommendationCard(document.getElementById("onbAiStep8Preview"), aiRecommendation);
+    renderAiRecommendationCard(document.getElementById("onbAiResultsPanel"), aiRecommendation);
+  }
+
+  async function runAiRecommendationFlow() {
+    if (aiRequestInFlight) return;
+    aiRequestInFlight = true;
+    aiRecommendationReady = false;
+    aiRecommendation = null;
+    renderAiRecommendationResults();
+    setAiStatus("Generating AI matches…", "is-loading");
+    if (nextBtn) {
+      nextBtn.disabled = true;
+      nextBtn.textContent = "Generating AI matches…";
+    }
+
+    try {
+      if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.requestAiTool) {
+        throw new Error("missing_ai_helper");
+      }
+
+      if (window.KIMURE_AUTH.saveOnboardingProfile) {
+        var saveResult = await window.KIMURE_AUTH.saveOnboardingProfile(form, null);
+        if (!saveResult || !saveResult.ok) {
+          setAiStatus(
+            saveResult && saveResult.message
+              ? saveResult.message
+              : "Please sign in before generating AI recommendations.",
+            "is-error"
+          );
+          return;
+        }
+      }
+
+      var request = buildOnboardingAiPayload();
+      var aiResult = await window.KIMURE_AUTH.requestAiTool(request.tool, request.payload);
+      if (!aiResult || !aiResult.ok) {
+        setAiStatus(
+          "AI recommendations could not be generated right now. Please try again.",
+          "is-error"
+        );
+        return;
+      }
+
+      aiRecommendation = {
+        label: plainToolLabel(request.tool),
+        data: aiResult.data
+      };
+      aiRecommendationReady = true;
+      renderAiRecommendationResults();
+      setAiStatus("AI matches generated. Review the recommendation, then continue.", "is-success");
+    } catch (err) {
+      setAiStatus("AI recommendations could not be generated right now. Please try again.", "is-error");
+    } finally {
+      aiRequestInFlight = false;
+      updateNav();
+    }
+  }
+
+  async function handleAiRecommendationStep() {
+    if (aiRecommendationReady) {
+      showStep(9);
+      return;
+    }
+    await runAiRecommendationFlow();
   }
 
   function isAlreadySignedIn() {
@@ -304,7 +591,9 @@
     if (current === total) {
       nextBtn.textContent = t("onb.wiz.finish", "Finish");
     } else if (current === 8) {
-      nextBtn.textContent = t("onb.wiz.getMatches", "Get My AI Matches");
+      nextBtn.textContent = aiRecommendationReady
+        ? t("onb.wiz.next", "Continue")
+        : t("onb.wiz.getMatches", "Get My AI Matches");
     } else if (current === 1 && isAwaitingEmailConfirmation()) {
       nextBtn.textContent = "Waiting for email confirmation";
       nextBtn.disabled = true;
@@ -326,6 +615,7 @@
       el.classList.toggle("is-active", active);
       el.setAttribute("aria-hidden", active ? "false" : "true");
     });
+    renderAiRecommendationResults();
     updateNav();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -367,6 +657,10 @@
         }
       }
       alert("Thank you! Your Smart Onboarding is complete.");
+      return;
+    }
+    if (current === 8) {
+      await handleAiRecommendationStep();
       return;
     }
     showStep(current + 1);

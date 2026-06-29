@@ -145,11 +145,20 @@ async function run() {
   assert.equal(pendingMockSerialized.includes("https://www.realtor.ca"), false);
 
   const repliersQuery = buildListingContextQuery({
-    metadata: { listingProvider: "repliers_preview" },
-    filters: { location: "Toronto", maxPrice: "$750,000" }
+    metadata: {
+      listingProvider: "repliers_preview",
+      listingFilters: {
+        location: "Toronto",
+        maxPrice: "$900,000",
+        intent: "investment"
+      }
+    },
+    filters: { location: "Austin", maxPrice: "$100" }
   });
 
   assert.equal(repliersQuery.provider, "repliers_preview");
+  assert.equal(repliersQuery.location, "Toronto");
+  assert.equal(repliersQuery.maxPrice, 900000);
 
   const topLevelRepliersQuery = buildListingContextQuery({
     provider: "mock_provider",
@@ -159,6 +168,24 @@ async function run() {
   });
 
   assert.equal(topLevelRepliersQuery.provider, "repliers_preview");
+
+  const metadataOnlyRepliersQuery = buildListingContextQuery({
+    listingProvider: "repliers_preview",
+    metadata: {
+      listingFilters: {
+        location: "Ottawa, Toronto, Calgary",
+        type: "townhome",
+        maxPrice: "$700,00",
+        intent: "investment"
+      }
+    }
+  });
+
+  assert.equal(metadataOnlyRepliersQuery.provider, "repliers_preview");
+  assert.equal(metadataOnlyRepliersQuery.location, "Ottawa, Toronto, Calgary");
+  assert.equal(metadataOnlyRepliersQuery.type, "townhome");
+  assert.equal(metadataOnlyRepliersQuery.maxPrice, 700000);
+  assert.equal(metadataOnlyRepliersQuery.intent, "investment");
 
   const explicitMockQuery = buildListingContextQuery({
     provider: "mock_provider",
@@ -316,6 +343,111 @@ async function run() {
   assert.equal(repliersMockSerialized.includes("Sample family home near parks and transit"), false);
   assert.equal(repliersMockSerialized.includes("live CREA listings are connected"), false);
   assert.equal(/MLS[-\s]?\d{4,}/i.test(repliersMockSerialized), false);
+
+  const filteredAustinListings = await repliersProvider.searchResponse(
+    { provider: "repliers_preview", location: "Austin", maxPrice: 400000 },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => mockMixedRepliersResponseBody()
+      })
+    }
+  );
+  const filteredAustinContext = buildSafeListingContext(filteredAustinListings, {
+    provider: "repliers_preview",
+    location: "Austin",
+    maxPrice: 400000
+  });
+  const filteredAustinResponse = getMockToolResponse("scout", {
+    listingContext: filteredAustinContext
+  });
+  const filteredAustinSerialized = JSON.stringify(filteredAustinResponse);
+
+  assert.equal(filteredAustinContext.results.length, 1);
+  assert.equal(filteredAustinSerialized.includes("Single Family Residence"), true);
+  assert.equal(filteredAustinSerialized.includes("Charlotte"), false);
+  assert.equal(filteredAustinSerialized.includes("Condominium"), false);
+
+  const filteredCharlotteListings = await repliersProvider.searchResponse(
+    {
+      provider: "repliers_preview",
+      location: "Charlotte",
+      type: "condo",
+      maxPrice: 300000
+    },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => mockMixedRepliersResponseBody()
+      })
+    }
+  );
+  const filteredCharlotteContext = buildSafeListingContext(filteredCharlotteListings, {
+    provider: "repliers_preview",
+    location: "Charlotte",
+    type: "condo",
+    maxPrice: 300000
+  });
+  const filteredCharlotteResponse = getMockToolResponse("scout", {
+    listingContext: filteredCharlotteContext
+  });
+  const filteredCharlotteSerialized = JSON.stringify(filteredCharlotteResponse);
+
+  assert.equal(filteredCharlotteContext.results.length, 1);
+  assert.equal(filteredCharlotteSerialized.includes("Condominium"), true);
+  assert.equal(filteredCharlotteSerialized.includes("$249,900"), true);
+  assert.equal(filteredCharlotteSerialized.includes("Austin"), false);
+  assert.equal(filteredCharlotteSerialized.includes("Townhouse"), false);
+
+  const noMatchListings = await repliersProvider.searchResponse(
+    {
+      provider: "repliers_preview",
+      location: "Charlotte",
+      type: "detached",
+      maxPrice: 100000
+    },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async () => ({
+        ok: true,
+        json: async () => mockMixedRepliersResponseBody()
+      })
+    }
+  );
+  const noMatchContext = buildSafeListingContext(noMatchListings, {
+    provider: "repliers_preview",
+    location: "Charlotte",
+    type: "detached",
+    maxPrice: 100000
+  });
+  const noMatchResponse = getMockToolResponse("scout", {
+    listingContext: noMatchContext
+  });
+  const noMatchSerialized = JSON.stringify(noMatchResponse);
+
+  assert.equal(noMatchContext.providerStatus, "preview_ready");
+  assert.equal(noMatchContext.results.length, 0);
+  assert.equal(noMatchResponse.summary.includes("no preview listing results were returned"), true);
+  assert.equal(noMatchSerialized.includes("Single Family Residence"), false);
+  assert.equal(noMatchSerialized.includes("Condominium"), false);
+  assert.equal(noMatchSerialized.includes("mock_provider"), false);
 
   const repliersProductionListings = await repliersProvider.searchResponse(repliersQuery, {
     env: {
@@ -481,6 +613,55 @@ function mockRepliersProductionResponseBody() {
           sqft: 850
         },
         status: "available"
+      }
+    ]
+  };
+}
+
+function mockMixedRepliersResponseBody() {
+  return {
+    listings: [
+      {
+        title: "Single Family Residence",
+        listPrice: 369000,
+        class: "Single Family Residence",
+        photoCount: 4,
+        images: ["area/austin.jpg"],
+        address: { city: "Austin", state: "TX", neighborhood: "South Austin" },
+        details: {
+          numBedrooms: 4,
+          numBathrooms: 2,
+          sqft: 1752
+        },
+        status: "preview_sample"
+      },
+      {
+        title: "Townhouse",
+        listPrice: 279000,
+        class: "Townhouse",
+        photoCount: 3,
+        images: ["area/lago.jpg"],
+        address: { city: "Lago Vista", state: "TX", neighborhood: "Lago Vista" },
+        details: {
+          numBedrooms: 3,
+          numBathrooms: 3,
+          sqft: 1153
+        },
+        status: "preview_sample"
+      },
+      {
+        title: "Condominium",
+        listPrice: 249900,
+        class: "Condominium",
+        photoCount: 5,
+        images: ["area/charlotte.jpg"],
+        address: { city: "Charlotte", state: "NC", neighborhood: "Uptown" },
+        details: {
+          numBedrooms: 3,
+          numBathrooms: 2,
+          sqft: 1184
+        },
+        status: "preview_sample"
       }
     ]
   };

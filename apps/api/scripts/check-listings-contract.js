@@ -9,6 +9,7 @@ const {
 const { MockListingsProvider, MOCK_LISTINGS } = require("../src/listings/mock-listings.provider");
 const {
   RepliersPreviewProvider,
+  REPLIERS_NO_FILTER_MATCHES_DISCLAIMER,
   REPLIERS_PREVIEW_DISCLAIMER,
   REPLIERS_PROVIDER_DISCLAIMER,
   buildRepliersSearchBody,
@@ -69,6 +70,7 @@ async function run() {
   assert.equal(response.disclaimer.includes("licensed listing provider"), true);
   assert.equal(response.results.length > 0, true);
   assert.equal(parseNumber("$650,000"), 650000);
+  assert.equal(parseNumber("$700,00"), 700000);
   assert.equal(registry.getActiveProvider().source, "mock_provider");
   assert.equal(registry.getActiveProvider().providerStatus, "mock_only");
   assert.equal(registry.getProvider("crea_ddf").source, "crea_ddf_pending_access");
@@ -135,14 +137,18 @@ async function run() {
 
   const repliersBody = buildRepliersSearchBody({
     provider: "repliers_preview",
-    location: "Toronto",
-    type: "condo",
+    location: "Ottawa, Toronto, Calgary",
+    type: "townhome",
+    minPrice: 450000,
     maxPrice: 750000,
+    bedrooms: 3,
     intent: "investment"
   });
-  assert.equal(repliersBody.city, "Toronto");
-  assert.equal(repliersBody.type, "condo");
+  assert.equal(repliersBody.city, "Ottawa");
+  assert.equal(repliersBody.type, "townhouse");
+  assert.equal(repliersBody.minPrice, 450000);
   assert.equal(repliersBody.maxPrice, 750000);
+  assert.equal(repliersBody.bedrooms, 3);
   assert.equal(repliersBody.keywords, "investment");
   assert.equal(repliersBody.hasImages, true);
   assert.equal(Array.isArray(repliersBody.fields), true);
@@ -166,6 +172,9 @@ async function run() {
         assert.equal(options.headers["Content-Type"], "application/json");
         assert.equal(options.headers["REPLIERS-API-KEY"], "redacted-test-key");
         assert.equal(JSON.stringify(options.body).includes("redacted-test-key"), false);
+        const requestBody = JSON.parse(String(options.body));
+        assert.equal(requestBody.city, "Toronto");
+        assert.equal(requestBody.maxPrice, 750000);
 
         return {
           ok: true,
@@ -219,6 +228,119 @@ async function run() {
   assert.equal(JSON.stringify(repliersReady).includes("redacted-test-key"), false);
   assert.equal(JSON.stringify(repliersReady).includes("REPLIERS-API-KEY"), false);
   assert.equal(JSON.stringify(repliersReady).includes("isLiveProviderData\":true"), false);
+
+  const mixedPreviewBody = {
+    listings: [
+      {
+        title: "Single Family Residence",
+        listPrice: 369000,
+        class: "Single Family Residence",
+        photoCount: 4,
+        images: ["area/austin.jpg"],
+        address: { city: "Austin", state: "TX", neighborhood: "South Austin" },
+        details: { numBedrooms: 4, numBathrooms: 2, sqft: 1752 },
+        status: "preview_sample"
+      },
+      {
+        title: "Townhouse",
+        listPrice: 279000,
+        class: "Townhouse",
+        photoCount: 3,
+        images: ["area/lago.jpg"],
+        address: { city: "Lago Vista", state: "TX", neighborhood: "Lago Vista" },
+        details: { numBedrooms: 3, numBathrooms: 3, sqft: 1153 },
+        status: "preview_sample"
+      },
+      {
+        title: "Condominium",
+        listPrice: 249900,
+        class: "Condominium",
+        photoCount: 5,
+        images: ["area/charlotte.jpg"],
+        address: { city: "Charlotte", state: "NC", neighborhood: "Uptown" },
+        details: { numBedrooms: 3, numBathrooms: 2, sqft: 1184 },
+        status: "preview_sample"
+      }
+    ]
+  };
+
+  const austinFiltered = await repliersProvider.searchResponse(
+    { provider: "repliers_preview", location: "Austin", maxPrice: 400000 },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async (_url, options) => {
+        const requestBody = JSON.parse(String(options.body));
+        assert.equal(requestBody.city, "Austin");
+        assert.equal(requestBody.maxPrice, 400000);
+        return { ok: true, json: async () => mixedPreviewBody };
+      }
+    }
+  );
+
+  assert.equal(austinFiltered.providerStatus, "preview_ready");
+  assert.equal(austinFiltered.results.length, 1);
+  assert.equal(austinFiltered.results[0].title, "Single Family Residence");
+  assert.equal(JSON.stringify(austinFiltered).includes("Charlotte"), false);
+  assert.equal(JSON.stringify(austinFiltered).includes("Lago Vista"), false);
+
+  const charlotteCondoFiltered = await repliersProvider.searchResponse(
+    {
+      provider: "repliers_preview",
+      location: "Charlotte",
+      type: "condo",
+      maxPrice: 300000
+    },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async (_url, options) => {
+        const requestBody = JSON.parse(String(options.body));
+        assert.equal(requestBody.city, "Charlotte");
+        assert.equal(requestBody.type, "condo");
+        assert.equal(requestBody.maxPrice, 300000);
+        return { ok: true, json: async () => mixedPreviewBody };
+      }
+    }
+  );
+
+  assert.equal(charlotteCondoFiltered.results.length, 1);
+  assert.equal(charlotteCondoFiltered.results[0].title, "Condominium");
+  assert.equal(charlotteCondoFiltered.results[0].price, 249900);
+  assert.equal(JSON.stringify(charlotteCondoFiltered).includes("Austin"), false);
+  assert.equal(JSON.stringify(charlotteCondoFiltered).includes("Townhouse"), false);
+
+  const impossibleFiltered = await repliersProvider.searchResponse(
+    {
+      provider: "repliers_preview",
+      location: "Charlotte",
+      type: "detached",
+      maxPrice: 100000
+    },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async () => ({ ok: true, json: async () => mixedPreviewBody })
+    }
+  );
+
+  assert.equal(impossibleFiltered.providerStatus, "preview_ready");
+  assert.equal(impossibleFiltered.blockedReason, undefined);
+  assert.equal(impossibleFiltered.results.length, 0);
+  assert.equal(impossibleFiltered.disclaimer, REPLIERS_NO_FILTER_MATCHES_DISCLAIMER);
+  assert.equal(JSON.stringify(impossibleFiltered).includes("mock_provider"), false);
 
   let productionFetchCalled = false;
   const repliersProduction = await repliersProvider.searchResponse(

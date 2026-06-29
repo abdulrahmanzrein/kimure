@@ -126,6 +126,7 @@ const I18N = {
     "nav.news": "News / Updates",
     "nav.governance": "Governance",
     "nav.onboarding": "Onboarding",
+    "nav.dashboard": "Dashboard",
     "nav.earlyAccess": "Login / Sign up",
     "nav.signOut": "Sign out",
     "hero.title": "The Future of Real Estate, Land & Agriculture — Powered by AI",
@@ -692,6 +693,7 @@ const I18N = {
     "nav.news": "Actualités",
     "nav.governance": "Gouvernance",
     "nav.onboarding": "Intégration",
+    "nav.dashboard": "Tableau de bord",
     "nav.earlyAccess": "Connexion / Inscription",
     "nav.signOut": "Déconnexion",
     "hero.title": "L'Avenir de l'Immobilier, des Terres et de l'Agriculture — Propulsé par l'IA",
@@ -1645,6 +1647,7 @@ if (statCard) animateStat(statCard);
 // Auth nav: show who is logged in, hide login CTAs, add Sign out
 (function () {
   var signOutBtn = null;
+  var dashboardLink = null;
 
   function t(key, fallback) {
     var d = window.KIMURE_I18N_DICT;
@@ -1682,9 +1685,27 @@ if (statCard) animateStat(statCard);
     return signOutBtn;
   }
 
+  function ensureDashboardLink() {
+    var navActions = document.querySelector(".nav-actions");
+    if (!navActions) return null;
+    if (dashboardLink) return dashboardLink;
+
+    dashboardLink = document.createElement("a");
+    dashboardLink.href = "dashboard.html";
+    dashboardLink.className = "btn btn-outline js-auth-dashboard";
+    dashboardLink.setAttribute("data-i18n", "nav.dashboard");
+    dashboardLink.textContent = t("nav.dashboard", "Dashboard");
+    dashboardLink.hidden = true;
+
+    var primaryLogin = navActions.querySelector(".js-early-access");
+    navActions.insertBefore(dashboardLink, primaryLogin || null);
+    return dashboardLink;
+  }
+
   function updateAuthUI(user) {
     var loginBtns = document.querySelectorAll(".js-early-access");
     var outBtn = ensureSignOutButton();
+    var dashLink = ensureDashboardLink();
 
     loginBtns.forEach(function (btn) {
       if (user) {
@@ -1716,6 +1737,11 @@ if (statCard) animateStat(statCard);
     if (outBtn) {
       outBtn.hidden = !user;
       outBtn.textContent = t("nav.signOut", "Sign out");
+    }
+
+    if (dashLink) {
+      dashLink.hidden = !user;
+      dashLink.textContent = t("nav.dashboard", "Dashboard");
     }
   }
 

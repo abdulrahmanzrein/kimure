@@ -119,8 +119,7 @@
 
   function formatAiProviderContextLabel(value) {
     if (value === "repliers_preview") return "Repliers preview";
-    if (value === "mock_provider") return "Sample provider";
-    if (value === "crea_ddf_pending_access") return "Provider pending access";
+    if (value === "mock_provider") return "Provider-ready context";
     return formatBlockedReason(value || "selected provider");
   }
 
@@ -133,19 +132,52 @@
 
   function buildProviderListingsQuery(formToRead) {
     var params = new URLSearchParams();
-    var provider = textValue(formToRead, "provider");
+    var provider = textValue(formToRead, "provider") || "repliers_preview";
     var location = textValue(formToRead, "location");
     var type = textValue(formToRead, "type");
     var maxPrice = parseMoney(textValue(formToRead, "maxPrice"));
     var intent = textValue(formToRead, "intent");
 
-    if (provider === "crea_ddf" || provider === "repliers_preview") params.set("provider", provider);
+    params.set("provider", provider === "repliers_preview" ? "repliers_preview" : "repliers_preview");
     if (location) params.set("location", location);
     if (type) params.set("type", type);
     if (maxPrice !== null) params.set("maxPrice", String(maxPrice));
     if (intent) params.set("intent", intent);
 
     return params;
+  }
+
+  function getProviderListingsFilterState() {
+    var listingsForm = document.getElementById("mpProviderListingsForm");
+    if (!listingsForm) return { provider: "repliers_preview" };
+    var maxPrice = parseMoney(textValue(listingsForm, "maxPrice"));
+    return {
+      provider: "repliers_preview",
+      location: textValue(listingsForm, "location"),
+      type: textValue(listingsForm, "type"),
+      maxPrice: maxPrice === null ? undefined : maxPrice,
+      intent: textValue(listingsForm, "intent")
+    };
+  }
+
+  function renderProviderFilterSummary(filters, resultCount) {
+    var summaryEl = document.getElementById("mpProviderFilterSummary");
+    if (!summaryEl) return;
+
+    var parts = [];
+    if (filters.location) parts.push("location: " + filters.location);
+    if (filters.type) parts.push("property type: " + filters.type);
+    if (typeof filters.maxPrice === "number") parts.push("max price: " + formatMoney(filters.maxPrice, {}));
+    if (filters.intent) parts.push("intent: " + filters.intent);
+
+    if (!parts.length) {
+      summaryEl.textContent = resultCount > 0
+        ? "Showing provider listings from Repliers preview access."
+        : "";
+      return;
+    }
+
+    summaryEl.textContent = "Showing provider listings matching " + parts.join(", ") + ".";
   }
 
   async function requestProviderListings(params) {
@@ -159,12 +191,6 @@
     }
 
     return body;
-  }
-
-  function isPendingAccessResponse(response) {
-    return response &&
-      response.providerStatus === "pending_access" &&
-      response.source === "crea_ddf_pending_access";
   }
 
   function isRepliersPreviewResponse(response) {
@@ -185,7 +211,7 @@
   function getListingBadgeLabels(listing) {
     var mode = getListingDisplayMode(listing);
     var isLiveProviderData = listing && listing.isLiveProviderData === true;
-    var sourceProvider = listing && listing.sourceProvider ? listing.sourceProvider : "mock_provider";
+    var sourceProvider = listing && listing.sourceProvider ? listing.sourceProvider : "provider_ready";
 
     if (mode === "production") {
       return {
@@ -209,7 +235,7 @@
     }
 
     return {
-      primary: "SAMPLE PROVIDER",
+      primary: "PROVIDER READY",
       secondary: "PREVIEW CARD"
     };
   }
@@ -360,40 +386,30 @@
     var statusEl = document.getElementById("mpProviderListingsStatus");
     var results = Array.isArray(response.results) ? response.results : [];
     var responseMode = getListingDisplayMode(response);
+    var filters = getProviderListingsFilterState();
 
     clearNode(grid);
-
-    if (isPendingAccessResponse(response)) {
-      if (emptyEl) {
-        emptyEl.hidden = false;
-        emptyEl.textContent = "CREA DDF access is prepared but pending approval/configuration. No live CREA/DDF listing data is being displayed yet.";
-      }
-      setProviderStatus(
-        statusEl,
-        "pending",
-        "Provider status: Pending access. " +
-          formatBlockedReason(response.blockedReason || "crea_ddf_access_not_configured") +
-          ". " +
-          (response.disclaimer || "CREA DDF access and compliance must be configured before live listings are used.")
-      );
-      return;
-    }
 
     if (isRepliersPreviewResponse(response) && !results.length) {
       if (emptyEl) {
         emptyEl.hidden = false;
-        emptyEl.textContent = "Repliers preview is not configured or returned no sample listings. No live MLS listing data is being displayed.";
+        emptyEl.textContent = response.providerStatus === "preview_ready"
+          ? "No provider listings matched these filters in the current data access mode. Try a broader location or adjust price/property type."
+          : "Repliers preview access is not configured or unavailable. No provider listings are shown.";
+      }
+      var statusMessage = "Provider status: " +
+        formatBlockedReason(response.providerStatus || "preview_not_configured") +
+        ". " +
+        (response.disclaimer || "Repliers preview/sample data is not live MLS listing data.");
+      if (response.blockedReason) {
+        statusMessage += " " + formatBlockedReason(response.blockedReason) + ".";
       }
       setProviderStatus(
         statusEl,
         response.providerStatus === "preview_ready" ? "ready" : "pending",
-        "Provider status: " +
-          formatBlockedReason(response.providerStatus || "preview_not_configured") +
-          ". " +
-          formatBlockedReason(response.blockedReason || "repliers_preview_request_failed") +
-          ". " +
-          (response.disclaimer || "Repliers preview/sample data is not live MLS listing data.")
+        statusMessage
       );
+      renderProviderFilterSummary(filters, 0);
       return;
     }
 
@@ -406,6 +422,7 @@
       }
     }
     setProviderStatus(statusEl, "ready", response.disclaimer || "Sample listings are shown from Kimure's provider-ready listings contract.");
+    renderProviderFilterSummary(filters, results.length);
 
     results.forEach(function (listing) {
       renderProviderListingCard(grid, listing && typeof listing === "object" ? listing : {});
@@ -471,7 +488,10 @@
   }
 
   function parseMoney(value) {
-    var normalized = String(value || "").replace(/[$,\s]/g, "");
+    var raw = String(value || "").trim();
+    var corrected = raw.replace(/[$\s]/g, "");
+    if (/^\d{3},\d{2}$/.test(corrected)) corrected += "0";
+    var normalized = corrected.replace(/,/g, "");
     if (!normalized) return null;
     var parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
@@ -486,22 +506,22 @@
 
   function getSelectedListingsProvider() {
     var selector = document.getElementById("mpProviderSelector");
-    if (!selector) return "";
-    if (selector.value === "crea_ddf" || selector.value === "repliers_preview") return selector.value;
-    return "";
+    if (!selector) return "repliers_preview";
+    return selector.value === "repliers_preview" ? "repliers_preview" : "repliers_preview";
   }
 
   function marketplaceAiMetadata() {
     var provider = getSelectedListingsProvider();
     return {
       source: "marketplace_ai_tools",
-      listingProvider: provider || "mock_provider",
-      provider: provider || "mock_provider"
+      listingProvider: provider || "repliers_preview",
+      provider: provider || "repliers_preview",
+      listingFilters: getProviderListingsFilterState()
     };
   }
 
   function selectedListingProviderFields() {
-    var provider = getSelectedListingsProvider() || "mock_provider";
+    var provider = getSelectedListingsProvider() || "repliers_preview";
     return {
       provider: provider,
       listingProvider: provider

@@ -6,8 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "check:credit-provider-status": "node scripts/check-credit-provider-status-panel.js",
+    "check:dashboard": "node scripts/check-dashboard-ai-credit.js",
     "check:dashboard-ai-credit": "node scripts/check-dashboard-ai-credit.js",
     "check:marketplace-listings-preview": "node scripts/check-marketplace-listings-preview.js",
+    "check:onboarding": "node scripts/check-onboarding-ai-flow.js",
     "start": "next start",
     "lint": "next lint"
   },

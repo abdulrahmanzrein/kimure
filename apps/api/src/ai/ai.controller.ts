@@ -154,6 +154,10 @@ export class AiController {
     input: Record<string, unknown>
   ): Promise<Record<string, unknown>> {
     if (!isMarketplaceListingContextTool(tool)) return input;
+    const metadata = asRecord(input.metadata);
+    if (metadata.source === "smart_onboarding" || metadata.smartOnboarding === true) {
+      return input;
+    }
 
     try {
       const query = buildListingContextQuery(input);
@@ -224,12 +228,20 @@ function firstNumber(...values: unknown[]): number | undefined {
   for (const value of values) {
     if (typeof value === "number" && Number.isFinite(value)) return value;
     if (typeof value === "string") {
-      const parsed = Number(value.replace(/[$,\s]/g, ""));
+      const normalized = normalizeMoneyString(value);
+      const parsed = Number(normalized);
       if (Number.isFinite(parsed)) return parsed;
     }
   }
 
   return undefined;
+}
+
+function normalizeMoneyString(value: string): string {
+  const corrected = value.trim().replace(/[$\s]/g, "");
+  return /^\d{3},\d{2}$/.test(corrected)
+    ? `${corrected.replace(/,/g, "")}0`
+    : corrected.replace(/,/g, "");
 }
 
 function firstProvider(...values: unknown[]): ListingSearchQuery["provider"] {
@@ -249,17 +261,28 @@ export function buildListingContextQuery(
   const context = asRecord(input.context);
   const financials = asRecord(input.financials);
   const metadata = asRecord(input.metadata);
+  const listingFilters = asRecord(metadata.listingFilters);
 
   return {
     q: firstText(input.q, input.search, listing.address, property.address),
     location: firstText(
+      listingFilters.location,
       filters.location,
       input.location,
       context.location,
       property.location
     ),
-    type: firstText(filters.type, filters.propertyType, input.type, input.propertyType),
+    type: firstText(
+      listingFilters.type,
+      listingFilters.propertyType,
+      filters.type,
+      filters.propertyType,
+      input.type,
+      input.propertyType
+    ),
+    minPrice: firstNumber(listingFilters.minPrice, filters.minPrice, input.minPrice),
     maxPrice: firstNumber(
+      listingFilters.maxPrice,
       filters.maxPrice,
       filters.budget,
       filters.monthlyBudget,
@@ -270,8 +293,14 @@ export function buildListingContextQuery(
       property.price,
       financials.availableFunds
     ),
-    bedrooms: firstNumber(filters.bedrooms, input.bedrooms, property.bedrooms),
-    intent: firstText(input.intent, input.goals, filters.intent, filters.preferences),
+    bedrooms: firstNumber(listingFilters.bedrooms, filters.bedrooms, input.bedrooms, property.bedrooms),
+    intent: firstText(
+      listingFilters.intent,
+      input.intent,
+      input.goals,
+      filters.intent,
+      filters.preferences
+    ),
     provider: firstProvider(
       input.listingProvider,
       metadata.listingProvider,

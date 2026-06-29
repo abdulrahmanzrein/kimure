@@ -174,7 +174,7 @@ export function shapeOnboarding(value: unknown): JsonObject | null {
     budgetMax: safeNumber(source.budget_max),
     timeline: safeString(source.timeline, 120),
     riskLevel: safeString(source.risk_level, 120),
-    locationPreferences: safeStringArray(source.location_preferences),
+    locationPreferences: safeLocationPreferences(source.location_preferences),
     propertyPreferences: safeStringArray(source.property_preferences),
     financialInputs: shapeOnboardingFinancialInputs(source.financial_inputs),
     updatedAt: safeTimestamp(source.updated_at)
@@ -464,6 +464,23 @@ function safeStringArray(value: unknown): string[] {
   }
 
   return [];
+}
+
+function safeLocationPreferences(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((item) => {
+      if (typeof item === "string") return safeString(item, 300);
+      const source = asObject(item);
+      if (!source) return null;
+      return [
+        safeString(source.city, 120),
+        safeString(source.country, 120)
+      ].filter(Boolean).join(", ");
+    })
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 10);
 }
 
 function compact(value: JsonObject): JsonObject {
