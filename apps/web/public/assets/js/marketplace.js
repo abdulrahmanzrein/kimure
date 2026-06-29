@@ -697,6 +697,40 @@
     results.forEach(function (listing) {
       renderProviderListingCard(grid, listing && typeof listing === "object" ? listing : {});
     });
+
+    if (results.length) populateIntentSections(results);
+  }
+
+  function populateIntentSections(results) {
+    function hasSignal(listing, keywords) {
+      var s = ((listing.matchSignals || []).join(" ") + " " + (listing.type || "")).toLowerCase();
+      return keywords.some(function (k) { return s.indexOf(k) >= 0; });
+    }
+
+    var intentMap = {
+      rent:   function (l) { return hasSignal(l, ["rental", "walkable", "commuter"]); },
+      invest: function (l) { return hasSignal(l, ["investment", "rental potential", "growth"]); },
+      buy:    function (l) { return hasSignal(l, ["primary residence", "family", "transit"]); },
+      sale:   function (l) { return true; }
+    };
+
+    blocks.forEach(function (block) {
+      if (!block.grid || !block.emptyEl) return;
+
+      // Remove old hardcoded cards, keep the empty-state element
+      Array.from(block.grid.children).forEach(function (child) {
+        if (child !== block.emptyEl) block.grid.removeChild(child);
+      });
+
+      var match = intentMap[block.mode] || function () { return true; };
+      var matched = results.filter(match).slice(0, 6);
+
+      block.emptyEl.classList.toggle("mp-hidden", matched.length > 0);
+
+      matched.forEach(function (listing) {
+        renderProviderListingCard(block.grid, listing);
+      });
+    });
   }
 
   function initProviderListingsPreview() {
