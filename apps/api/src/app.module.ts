@@ -16,6 +16,10 @@ import { ListingsModule } from "./listings/listings.module";
 import { CreditProviderStatusController } from "./credit/credit-provider-status.controller";
 import { CreditProviderStatusService } from "./credit/credit-provider-status.service";
 import { CreditProviderVerificationService } from "./credit/credit-provider-verification.service";
+import { SavedPropertiesController } from "./saved-properties/saved-properties.controller";
+import { SavedPropertiesService } from "./saved-properties/saved-properties.service";
+import { LeadsController } from "./leads/leads.controller";
+import { LeadsService } from "./leads/leads.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -43,7 +47,9 @@ class HealthController {
     CreditProviderStatusController,
     DashboardController,
     UsersController,
-    OnboardingController
+    OnboardingController,
+    SavedPropertiesController,
+    LeadsController
   ],
   providers: [
     AiGatewayService,
@@ -55,7 +61,9 @@ class HealthController {
     DashboardService,
     SupabaseAuthGuard,
     UsersService,
-    OnboardingService
+    OnboardingService,
+    SavedPropertiesService,
+    LeadsService
   ]
 })
 export class AppModule {}

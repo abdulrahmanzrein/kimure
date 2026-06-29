@@ -970,3 +970,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+.mp-provider-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.mp-provider-card-actions .btn {
+  flex: 1;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}

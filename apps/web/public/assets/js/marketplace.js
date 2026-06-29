@@ -239,6 +239,72 @@
     }
 
     appendNode(body, "button", "mp-provider-preview-cta", "Preview details").setAttribute("type", "button");
+
+    var actions = appendNode(card, "div", "mp-provider-card-actions");
+
+    var saveBtn = document.createElement("button");
+    saveBtn.className = "btn btn-outline mp-save-btn";
+    saveBtn.textContent = "Save listing";
+    saveBtn.addEventListener("click", function () {
+      saveListing(listing.id, listing.title, saveBtn);
+    });
+    actions.appendChild(saveBtn);
+
+    var contactBtn = document.createElement("button");
+    contactBtn.className = "btn btn-primary mp-contact-btn";
+    contactBtn.textContent = "Contact agent";
+    contactBtn.addEventListener("click", function () {
+      contactAgent(listing.id, listing.title || "this listing", contactBtn);
+    });
+    actions.appendChild(contactBtn);
+  }
+
+  async function saveListing(listingId, listingTitle, btn) {
+    var token = await getAccessToken();
+    if (!token) {
+      btn.textContent = "Sign in to save";
+      setTimeout(function () { btn.textContent = "Save listing"; }, 2000);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    try {
+      var res = await fetch(getApiBaseUrl() + "/saved-properties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({ listing_id: listingId, intent_data: { listing_title: listingTitle } })
+      });
+      btn.textContent = res.ok ? "Saved!" : "Save listing";
+      if (!res.ok) btn.disabled = false;
+    } catch (err) {
+      btn.textContent = "Save listing";
+      btn.disabled = false;
+    }
+  }
+
+  async function contactAgent(listingId, listingTitle, btn) {
+    var token = await getAccessToken();
+    if (!token) {
+      btn.textContent = "Sign in first";
+      setTimeout(function () { btn.textContent = "Contact agent"; }, 2000);
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = "Sending...";
+    try {
+      var res = await fetch(getApiBaseUrl() + "/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+        body: JSON.stringify({
+          intent_data: { source: "marketplace", listing_title: listingTitle, listing_id: listingId }
+        })
+      });
+      btn.textContent = res.ok ? "Agent contacted!" : "Contact agent";
+      if (!res.ok) btn.disabled = false;
+    } catch (err) {
+      btn.textContent = "Contact agent";
+      btn.disabled = false;
+    }
   }
 
   function renderProviderListings(response) {

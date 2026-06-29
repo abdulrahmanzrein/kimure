@@ -31,7 +31,7 @@ interface RepliersReadinessStatus {
 const allowedPreviewBaseUrl = "https://api.repliers.io";
 const defaultImageCdnBaseUrl = "https://cdn.repliers.io";
 const requestTimeoutMs = 8000;
-const resultLimit = 6;
+const resultLimit = 20;
 
 @Injectable()
 export class RepliersPreviewProvider implements ListingProviderAdapter {
