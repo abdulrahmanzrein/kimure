@@ -5,6 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "check:ai-insights-contract": "node -r ts-node/register scripts/check-ai-insights-contract.js",
     "check:ai-listing-context": "node -r ts-node/register scripts/check-ai-listing-context.js",
     "check:credit-contract": "node -r ts-node/register scripts/check-credit-ai-contract.js",
     "check:credit-provider-status": "node -r ts-node/register scripts/check-credit-provider-status.js",

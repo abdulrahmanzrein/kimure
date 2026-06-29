@@ -211,6 +211,13 @@ Successful structured Gateway responses are normally returned to the client
 unchanged. Credit-profile is the exception: the Kimure API returns only its
 documented safe response allowlist and drops provider-specific response fields.
 
+Dashboard and CRM integrations should use an API-owned sanitized AI insight
+contract rather than raw Gateway responses. The dashboard contract is limited to
+user-facing summaries, scores, risk bands, insights, recommendations, next
+steps, safe CRM signals, source labels, disclaimers, and small status metadata.
+It must not expose prompts, raw Gemini output, provider payloads, bureau data,
+tokens, stack traces, or raw request/response logs.
+
 Backend integration errors:
 
 - `400`: invalid Kimure client payload

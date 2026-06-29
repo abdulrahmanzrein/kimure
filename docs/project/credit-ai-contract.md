@@ -139,6 +139,17 @@ The Gateway accepts API-resolved handoff only when the API marks it with
 `creditMortgageHandoffTrust: "api_resolved_trusted"`. Its in-memory assessment
 store remains a development-only fallback for standalone local Gateway checks.
 
+## Dashboard AI insight contract
+
+Future dashboard and CRM surfaces should consume sanitized API insight contracts,
+not raw Gateway responses or raw `ai_requests` payloads. The API-side dashboard
+contract exposes only summary, score, risk level, key insights, recommendations,
+next steps, safe CRM signals, source label, disclaimer, and small metadata such
+as provider/verification status or credit-reference status.
+
+Dashboard code should not call the AI Gateway directly, parse raw provider or
+Gemini responses, or read raw credit handoff data. When AI report persistence is
+added, it should store and return this sanitized contract shape only.
 ## Consent and financial profile persistence
 
 Live bureau personalization requires API-owned consent and financial profile
