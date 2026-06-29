@@ -1,4 +1,7 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const {
   OFFICIAL_ONEVIEW_BASE_URLS,
   ONEVIEW_OAUTH_SCOPE,
@@ -15,7 +18,12 @@ const {
   resetEquifaxTokenCache
 } = require('../src/services/equifax/equifaxTokenService');
 
+const smokeScriptPath = path.join(__dirname, 'run-equifax-sandbox-smoke-test.js');
+
 async function run() {
+  checkSmokeScriptExistsAndIsGated();
+  checkSmokeScriptDefaultRunIsBlocked();
+  checkSmokeScriptRuntimeGates();
   checkSandboxStaticTokenTestDisabledByDefault();
   checkExplicitReadinessGate();
   checkProviderCallsFlagRequired();
@@ -23,7 +31,85 @@ async function run() {
   checkLiveSmokeFlagDoesNotEnableNetworkPath();
   await checkTokenValueIsNeverPrinted();
   checkClientCredentialsRemainBlocked();
-  console.log('[PASS] Equifax sandbox static-token path checks (7 assertion groups)');
+  console.log('[PASS] Equifax sandbox static-token path checks (10 assertion groups)');
+}
+
+function checkSmokeScriptExistsAndIsGated() {
+  assert.equal(fs.existsSync(smokeScriptPath), true);
+  const source = fs.readFileSync(smokeScriptPath, 'utf8');
+  const packageJson = fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8');
+
+  assert.ok(packageJson.includes('"smoke:equifax-sandbox"'));
+  assert.ok(source.includes('EQUIFAX_ENABLED'));
+  assert.ok(source.includes('EQUIFAX_ENVIRONMENT'));
+  assert.ok(source.includes('EQUIFAX_TOKEN_STRATEGY'));
+  assert.ok(source.includes('EQUIFAX_PROVIDER_CALLS_ENABLED'));
+  assert.ok(source.includes(SANDBOX_STATIC_TOKEN_TEST_FLAG));
+  assert.ok(source.includes(SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG));
+  assert.ok(source.includes('OFFICIAL_ONEVIEW_BASE_URLS.sandbox'));
+  assert.ok(source.includes("env.EQUIFAX_TOKEN_STRATEGY !== TOKEN_STRATEGY_MODES.sandboxStaticToken"));
+  assert.ok(source.includes("config.baseUrl !== OFFICIAL_ONEVIEW_BASE_URLS.sandbox"));
+  assert.ok(source.includes("normalizeEquifaxOneViewResponseV1"));
+  assert.equal(source.includes('oauth_client_credentials'), false);
+  assert.equal(/console\.(log|error)\([^)]*(token|Authorization|memberNumber|securityCode|requestBody|body|raw)/i.test(source), false);
+}
+
+function checkSmokeScriptDefaultRunIsBlocked() {
+  const result = spawnSync(process.execPath, [smokeScriptPath], {
+    env: {
+      PATH: process.env.PATH || ''
+    },
+    encoding: 'utf8'
+  });
+  const output = `${result.stdout || ''}${result.stderr || ''}`;
+
+  assert.notEqual(result.status, 0);
+  assert.ok(output.includes('equifax_provider_disabled'));
+  assert.equal(output.includes('sandbox-token-secret-value'), false);
+  assert.equal(output.includes('Authorization'), false);
+  assert.equal(output.includes('memberNumber'), false);
+  assert.equal(output.includes('securityCode'), false);
+  assert.equal(output.includes('requestBody'), false);
+}
+
+function checkSmokeScriptRuntimeGates() {
+  const { validateSmokeTestGates } = require(smokeScriptPath);
+  const validEnv = createSandboxStaticTokenEnv({
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true',
+    EQUIFAX_TOKEN_STRATEGY: TOKEN_STRATEGY_MODES.sandboxStaticToken,
+    [SANDBOX_STATIC_TOKEN_TEST_FLAG]: 'true',
+    [SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG]: 'true'
+  });
+  const validConfig = buildEquifaxRuntimeConfig(validEnv);
+  assert.equal(validateSmokeTestGates(validConfig, validEnv).ok, true);
+
+  const nonSandboxEnv = {
+    ...validEnv,
+    EQUIFAX_ENVIRONMENT: 'production',
+    EQUIFAX_PRODUCTION_BASE_URL: OFFICIAL_ONEVIEW_BASE_URLS.production,
+    EQUIFAX_PRODUCTION_MEMBER_NUMBER: 'production-member-secret-value',
+    EQUIFAX_PRODUCTION_SECURITY_CODE: 'production-security-secret-value',
+    EQUIFAX_PRODUCTION_CUSTOMER_CODE: 'production-customer-secret-value'
+  };
+  const nonSandboxGate = validateSmokeTestGates(buildEquifaxRuntimeConfig(nonSandboxEnv), nonSandboxEnv);
+  assert.equal(nonSandboxGate.ok, false);
+  assert.equal(nonSandboxGate.blockedReason, 'sandbox_environment_required');
+
+  const wrongBaseUrlEnv = {
+    ...validEnv,
+    EQUIFAX_SANDBOX_BASE_URL: OFFICIAL_ONEVIEW_BASE_URLS.production
+  };
+  const wrongBaseUrlGate = validateSmokeTestGates(buildEquifaxRuntimeConfig(wrongBaseUrlEnv), wrongBaseUrlEnv);
+  assert.equal(wrongBaseUrlGate.ok, false);
+  assert.equal(wrongBaseUrlGate.blockedReason, 'official_sandbox_base_url_required');
+
+  const missingLiveFlagEnv = {
+    ...validEnv,
+    [SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG]: 'false'
+  };
+  const missingLiveFlagGate = validateSmokeTestGates(buildEquifaxRuntimeConfig(missingLiveFlagEnv), missingLiveFlagEnv);
+  assert.equal(missingLiveFlagGate.ok, false);
+  assert.equal(missingLiveFlagGate.blockedReason, 'sandbox_static_token_live_smoke_test_disabled');
 }
 
 function checkSandboxStaticTokenTestDisabledByDefault() {
