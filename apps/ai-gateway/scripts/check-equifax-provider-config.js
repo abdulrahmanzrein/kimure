@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const {
   buildEquifaxRuntimeConfig,
+  OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
   OAUTH_GRANT_TYPE,
   OAUTH_TOKEN_CONTENT_TYPE,
   OAUTH_TOKEN_FORM_FIELDS,
@@ -23,9 +24,12 @@ function run() {
   checkProductionRequiresProductionPrefixedKeys();
   checkRuntimeConfigKeepsSecretsInternal();
   checkGenericSandboxClientCredentialsAreDetectedButBlocked();
+  checkCredentialPlacementDefaultsToUnset();
+  checkCredentialPlacementCanBeConfiguredSafely();
+  checkInvalidCredentialPlacementFailsSafe();
   checkExplicitProviderCallGateRequired();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider config checks (10 assertion groups)');
+  console.log('[PASS] Equifax provider config checks (13 assertion groups)');
 }
 
 function checkDisabledProvider() {
@@ -57,8 +61,13 @@ function checkSandboxStaticTokenReady() {
   assert.equal(status.oauthTokenContentTypeConfirmed, true);
   assert.equal(status.oauthScopeConfirmed, false);
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementConfigured, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, false);
+  assert.equal(status.oauthBlockedUntilResponseExpiry, false);
+  assert.equal(status.oauthBlockedUntilProviderCallsEnabled, true);
   assert.equal(status.providerCallsEnabled, false);
   assert.equal(status.canAttemptProviderCall, false);
   assert.equal(statusContainsSecretValue(status, env), false);
@@ -158,8 +167,13 @@ function checkRuntimeConfigKeepsSecretsInternal() {
   assert.equal(status.oauthTokenContentTypeConfirmed, true);
   assert.equal(status.oauthScopeConfirmed, true);
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementConfigured, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
+  assert.equal(status.oauthBlockedUntilResponseExpiry, true);
+  assert.equal(status.oauthBlockedUntilProviderCallsEnabled, true);
   assert.equal(runtimeConfig.clientSecret, env.EQUIFAX_PRODUCTION_CLIENT_SECRET);
   assert.equal(runtimeConfig.oauthGrantType, OAUTH_GRANT_TYPE);
   assert.equal(runtimeConfig.oauthTokenMethod, OAUTH_TOKEN_METHOD);
@@ -199,8 +213,13 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(status.oauthTokenContentTypeConfirmed, true);
   assert.equal(status.oauthScopeConfirmed, true);
   assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementConfigured, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset);
   assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
+  assert.equal(status.oauthBlockedUntilResponseExpiry, true);
+  assert.equal(status.oauthBlockedUntilProviderCallsEnabled, false);
   assert.equal(status.providerCallsEnabled, true);
   assert.equal(status.canAttemptProviderCall, false);
   assert.equal(runtimeConfig.clientId, env.EQUIFAX_CLIENT_ID);
@@ -208,6 +227,57 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(runtimeConfig.oauthTokenContentType, 'application/x-www-form-urlencoded');
   assert.deepEqual(runtimeConfig.oauthTokenFormFields, OAUTH_TOKEN_FORM_FIELDS);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkCredentialPlacementDefaultsToUnset() {
+  const env = createProductionEnv();
+  const runtimeConfig = buildEquifaxRuntimeConfig(env);
+  const status = runtimeConfig.providerConfigStatus;
+
+  assert.equal(runtimeConfig.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.oauthClientCredentialPlacementConfigured, false);
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, true);
+  assert.equal(JSON.stringify(status).includes('basic_auth'), false);
+  assert.equal(JSON.stringify(status).includes('form_body'), false);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkCredentialPlacementCanBeConfiguredSafely() {
+  ['basic_auth', 'form_body'].forEach((placement) => {
+    const env = {
+      ...createProductionEnv(),
+      EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT: placement
+    };
+    const runtimeConfig = buildEquifaxRuntimeConfig(env);
+    const status = runtimeConfig.providerConfigStatus;
+
+    assert.equal(status.configReady, true);
+    assert.equal(runtimeConfig.oauthClientCredentialPlacementMode, placement);
+    assert.equal(status.oauthClientCredentialPlacementMode, placement);
+    assert.equal(status.oauthClientCredentialPlacementConfigured, true);
+    assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+    assert.equal(status.oauthBlockedUntilCredentialPlacement, false);
+    assert.equal(status.oauthBlockedUntilResponseExpiry, true);
+    assert.equal(status.canAttemptProviderCall, false);
+    assert.equal(statusContainsSecretValue(status, env), false);
+  });
+}
+
+function checkInvalidCredentialPlacementFailsSafe() {
+  const env = {
+    ...createProductionEnv(),
+    EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT: 'query_string'
+  };
+  const status = validateEquifaxProviderConfig(env);
+
+  assert.equal(status.configReady, false);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'unset');
+  assert.equal(status.oauthClientCredentialPlacementConfigured, false);
+  assert.equal(status.canAttemptProviderCall, false);
+  assert.ok(status.errors.includes('EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT must be one of: unset, basic_auth, form_body.'));
   assert.equal(statusContainsSecretValue(status, env), false);
 }
 

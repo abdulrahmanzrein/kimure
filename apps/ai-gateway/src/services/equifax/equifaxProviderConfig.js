@@ -7,6 +7,12 @@ const OAUTH_TOKEN_FORM_FIELDS = Object.freeze({
   grant_type: OAUTH_GRANT_TYPE,
   scope: ONEVIEW_OAUTH_SCOPE
 });
+const OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES = Object.freeze({
+  unset: 'unset',
+  basicAuth: 'basic_auth',
+  formBody: 'form_body'
+});
+const ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS = new Set(Object.values(OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES));
 
 const OFFICIAL_ONEVIEW_BASE_URLS = Object.freeze({
   sandbox: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
@@ -85,8 +91,13 @@ function validateEquifaxProviderConfig(env = process.env) {
       oauthTokenContentTypeConfirmed: true,
       oauthScopeConfirmed: true,
       oauthClientCredentialPlacementConfirmed: false,
+      oauthClientCredentialPlacementConfigured: false,
+      oauthClientCredentialPlacementMode: OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset,
       oauthResponseExpiryConfirmed: false,
       oauthRequestFormatConfirmed: false,
+      oauthBlockedUntilCredentialPlacement: false,
+      oauthBlockedUntilResponseExpiry: false,
+      oauthBlockedUntilProviderCallsEnabled: false,
       providerCallsEnabled: false,
       canAttemptProviderCall: false
     });
@@ -101,6 +112,11 @@ function validateEquifaxProviderConfig(env = process.env) {
   const prefix = ENVIRONMENT_PREFIXES[environment] || ENVIRONMENT_PREFIXES.sandbox;
   const environmentKeys = ENVIRONMENT_REQUIRED_SUFFIXES.map((suffix) => `${prefix}_${suffix}`);
   const credentials = readEnvironmentCredentials(env, prefix);
+  const requestedOauthClientCredentialPlacementMode = resolveClientCredentialPlacement(env, prefix);
+  const oauthClientCredentialPlacementMode = ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(requestedOauthClientCredentialPlacementMode)
+    ? requestedOauthClientCredentialPlacementMode
+    : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
+  const oauthClientCredentialPlacementConfigured = oauthClientCredentialPlacementMode !== OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
   const staticSandboxTokenPresent = hasValue(env.EQUIFAX_SANDBOX_ACCESS_TOKEN);
   const staticSandboxTokenAllowed = environment === 'sandbox' && staticSandboxTokenPresent;
   const clientCredentialsConfigured = Boolean(credentials.clientId && credentials.clientSecret && credentials.scope);
@@ -123,6 +139,10 @@ function validateEquifaxProviderConfig(env = process.env) {
 
   if (staticSandboxTokenPresent && environment !== 'sandbox') {
     errors.push('EQUIFAX_SANDBOX_ACCESS_TOKEN is only allowed when EQUIFAX_ENVIRONMENT is sandbox.');
+  }
+
+  if (!ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(requestedOauthClientCredentialPlacementMode)) {
+    errors.push('EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT must be one of: unset, basic_auth, form_body.');
   }
 
   if (environment === 'production') {
@@ -149,6 +169,11 @@ function validateEquifaxProviderConfig(env = process.env) {
   const oauthResponseExpiryConfirmed = false;
   const oauthRequestFormatConfirmed = false;
   const tokenAvailableForProviderCall = staticSandboxTokenAllowed;
+  const oauthBlockedUntilCredentialPlacement = tokenStrategy === 'client_credentials_pending_docs' &&
+    !oauthClientCredentialPlacementConfigured;
+  const oauthBlockedUntilResponseExpiry = tokenStrategy === 'client_credentials_pending_docs' &&
+    !oauthResponseExpiryConfirmed;
+  const oauthBlockedUntilProviderCallsEnabled = !providerCallsEnabled;
 
   return safeStatus({
     enabled,
@@ -172,9 +197,14 @@ function validateEquifaxProviderConfig(env = process.env) {
     oauthTokenContentTypeConfirmed: true,
     oauthScopeConfirmed: Boolean(credentials.scope && credentials.scope === ONEVIEW_OAUTH_SCOPE),
     oauthClientCredentialPlacementConfirmed,
+    oauthClientCredentialPlacementConfigured,
+    oauthClientCredentialPlacementMode,
     oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed,
     oauthBlockedUntilPortalDocs: tokenStrategy === 'client_credentials_pending_docs',
+    oauthBlockedUntilCredentialPlacement,
+    oauthBlockedUntilResponseExpiry,
+    oauthBlockedUntilProviderCallsEnabled,
     providerCallsEnabled,
     canAttemptProviderCall: configReady &&
       providerCallsEnabled &&
@@ -216,6 +246,8 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     oauthTokenContentTypeConfirmed: status.oauthTokenContentTypeConfirmed,
     oauthScopeConfirmed: status.oauthScopeConfirmed,
     oauthClientCredentialPlacementConfirmed: status.oauthClientCredentialPlacementConfirmed,
+    oauthClientCredentialPlacementConfigured: status.oauthClientCredentialPlacementConfigured,
+    oauthClientCredentialPlacementMode: status.oauthClientCredentialPlacementMode,
     oauthResponseExpiryConfirmed: status.oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed: status.oauthRequestFormatConfirmed,
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
@@ -314,9 +346,16 @@ function safeStatus(status) {
     oauthTokenContentTypeConfirmed: Boolean(status.oauthTokenContentTypeConfirmed),
     oauthScopeConfirmed: Boolean(status.oauthScopeConfirmed),
     oauthClientCredentialPlacementConfirmed: Boolean(status.oauthClientCredentialPlacementConfirmed),
+    oauthClientCredentialPlacementConfigured: Boolean(status.oauthClientCredentialPlacementConfigured),
+    oauthClientCredentialPlacementMode: ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS.has(status.oauthClientCredentialPlacementMode)
+      ? status.oauthClientCredentialPlacementMode
+      : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset,
     oauthResponseExpiryConfirmed: Boolean(status.oauthResponseExpiryConfirmed),
     oauthRequestFormatConfirmed: Boolean(status.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: Boolean(status.oauthBlockedUntilPortalDocs),
+    oauthBlockedUntilCredentialPlacement: Boolean(status.oauthBlockedUntilCredentialPlacement),
+    oauthBlockedUntilResponseExpiry: Boolean(status.oauthBlockedUntilResponseExpiry),
+    oauthBlockedUntilProviderCallsEnabled: Boolean(status.oauthBlockedUntilProviderCallsEnabled),
     providerCallsEnabled: Boolean(status.providerCallsEnabled),
     canAttemptProviderCall: Boolean(status.canAttemptProviderCall)
   };
@@ -337,6 +376,14 @@ function resolveTokenUrl(env, environment, prefix) {
   const configuredTokenUrl = valueOrNull(env[`${prefix}_TOKEN_URL`]) || valueOrNull(env.EQUIFAX_TOKEN_URL);
   if (configuredTokenUrl) return configuredTokenUrl;
   return environment === 'sandbox' ? SANDBOX_OAUTH_TOKEN_URL : null;
+}
+
+function resolveClientCredentialPlacement(env, prefix) {
+  const value = valueOrNull(env[`${prefix}_OAUTH_CLIENT_CREDENTIAL_PLACEMENT`]) ||
+    valueOrNull(env.EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT);
+  return value
+    ? value.toLowerCase()
+    : OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
 }
 
 function sanitizeMessages(values) {
@@ -406,6 +453,7 @@ module.exports = {
   OAUTH_TOKEN_METHOD,
   OAUTH_TOKEN_CONTENT_TYPE,
   OAUTH_TOKEN_FORM_FIELDS,
+  OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
   OFFICIAL_ONEVIEW_BASE_URLS,
   ONEVIEW_OAUTH_SCOPE,
   SANDBOX_OAUTH_TOKEN_URL,
