@@ -32,7 +32,7 @@ async function run() {
   assert.equal(controllerSource.includes("listingContext"), true);
   assert.equal(controllerSource.includes("credit-profile"), true);
   assert.equal(controllerSource.includes("mortgage"), true);
-  assert.equal(controllerSource.includes("isLiveProviderData: true"), false);
+  assert.equal(controllerSource.includes("providerStatus === \"live_ready\""), true);
 
   ["scout", "rental", "analyze", "valuate", "investment-planner", "chat"].forEach(
     (tool) => {
@@ -70,8 +70,8 @@ async function run() {
   assert.equal(context.blockedReason, null);
   assert.equal(context.isLiveProviderData, false);
   assert.equal(context.resultCount, context.results.length);
-  assert.equal(context.providerGuidance.dataMode, "mock_sample_preview");
-  assert.equal(context.providerGuidance.instruction.includes("mock/sample"), true);
+  assert.equal(context.providerGuidance.dataMode, "sample_provider_ready_preview");
+  assert.equal(context.providerGuidance.instruction.includes("sample/provider-ready"), true);
   assert.equal(context.providerGuidance.instruction.includes("Do not describe it as live MLS"), true);
   assert.equal(context.results.length > 0, true);
 
@@ -205,7 +205,8 @@ async function run() {
       unavailableMockResponse.summary.includes("Repliers preview data is selected but unavailable"),
       true
     );
-    assert.equal(unavailableMockSerialized.includes("did not substitute mock listings"), true);
+    assert.equal(unavailableMockSerialized.includes("did not substitute sample-provider listings"), true);
+    assert.equal(unavailableMockSerialized.includes("mock listings"), false);
     assert.equal(unavailableMockSerialized.includes("Sample family home near parks and transit"), false);
   } finally {
     restoreEnv("REPLIERS_ENABLED", originalRepliersEnv.REPLIERS_ENABLED);
@@ -267,6 +268,7 @@ async function run() {
 
   assert.equal(repliersContext.source, "repliers_preview");
   assert.equal(repliersContext.providerStatus, "preview_ready");
+  assert.equal(repliersContext.displayMode, "preview");
   assert.equal(repliersContext.isLiveProviderData, false);
   assert.equal(repliersContext.resultCount, 3);
   assert.equal(repliersContext.providerGuidance.dataMode, "repliers_preview_sample_data");
@@ -293,6 +295,7 @@ async function run() {
 
   assert.equal(repliersMockResponse.summary.includes("Using Repliers preview/sample listing data"), true);
   assert.equal(repliersMockResponse.summary.includes("not live MLS data"), true);
+  assert.equal(repliersMockResponse.disclaimer.includes("mock mode"), false);
   assert.equal(repliersMockResponse.summary.includes("Condo"), true);
   assert.equal(repliersMockResponse.summary.includes("East End Townhome Preview"), true);
   assert.equal(repliersMockResponse.summary.includes("West Side Detached Preview"), true);
@@ -313,6 +316,42 @@ async function run() {
   assert.equal(repliersMockSerialized.includes("Sample family home near parks and transit"), false);
   assert.equal(repliersMockSerialized.includes("live CREA listings are connected"), false);
   assert.equal(/MLS[-\s]?\d{4,}/i.test(repliersMockSerialized), false);
+
+  const repliersProductionListings = await repliersProvider.searchResponse(repliersQuery, {
+    env: {
+      REPLIERS_ENABLED: "true",
+      REPLIERS_ENVIRONMENT: "production",
+      REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+      REPLIERS_API_BASE_URL: "https://api.repliers.io",
+      REPLIERS_API_KEY: "redacted-test-key"
+    },
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => mockRepliersProductionResponseBody()
+    })
+  });
+  const repliersProductionContext = buildSafeListingContext(
+    repliersProductionListings,
+    repliersQuery
+  );
+  const repliersProductionResponse = getMockToolResponse("scout", {
+    listingContext: repliersProductionContext
+  });
+  const repliersProductionSerialized = JSON.stringify(repliersProductionResponse);
+
+  assert.equal(repliersProductionContext.providerStatus, "production_ready");
+  assert.equal(repliersProductionContext.displayMode, "production");
+  assert.equal(repliersProductionContext.providerGuidance.dataMode, "provider_listing_context");
+  assert.equal(repliersProductionResponse.summary.includes("Using selected provider listing context"), true);
+  assert.equal(repliersProductionSerialized.includes("preview/sample"), false);
+  assert.equal(repliersProductionSerialized.includes("preview match"), false);
+  assert.equal(repliersProductionSerialized.includes("preview matches"), false);
+  assert.equal(repliersProductionSerialized.includes("sample provider API data"), false);
+  assert.equal(repliersProductionSerialized.includes("mock mode"), false);
+  assert.equal(repliersProductionSerialized.includes("not live MLS"), false);
+  assert.equal(repliersProductionSerialized.includes("Provider Condo"), true);
+  assert.equal(repliersProductionSerialized.includes("$725,000"), true);
+  assert.equal(repliersProductionSerialized.includes("https://cdn.repliers.io"), false);
 
   const rentalMockResponse = getMockToolResponse("rental", {
     listingContext: repliersContext
@@ -347,6 +386,8 @@ async function run() {
 
   assert.equal(mockProviderResponse.summary.includes("sample/provider-ready preview data"), true);
   assert.equal(mockProviderResponse.summary.includes("not live MLS listing data"), true);
+  assert.equal(JSON.stringify(mockProviderResponse).includes("mock/sample provider-ready"), false);
+  assert.equal(JSON.stringify(mockProviderResponse).includes("mock mode"), false);
   assert.equal(JSON.stringify(mockProviderResponse).includes("CREA"), false);
   assert.equal(JSON.stringify(mockProviderResponse).includes("DDF"), false);
   assert.equal(JSON.stringify(mockProviderResponse).includes("REALTOR"), false);
@@ -418,6 +459,28 @@ function mockRepliersResponseBody() {
           sqft: 1680
         },
         status: "preview_sample"
+      }
+    ]
+  };
+}
+
+function mockRepliersProductionResponseBody() {
+  return {
+    listings: [
+      {
+        id: "provider-1",
+        title: "Provider Condo",
+        listPrice: 725000,
+        class: "condo",
+        photoCount: 40,
+        images: ["area/IMG-N8418368_1.jpg"],
+        address: { city: "Toronto", state: "ON", neighborhood: "Provider District" },
+        details: {
+          numBedrooms: 2,
+          numBathrooms: 2,
+          sqft: 850
+        },
+        status: "available"
       }
     ]
   };

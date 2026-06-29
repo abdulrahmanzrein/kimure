@@ -2,7 +2,7 @@ const {
   createAiResponse
 } = require('../utils/responseContract');
 
-const DISCLAIMER = 'Kimure AI Gateway is currently running in mock mode. This is not financial, legal, tax, mortgage, appraisal, or credit advice.';
+const DISCLAIMER = 'This AI response is informational and is not financial, legal, tax, mortgage, appraisal, credit, valuation, or availability advice.';
 
 // TODO: Future Gemini integration belongs behind this service boundary.
 // TODO: GEMINI_API_KEY must live in backend .env only, never frontend code.
@@ -200,7 +200,7 @@ const tools = {
     riskLevel: 'medium',
     keyInsights: [
       'Readiness depends on verified income, debt load, down payment, savings buffer, and credit history.',
-      'This mock readiness estimate is not an official credit score or verified bureau result.',
+      'This directional readiness estimate is not an official credit score or verified bureau result.',
       'Missing documentation can slow mortgage approval even when budget appears realistic.'
     ],
     recommendations: [
@@ -254,7 +254,7 @@ const tools = {
     reportData: {
       investmentScore: 78,
       riskProfile: 'Balanced growth with moderate leverage sensitivity',
-      monthlyInvestmentCapacity: '$1,250-$1,750 estimated mock capacity',
+      monthlyInvestmentCapacity: '$1,250-$1,750 estimated directional capacity',
       recommendedStrategy: 'Build liquidity in Year 1, acquire one resilient property by Year 2-3, then optimize or add selectively by Year 4-5.',
       roadmap: {
         'Year 1': [
@@ -297,7 +297,7 @@ const tools = {
         'User has stable income and can document savings.',
         'No verified credit bureau data has been reviewed.',
         'Interest rates, taxes, rents, and property values are placeholders.',
-        'This is a strategic mock plan and not personalized investment advice.'
+        'This is a strategic directional plan and not personalized investment advice.'
       ],
       nextBestActions: [
         'Confirm income, debt, savings, timeline, and risk tolerance.',
@@ -363,6 +363,7 @@ function getSafeListingContext(payload) {
   return {
     source,
     providerStatus,
+    displayMode: stringOrNull(context.displayMode),
     blockedReason: stringOrNull(context.blockedReason),
     isLiveProviderData: context.isLiveProviderData === true,
     disclaimer: stringOrNull(context.disclaimer),
@@ -400,7 +401,7 @@ function getListingProviderNotice(listingContext) {
       summarySuffix:
         'Listing context is sample/provider-ready preview data, not live MLS listing data.',
       visibleNotice:
-        'The listing context is mock/sample provider-ready preview data and should not be treated as live marketplace inventory.',
+        'The listing context is sample provider-ready preview data and should not be treated as live marketplace inventory.',
       recommendation:
         'Validate any property assumptions against a licensed listing provider before acting.'
     };
@@ -408,16 +409,44 @@ function getListingProviderNotice(listingContext) {
 
   if (
     listingContext.source === 'repliers_preview' ||
+    listingContext.providerStatus === 'production_ready' ||
+    listingContext.providerStatus === 'live_ready' ||
+    listingContext.providerStatus === 'active_internal' ||
     listingContext.providerStatus === 'preview_ready' ||
     listingContext.providerStatus === 'preview_disabled' ||
     listingContext.providerStatus === 'preview_not_configured' ||
     listingContext.providerStatus === 'preview_error' ||
     listingContext.providerGuidance.dataMode === 'repliers_preview_sample_data'
   ) {
+    if (
+      listingContext.providerStatus === 'production_ready' ||
+      listingContext.providerStatus === 'live_ready'
+    ) {
+      return {
+        summarySuffix:
+          'Using selected provider listing context for this response.',
+        visibleNotice:
+          'This response uses selected provider listing context and should still be verified before user action.',
+        recommendation:
+          'Compare provider listing context against your budget, location, financing, inspection, and due-diligence needs before acting.'
+      };
+    }
+
+    if (listingContext.providerStatus === 'active_internal') {
+      return {
+        summarySuffix:
+          'Using internal team-controlled listing context for this response.',
+        visibleNotice:
+          'This response uses internal listing context and should not be treated as public live inventory.',
+        recommendation:
+          'Verify listing readiness, permissions, and publishing status before sharing externally.'
+      };
+    }
+
     if (listingContext.providerStatus !== 'preview_ready') {
       return {
         summarySuffix:
-          'Repliers preview data is selected but unavailable in this environment. Kimure did not substitute mock listings for this response.',
+          'Repliers preview data is selected but unavailable in this environment. Kimure did not substitute sample-provider listings for this response.',
         visibleNotice:
           'Repliers preview is unavailable right now, so no Repliers listing results were ranked.',
         recommendation:
@@ -473,39 +502,41 @@ function getListingAwareAdditions(tool, listingContext) {
   }
 
   if (tool === 'scout') return buildScoutListingAdditions(listings, listingContext);
-  if (tool === 'rental') return buildRentalListingAdditions(listings);
-  if (tool === 'investment-planner') return buildInvestmentListingAdditions(listings);
-  if (tool === 'analyze' || tool === 'valuate') return buildPropertyReviewListingAdditions(listings);
-  if (tool === 'chat') return buildChatListingAdditions(listings);
+  if (tool === 'rental') return buildRentalListingAdditions(listings, listingContext);
+  if (tool === 'investment-planner') return buildInvestmentListingAdditions(listings, listingContext);
+  if (tool === 'analyze' || tool === 'valuate') return buildPropertyReviewListingAdditions(listings, listingContext);
+  if (tool === 'chat') return buildChatListingAdditions(listings, listingContext);
 
   return emptyListingAdditions();
 }
 
 function buildScoutListingAdditions(listings, listingContext) {
   const ranked = listings.slice(0, 3);
+  const label = getListingContextLabel(listingContext);
 
   return {
     summarySuffix:
-      `Ranked preview matches: ${ranked.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
+      `Ranked ${label.plural}: ${ranked.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
     keyInsights: ranked.map((listing, index) =>
       `#${index + 1} ${formatListingSummary(listing)} — ${buildFitReason(listing, listingContext)}`
     ),
     recommendations: [
-      `Start with ${ranked[0].title} as the strongest preview match, then compare the other returned sample listings against budget, location, property type, and fit signals.`,
-      'Rank or compare only these returned preview listings; do not treat them as live availability.'
+      `Start with ${ranked[0].title} as the strongest ${label.singular}, then compare the other returned ${label.plural} against budget, location, property type, and fit signals.`,
+      `Rank or compare only these returned ${label.plural}; do not treat them as guaranteed availability.`
     ]
   };
 }
 
-function buildRentalListingAdditions(listings) {
+function buildRentalListingAdditions(listings, listingContext) {
   const rentalListings = listings.filter(isRentalLikeListing).slice(0, 3);
+  const label = getListingContextLabel(listingContext);
 
   if (!rentalListings.length) {
     return {
       summarySuffix:
-        'Returned preview listings do not appear rental-specific, so rental fit should stay directional.',
+        `Returned ${label.plural} do not appear rental-specific, so rental fit should stay directional.`,
       keyInsights: [
-        'No rental-specific preview listings were returned; the current provider context appears better suited to purchase/investment comparison.'
+        `No rental-specific ${label.plural} were returned; the current provider context appears better suited to purchase/investment comparison.`
       ],
       recommendations: [
         'Rerun with rental-oriented filters such as lease, monthly budget, bedrooms, transit, and pet needs before ranking rental options.'
@@ -515,22 +546,23 @@ function buildRentalListingAdditions(listings) {
 
   return {
     summarySuffix:
-      `Rental-oriented preview matches: ${rentalListings.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
+      `Rental-oriented ${label.plural}: ${rentalListings.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
     keyInsights: rentalListings.map((listing, index) =>
       `#${index + 1} ${formatListingSummary(listing)} — rental fit should be checked against monthly budget, location needs, and listed property features.`
     ),
     recommendations: [
-      `Review ${rentalListings[0].title} first, then compare monthly cost, commute fit, and needs against the remaining returned preview listings.`
+      `Review ${rentalListings[0].title} first, then compare monthly cost, commute fit, and needs against the remaining returned ${label.plural}.`
     ]
   };
 }
 
-function buildInvestmentListingAdditions(listings) {
+function buildInvestmentListingAdditions(listings, listingContext) {
   const compared = listings.slice(0, 3);
+  const label = getListingContextLabel(listingContext);
 
   return {
     summarySuffix:
-      `Investment preview comparison uses ${compared.length} returned sample listing${compared.length === 1 ? '' : 's'} by price, type, size, and fit signals.`,
+      `Investment comparison uses ${compared.length} returned ${label.plural} by price, type, size, and fit signals.`,
     keyInsights: compared.map((listing, index) =>
       `#${index + 1} ${formatListingSummary(listing)} — compare price, ${listing.propertyType || listing.type || 'property type'}, ${listing.propertySize || 'size unavailable'}, and signals: ${formatSignals(listing)}.`
     ),
@@ -541,14 +573,15 @@ function buildInvestmentListingAdditions(listings) {
   };
 }
 
-function buildPropertyReviewListingAdditions(listings) {
+function buildPropertyReviewListingAdditions(listings, listingContext) {
   const listing = listings[0];
+  const label = getListingContextLabel(listingContext);
 
   return {
     summarySuffix:
-      `A matching preview listing is available for context: ${formatListingSummary(listing)}.`,
+      `A matching ${label.singular} is available for context: ${formatListingSummary(listing)}.`,
     keyInsights: [
-      `Use ${listing.title} as the comparison anchor from the returned preview context, focusing on price, type, size, and location summary.`
+      `Use ${listing.title} as the comparison anchor from the returned ${label.singular} context, focusing on price, type, size, and location summary.`
     ],
     recommendations: [
       'Validate condition, fees, comparable sales, and availability through an approved listing workflow before acting.'
@@ -556,17 +589,37 @@ function buildPropertyReviewListingAdditions(listings) {
   };
 }
 
-function buildChatListingAdditions(listings) {
+function buildChatListingAdditions(listings, listingContext) {
   const top = listings.slice(0, 3);
+  const label = getListingContextLabel(listingContext);
 
   return {
     summarySuffix:
-      `For listing-related questions, use these returned preview listings as context: ${top.map((listing) => listing.title).join('; ')}.`,
+      `For listing-related questions, use these returned ${label.plural} as context: ${top.map((listing) => listing.title).join('; ')}.`,
     keyInsights: top.map((listing, index) => `#${index + 1} ${formatListingSummary(listing)}.`),
     recommendations: [
       'Ask a follow-up with budget, location, property type, and must-have criteria to compare the returned preview listings more precisely.'
     ]
   };
+}
+
+function getListingContextLabel(listingContext) {
+  const productionLike = listingContext &&
+    (listingContext.displayMode === 'production' ||
+      listingContext.providerStatus === 'production_ready' ||
+      listingContext.providerStatus === 'live_ready');
+  const internalLike = listingContext &&
+    (listingContext.displayMode === 'internal' || listingContext.providerStatus === 'active_internal');
+
+  if (productionLike) {
+    return { singular: 'provider listing', plural: 'provider listings' };
+  }
+
+  if (internalLike) {
+    return { singular: 'internal listing', plural: 'internal listings' };
+  }
+
+  return { singular: 'preview listing', plural: 'preview listings' };
 }
 
 function emptyListingAdditions() {
@@ -640,7 +693,11 @@ function buildFitReason(listing, listingContext) {
     reasons.push('aligned with the target location');
   }
   if (listing.propertyType) reasons.push(`matches ${listing.propertyType} property context`);
-  if (listing.imageCount) reasons.push(`${listing.imageCount} preview image${listing.imageCount === 1 ? '' : 's'} available`);
+  if (listing.imageCount) {
+    const label = getListingContextLabel(listingContext);
+    const imageLabel = label.singular === 'preview listing' ? 'preview image' : 'listing image';
+    reasons.push(`${listing.imageCount} ${imageLabel}${listing.imageCount === 1 ? '' : 's'} available`);
+  }
 
   return reasons.length ? reasons.join(', ') : 'fits the returned provider context for comparison';
 }

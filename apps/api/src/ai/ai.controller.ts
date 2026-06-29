@@ -293,7 +293,10 @@ export function buildSafeListingContext(
     source: listingsResponse.source,
     providerStatus: listingsResponse.providerStatus,
     blockedReason: listingsResponse.blockedReason || null,
-    isLiveProviderData: false,
+    displayMode: getListingProviderDisplayMode(listingsResponse),
+    isLiveProviderData:
+      listingsResponse.providerStatus === "live_ready" &&
+      listingsResponse.results.some((listing) => listing.isLiveProviderData === true),
     disclaimer: listingsResponse.disclaimer,
     resultCount: listingsResponse.results.length,
     providerGuidance: getListingProviderGuidance(listingsResponse),
@@ -311,7 +314,9 @@ export function buildSafeListingContext(
       listingStatus: listing.listingStatus,
       sourceProvider: listing.sourceProvider,
       providerStatus: listing.providerStatus,
-      isLiveProviderData: false,
+      isLiveProviderData:
+        listingsResponse.providerStatus === "live_ready" &&
+        listing.isLiveProviderData === true,
       matchSignals: listing.matchSignals,
       priceLabel: listing.priceLabel,
       neighbourhood: listing.neighbourhood,
@@ -339,8 +344,32 @@ function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
     listingsResponse.providerStatus === "preview_ready" ||
     listingsResponse.providerStatus === "preview_not_configured" ||
     listingsResponse.providerStatus === "preview_disabled" ||
-    listingsResponse.providerStatus === "preview_error"
+    listingsResponse.providerStatus === "preview_error" ||
+    listingsResponse.providerStatus === "production_ready" ||
+    listingsResponse.providerStatus === "live_ready" ||
+    listingsResponse.providerStatus === "active_internal"
   ) {
+    if (
+      listingsResponse.providerStatus === "production_ready" ||
+      listingsResponse.providerStatus === "live_ready"
+    ) {
+      return {
+        label: "Selected provider listing context",
+        instruction:
+          "Use the selected provider listing context. Do not claim guaranteed availability, official valuation, or live MLS status unless explicitly supported by the provider data.",
+        dataMode: "provider_listing_context"
+      };
+    }
+
+    if (listingsResponse.providerStatus === "active_internal") {
+      return {
+        label: "Internal listing context",
+        instruction:
+          "Use the internal team-controlled listing context. Do not describe it as public live inventory.",
+        dataMode: "internal_listing_context"
+      };
+    }
+
     return {
       label: "Repliers preview/sample data",
       instruction:
@@ -352,7 +381,26 @@ function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
   return {
     label: "Sample/provider-ready preview data",
     instruction:
-      "Listing context is mock/sample provider-ready preview data. Do not describe it as live MLS listing data.",
-    dataMode: "mock_sample_preview"
+      "Listing context is sample/provider-ready preview data. Do not describe it as live MLS listing data.",
+    dataMode: "sample_provider_ready_preview"
   };
+}
+
+function getListingProviderDisplayMode(listingsResponse: ListingsSearchResponse) {
+  if (
+    listingsResponse.providerStatus === "production_ready" ||
+    listingsResponse.providerStatus === "live_ready"
+  ) {
+    return "production";
+  }
+
+  if (listingsResponse.providerStatus === "active_internal") {
+    return "internal";
+  }
+
+  if (String(listingsResponse.providerStatus).startsWith("preview_")) {
+    return "preview";
+  }
+
+  return "sample";
 }

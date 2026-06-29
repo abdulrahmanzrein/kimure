@@ -6,6 +6,9 @@ export type ListingProviderSource =
 export type ListingProviderStatus =
   | "mock_only"
   | "pending_access"
+  | "active_internal"
+  | "production_ready"
+  | "live_ready"
   | "preview_ready"
   | "preview_disabled"
   | "preview_not_configured"
@@ -37,7 +40,7 @@ export interface NormalizedListing {
   imageAlt?: string;
   imageCount?: number;
   sourceProvider: ListingProviderSource;
-  isLiveProviderData: false;
+  isLiveProviderData: boolean;
   matchSignals: string[];
   priceLabel?: string;
   neighbourhood?: string;

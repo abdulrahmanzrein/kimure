@@ -173,10 +173,50 @@
       String(response.providerStatus || "").indexOf("preview_") === 0;
   }
 
+  function getListingDisplayMode(listingOrResponse) {
+    var status = String((listingOrResponse && listingOrResponse.providerStatus) || "");
+    if (status === "production_ready" || status === "live_ready") return "production";
+    if (status === "active_internal") return "internal";
+    if (status.indexOf("preview_") === 0) return "preview";
+    if (status === "mock_only") return "sample";
+    return "sample";
+  }
+
+  function getListingBadgeLabels(listing) {
+    var mode = getListingDisplayMode(listing);
+    var isLiveProviderData = listing && listing.isLiveProviderData === true;
+    var sourceProvider = listing && listing.sourceProvider ? listing.sourceProvider : "mock_provider";
+
+    if (mode === "production") {
+      return {
+        primary: "PROVIDER LISTING",
+        secondary: isLiveProviderData ? "VERIFIED SOURCE" : "PROVIDER DATA"
+      };
+    }
+
+    if (mode === "internal") {
+      return {
+        primary: "INTERNAL LISTING",
+        secondary: "TEAM-CONTROLLED"
+      };
+    }
+
+    if (mode === "preview" && sourceProvider === "repliers_preview") {
+      return {
+        primary: "REPLIERS PREVIEW",
+        secondary: "SAMPLE DATA"
+      };
+    }
+
+    return {
+      primary: "SAMPLE PROVIDER",
+      secondary: "PREVIEW CARD"
+    };
+  }
+
   function renderProviderListingCard(grid, listing) {
     var card = appendNode(grid, "article", "mp-provider-card");
-    var sourceProvider = listing.sourceProvider || "mock_provider";
-    var isRepliersPreview = sourceProvider === "repliers_preview";
+    var badges = getListingBadgeLabels(listing);
     var imageUrl = typeof listing.imageUrl === "string" && listing.imageUrl ? listing.imageUrl : "";
     var imageWrap = appendNode(card, "div", "mp-provider-image");
     var imageBadges = appendNode(imageWrap, "div", "mp-provider-image-badges");
@@ -185,13 +225,13 @@
       imageBadges,
       "span",
       "mp-provider-badge",
-      isRepliersPreview ? "REPLIERS PREVIEW" : formatProviderLabel(sourceProvider)
+      badges.primary
     );
     appendNode(
       imageBadges,
       "span",
       "mp-provider-badge mp-provider-badge--mock",
-      isRepliersPreview ? "SAMPLE DATA" : "Mock data"
+      badges.secondary
     );
 
     if (imageUrl) {
@@ -319,6 +359,7 @@
     var emptyEl = document.getElementById("mpProviderListingsEmpty");
     var statusEl = document.getElementById("mpProviderListingsStatus");
     var results = Array.isArray(response.results) ? response.results : [];
+    var responseMode = getListingDisplayMode(response);
 
     clearNode(grid);
 
@@ -356,7 +397,14 @@
       return;
     }
 
-    if (emptyEl) emptyEl.hidden = results.length > 0;
+    if (emptyEl) {
+      emptyEl.hidden = results.length > 0;
+      if (!results.length) {
+        emptyEl.textContent = responseMode === "production"
+          ? "No provider listings match those filters yet."
+          : "No preview listings match those filters yet.";
+      }
+    }
     setProviderStatus(statusEl, "ready", response.disclaimer || "Sample listings are shown from Kimure's provider-ready listings contract.");
 
     results.forEach(function (listing) {
@@ -381,9 +429,9 @@
         submit.textContent = "Searching...";
       }
       emptyEl.hidden = true;
-      emptyEl.textContent = "No sample listings match those filters yet.";
+      emptyEl.textContent = "No listings match those filters yet.";
       clearNode(grid);
-      setProviderStatus(statusEl, "loading", "Loading sample listings...");
+      setProviderStatus(statusEl, "loading", "Loading listings...");
 
       try {
         var response = await requestProviderListings(buildProviderListingsQuery(listingsForm));

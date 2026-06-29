@@ -15,7 +15,7 @@ const css = fs.readFileSync(
 const listingsPreviewJs = sliceBetween(
   js,
   "function buildProviderListingsQuery",
-  "async function getAccessToken"
+  "async function saveListing"
 );
 
 [
@@ -26,9 +26,11 @@ const listingsPreviewJs = sliceBetween(
   "Sample provider",
   '<option value="repliers_preview">Repliers preview data</option>',
   "Repliers preview data",
-  "Provider-backed listing data can be connected as approved access is configured",
+  "Marketplace AI uses selected listing provider context when available",
+  "preview data clearly labeled",
   "Repliers preview data is sample data for integration testing",
-  "No live MLS data is displayed in preview mode"
+  "No live MLS data is displayed in preview mode",
+  "No listings match those filters yet"
 ].forEach((required) => {
   assert.equal(html.includes(required), true, `${required} is missing from marketplace.html`);
 });
@@ -40,6 +42,15 @@ const listingsPreviewJs = sliceBetween(
   "isRepliersPreviewResponse",
   "REPLIERS PREVIEW",
   "SAMPLE DATA",
+  "PROVIDER LISTING",
+  "PROVIDER DATA",
+  "VERIFIED SOURCE",
+  "INTERNAL LISTING",
+  "TEAM-CONTROLLED",
+  "SAMPLE PROVIDER",
+  "PREVIEW CARD",
+  "getListingDisplayMode",
+  "getListingBadgeLabels",
   "mp-provider-image",
   "mp-provider-photo",
   "appendNode(imageWrap, \"img\", \"mp-provider-photo\")",
@@ -72,7 +83,7 @@ const listingsPreviewJs = sliceBetween(
   'response.providerStatus === "pending_access"',
   'response.source === "crea_ddf_pending_access"',
   "formatBlockedReason",
-  "Loading sample listings"
+  "Loading listings"
 ].forEach((required) => {
   assert.equal(js.includes(required), true, `${required} is missing from marketplace.js`);
 });

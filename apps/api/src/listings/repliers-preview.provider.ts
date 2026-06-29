@@ -9,19 +9,28 @@ import { ListingProviderAdapter } from "./listings-provider.interface";
 
 export const REPLIERS_PREVIEW_DISCLAIMER =
   "Repliers preview/sample data is used for provider integration testing. It is not live MLS listing data.";
+export const REPLIERS_PROVIDER_DISCLAIMER =
+  "Provider listings are returned from configured Repliers provider access. Availability, compliance, and use restrictions should be verified before user action.";
+export const REPLIERS_INTERNAL_DISCLAIMER =
+  "Internal provider listings are shown for team-controlled review and should be verified before user action.";
 
 export type RepliersBlockedReason =
   | "repliers_provider_disabled"
   | "repliers_api_key_missing"
   | "repliers_provider_calls_disabled"
   | "repliers_base_url_invalid"
+  | "repliers_environment_invalid"
   | "repliers_preview_request_failed";
+
+type RepliersEnvironment = "preview" | "production" | "internal";
 
 interface RepliersReadinessStatus {
   providerId: "repliers_preview";
   providerStatus: ListingProviderStatus;
+  environment: RepliersEnvironment;
   enabled: boolean;
   providerCallsEnabled: boolean;
+  environmentConfigured: boolean;
   apiBaseUrlConfigured: boolean;
   apiKeyConfigured: boolean;
   canAttemptProviderCall: boolean;
@@ -42,12 +51,15 @@ export class RepliersPreviewProvider implements ListingProviderAdapter {
   getReadiness(env: NodeJS.ProcessEnv = process.env): RepliersReadinessStatus {
     const enabled = env.REPLIERS_ENABLED === "true";
     const providerCallsEnabled = env.REPLIERS_PROVIDER_CALLS_ENABLED === "true";
+    const environment = parseRepliersEnvironment(env.REPLIERS_ENVIRONMENT);
+    const environmentConfigured = environment !== null;
     const apiBaseUrl = readString(env.REPLIERS_API_BASE_URL);
     const apiKeyConfigured = Boolean(readString(env.REPLIERS_API_KEY));
     const apiBaseUrlConfigured = apiBaseUrl === allowedPreviewBaseUrl;
     const blockedReason = getBlockedReason({
       enabled,
       providerCallsEnabled,
+      environmentConfigured,
       apiBaseUrlConfigured,
       apiKeyConfigured
     });
@@ -58,9 +70,11 @@ export class RepliersPreviewProvider implements ListingProviderAdapter {
         ? "preview_disabled"
         : blockedReason
           ? "preview_not_configured"
-          : "preview_ready",
+          : getReadyProviderStatus(environment || "preview"),
+      environment: environment || "preview",
       enabled,
       providerCallsEnabled,
+      environmentConfigured,
       apiBaseUrlConfigured,
       apiKeyConfigured,
       canAttemptProviderCall: blockedReason === null,
@@ -121,9 +135,9 @@ export class RepliersPreviewProvider implements ListingProviderAdapter {
         const body = await response.json().catch(() => ({}));
         return {
           source: this.source,
-          providerStatus: "preview_ready",
-          disclaimer: REPLIERS_PREVIEW_DISCLAIMER,
-          results: normalizeRepliersListings(body)
+          providerStatus: readiness.providerStatus,
+          disclaimer: getRepliersDisclaimer(readiness.providerStatus),
+          results: normalizeRepliersListings(body, readiness.providerStatus)
         };
       } finally {
         clearTimeout(timeout);
@@ -141,11 +155,13 @@ export class RepliersPreviewProvider implements ListingProviderAdapter {
 function getBlockedReason(input: {
   enabled: boolean;
   providerCallsEnabled: boolean;
+  environmentConfigured: boolean;
   apiBaseUrlConfigured: boolean;
   apiKeyConfigured: boolean;
 }): RepliersBlockedReason | null {
   if (!input.enabled) return "repliers_provider_disabled";
   if (!input.providerCallsEnabled) return "repliers_provider_calls_disabled";
+  if (!input.environmentConfigured) return "repliers_environment_invalid";
   if (!input.apiBaseUrlConfigured) return "repliers_base_url_invalid";
   if (!input.apiKeyConfigured) return "repliers_api_key_missing";
   return null;
@@ -156,9 +172,35 @@ function blockedResponse(readiness: RepliersReadinessStatus): ListingsSearchResp
     source: "repliers_preview",
     providerStatus: readiness.providerStatus,
     blockedReason: readiness.blockedReason || "repliers_preview_request_failed",
-    disclaimer: REPLIERS_PREVIEW_DISCLAIMER,
+    disclaimer: getRepliersDisclaimer(readiness.providerStatus),
     results: []
   };
+}
+
+function parseRepliersEnvironment(value: unknown): RepliersEnvironment | null {
+  const normalized = readString(value) || "preview";
+  if (normalized === "preview") return "preview";
+  if (normalized === "production") return "production";
+  if (normalized === "internal") return "internal";
+  return null;
+}
+
+function getReadyProviderStatus(environment: RepliersEnvironment): ListingProviderStatus {
+  if (environment === "production") return "production_ready";
+  if (environment === "internal") return "active_internal";
+  return "preview_ready";
+}
+
+function getRepliersDisclaimer(providerStatus: ListingProviderStatus): string {
+  if (providerStatus === "production_ready" || providerStatus === "live_ready") {
+    return REPLIERS_PROVIDER_DISCLAIMER;
+  }
+
+  if (providerStatus === "active_internal") {
+    return REPLIERS_INTERNAL_DISCLAIMER;
+  }
+
+  return REPLIERS_PREVIEW_DISCLAIMER;
 }
 
 function buildRepliersSearchBody(query: ListingSearchQuery) {
@@ -187,7 +229,10 @@ function buildRepliersSearchBody(query: ListingSearchQuery) {
   return body;
 }
 
-function normalizeRepliersListings(body: unknown): NormalizedListing[] {
+function normalizeRepliersListings(
+  body: unknown,
+  providerStatus: ListingProviderStatus = "preview_ready"
+): NormalizedListing[] {
   const records = extractListingArray(body);
   return records.slice(0, resultLimit).map((record, index) => {
     const listing = asRecord(record);
@@ -213,8 +258,10 @@ function normalizeRepliersListings(body: unknown): NormalizedListing[] {
     const neighbourhood = firstString(address.neighborhood, address.community, listing.neighbourhood) || undefined;
     const description = firstString(listing.description, details.description) || undefined;
     const imageInfo = extractImageInfo(listing, details);
-    const title = firstString(listing.title, details.style, propertyType) || "Repliers preview sample listing";
+    const title = firstString(listing.title, details.style, propertyType) ||
+      (isPreviewStatus(providerStatus) ? "Repliers preview listing" : "Provider listing");
     const location = [city, state].filter(Boolean).join(", ") || "Location unavailable";
+    const isLiveProviderData = providerStatus === "live_ready";
 
     return {
       id: `repliers-preview-${index + 1}`,
@@ -224,26 +271,45 @@ function normalizeRepliersListings(body: unknown): NormalizedListing[] {
       priceLabel: listPrice ? formatCurrency(listPrice) : "Price unavailable",
       location,
       addressSummary: firstString(address.neighborhood, address.community, listing.neighbourhood) ||
-        "Repliers preview address summary unavailable",
+        (isPreviewStatus(providerStatus)
+          ? "Repliers preview address summary unavailable"
+          : "Provider address summary unavailable"),
       bedrooms,
       bathrooms,
       propertySize: squareFeet ? `${squareFeet} sq ft` : "Size unavailable",
-      listingStatus: firstString(listing.status, listing.lastStatus) || "preview_sample",
+      listingStatus: firstString(listing.status, listing.lastStatus) ||
+        (isPreviewStatus(providerStatus) ? "preview_sample" : "provider_listing"),
       imageUrl: imageInfo.imageUrl,
-      imageAlt: imageInfo.imageUrl ? `${title} preview image in ${location}` : undefined,
+      imageAlt: imageInfo.imageUrl ? `${title} listing image in ${location}` : undefined,
       imageCount: imageInfo.imageCount,
       sourceProvider: "repliers_preview",
-      providerStatus: "preview_ready",
-      isLiveProviderData: false,
-      matchSignals: buildMatchSignals({ propertyType, bedrooms, bathrooms, intent: null }),
+      providerStatus,
+      isLiveProviderData,
+      matchSignals: buildMatchSignals({ propertyType, bedrooms, bathrooms, intent: null, providerStatus }),
       neighbourhood,
       description,
       propertyType,
       squareFeet: squareFeet || null,
-      tags: ["repliers preview", "sample data"],
+      tags: getRepliersListingTags(providerStatus),
       intent: null
     };
   });
+}
+
+function isPreviewStatus(providerStatus: ListingProviderStatus): boolean {
+  return String(providerStatus).startsWith("preview_");
+}
+
+function getRepliersListingTags(providerStatus: ListingProviderStatus): string[] {
+  if (providerStatus === "production_ready" || providerStatus === "live_ready") {
+    return ["provider listing"];
+  }
+
+  if (providerStatus === "active_internal") {
+    return ["internal listing", "team-controlled"];
+  }
+
+  return ["repliers preview", "sample data"];
 }
 
 function extractListingArray(body: unknown): unknown[] {
@@ -381,10 +447,10 @@ function buildMatchSignals(input: {
   bedrooms: number;
   bathrooms: number;
   intent: string | null;
+  providerStatus: ListingProviderStatus;
 }) {
   return [
-    "repliers preview",
-    "sample data",
+    ...getRepliersListingTags(input.providerStatus),
     input.propertyType,
     input.bedrooms > 0 ? `${input.bedrooms} bed` : "",
     input.bathrooms > 0 ? `${input.bathrooms} bath` : "",

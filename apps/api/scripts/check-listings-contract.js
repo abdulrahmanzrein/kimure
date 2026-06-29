@@ -10,6 +10,7 @@ const { MockListingsProvider, MOCK_LISTINGS } = require("../src/listings/mock-li
 const {
   RepliersPreviewProvider,
   REPLIERS_PREVIEW_DISCLAIMER,
+  REPLIERS_PROVIDER_DISCLAIMER,
   buildRepliersSearchBody,
   normalizeRepliersListings
 } = require("../src/listings/repliers-preview.provider");
@@ -204,18 +205,64 @@ async function run() {
   assert.equal(fetchCalled, true);
   assert.equal(repliersReady.source, "repliers_preview");
   assert.equal(repliersReady.providerStatus, "preview_ready");
+  assert.equal(repliersReady.disclaimer, REPLIERS_PREVIEW_DISCLAIMER);
   assert.equal(repliersReady.results.length, 1);
   assert.equal(repliersReady.results[0].sourceProvider, "repliers_preview");
   assert.equal(repliersReady.results[0].isLiveProviderData, false);
   assert.equal(repliersReady.results[0].providerStatus, "preview_ready");
   assert.equal(repliersReady.results[0].imageUrl, "https://cdn.repliers.io/area/IMG-N8418368_1.jpg");
-  assert.equal(repliersReady.results[0].imageAlt.includes("preview image"), true);
+  assert.equal(repliersReady.results[0].imageAlt.includes("listing image"), true);
+  assert.equal(JSON.stringify(repliersReady.results[0]).includes("sample data"), true);
   assert.equal(repliersReady.results[0].imageCount, 29);
   assert.equal(repliersReady.results[0].id, "repliers-preview-1");
   assert.equal(JSON.stringify(repliersReady.results[0]).includes("sample-1"), false);
   assert.equal(JSON.stringify(repliersReady).includes("redacted-test-key"), false);
   assert.equal(JSON.stringify(repliersReady).includes("REPLIERS-API-KEY"), false);
   assert.equal(JSON.stringify(repliersReady).includes("isLiveProviderData\":true"), false);
+
+  let productionFetchCalled = false;
+  const repliersProduction = await repliersProvider.searchResponse(
+    { provider: "repliers_preview", location: "Toronto", maxPrice: 750000 },
+    {
+      env: {
+        REPLIERS_ENABLED: "true",
+        REPLIERS_ENVIRONMENT: "production",
+        REPLIERS_PROVIDER_CALLS_ENABLED: "true",
+        REPLIERS_API_BASE_URL: "https://api.repliers.io",
+        REPLIERS_API_KEY: "redacted-test-key"
+      },
+      fetchImpl: async () => {
+        productionFetchCalled = true;
+        return {
+          ok: true,
+          json: async () => ({
+            listings: [
+              {
+                title: "Provider Listing",
+                listPrice: 725000,
+                class: "condo",
+                photoCount: 1,
+                images: ["area/IMG-N8418368_1.jpg"],
+                address: { city: "Toronto", state: "ON", neighborhood: "Provider District" },
+                details: { numBedrooms: 2, numBathrooms: 2, sqft: 850 },
+                status: "available"
+              }
+            ]
+          })
+        };
+      }
+    }
+  );
+
+  assert.equal(productionFetchCalled, true);
+  assert.equal(repliersProduction.providerStatus, "production_ready");
+  assert.equal(repliersProduction.disclaimer, REPLIERS_PROVIDER_DISCLAIMER);
+  assert.equal(repliersProduction.results[0].providerStatus, "production_ready");
+  assert.equal(repliersProduction.results[0].isLiveProviderData, false);
+  assert.equal(JSON.stringify(repliersProduction).includes("sample data"), false);
+  assert.equal(JSON.stringify(repliersProduction).includes("repliers preview"), false);
+  assert.equal(JSON.stringify(repliersProduction).includes("not live MLS"), false);
+  assert.equal(JSON.stringify(repliersProduction).includes("isLiveProviderData\":true"), false);
 
   const unsafeImageListings = normalizeRepliersListings({
     listings: [
@@ -318,6 +365,7 @@ async function run() {
   assert.equal(repliersSmokeSource.includes("raw"), false);
   assert.equal(allListingSource.includes("https://www.realtor.ca"), false);
   assert.equal(allListingSource.includes("https://realtor.ca"), false);
+  assert.equal(allListingSource.includes("providerStatus === \"live_ready\""), true);
   assert.equal(allListingSource.includes("isLiveProviderData: true"), false);
 
   console.log("Listings contract check passed.");
