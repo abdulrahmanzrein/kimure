@@ -4,12 +4,18 @@ const path = require("node:path");
 const {
   CreditProviderStatusService
 } = require("../src/credit/credit-provider-status.service");
+const {
+  buildGatewayVerificationInput,
+  shapeProviderVerificationResponse,
+  validateSandboxVerificationInput
+} = require("../src/credit/credit-provider-verification.service");
 
 const apiRoot = path.resolve(__dirname, "..");
 
 [
   "src/credit/credit-provider-status.controller.ts",
-  "src/credit/credit-provider-status.service.ts"
+  "src/credit/credit-provider-status.service.ts",
+  "src/credit/credit-provider-verification.service.ts"
 ].forEach((file) => {
   assert.equal(fs.existsSync(path.join(apiRoot, file)), true, `${file} should exist`);
 });
@@ -22,14 +28,49 @@ const serviceSource = fs.readFileSync(
   path.join(apiRoot, "src/credit/credit-provider-status.service.ts"),
   "utf8"
 );
+const verificationSource = fs.readFileSync(
+  path.join(apiRoot, "src/credit/credit-provider-verification.service.ts"),
+  "utf8"
+);
 
 assert.equal(controllerSource.includes('@Controller("credit")'), true);
 assert.equal(controllerSource.includes('@Get("provider-status")'), true);
+assert.equal(controllerSource.includes('@Post("provider-sandbox-verification")'), true);
+assert.equal(controllerSource.includes("SupabaseAuthGuard"), true);
+assert.equal(
+  /@Post\("provider-sandbox-verification"\)\s+@UseGuards\(SupabaseAuthGuard\)\s+verifySandboxProvider/s.test(
+    controllerSource
+  ),
+  true,
+  "provider sandbox verification route must be protected by SupabaseAuthGuard"
+);
+assert.equal(
+  controllerSource.includes("request.user!.id"),
+  true,
+  "provider sandbox verification must depend on authenticated user context"
+);
+assert.equal(
+  controllerSource.includes("request.headers.authorization"),
+  true,
+  "provider sandbox verification should forward only the authenticated API bearer context"
+);
 assert.equal(controllerSource.includes("getEquifaxProviderStatus"), true);
 assert.equal(serviceSource.includes("fetch("), false);
 assert.equal(serviceSource.includes("axios"), false);
 assert.equal(serviceSource.includes("Authorization"), false);
 assert.equal(serviceSource.includes("Bearer "), false);
+assert.equal(verificationSource.includes("SupabaseAuthGuard"), false);
+assert.equal(verificationSource.includes("provider-sandbox-verification"), false);
+assert.equal(
+  verificationSource.includes("/ai/equifax-sandbox-verification"),
+  true,
+  "provider execution must stay behind the API-to-Gateway boundary"
+);
+assert.equal(
+  verificationSource.includes("validateSandboxVerificationInput"),
+  true,
+  "provider execution must validate request safety before forwarding"
+);
 
 const disabled = createStatus({});
 assert.equal(disabled.provider, "equifax");
@@ -79,18 +120,105 @@ assert.equal(providerCallsBlocked.blockedReason, "provider_calls_enabled_require
 assert.equal(providerCallsBlocked.safeToRunLiveCall, false);
 
 const clientCredentialsBlocked = createStatus(createSandboxClientCredentialEnv({
-  EQUIFAX_PROVIDER_CALLS_ENABLED: "true"
+  EQUIFAX_PROVIDER_CALLS_ENABLED: "true",
+  EQUIFAX_TOKEN_STRATEGY: "client_credentials"
 }));
 
 assert.equal(clientCredentialsBlocked.oauthClientCredentialsConfigured, true);
-assert.equal(clientCredentialsBlocked.tokenStrategy, "client_credentials_pending_docs");
+assert.equal(clientCredentialsBlocked.tokenStrategy, "client_credentials");
 assert.equal(clientCredentialsBlocked.tokenReady, false);
 assert.equal(
   clientCredentialsBlocked.blockedReason,
-  "oauth_client_credentials_blocked_pending_docs"
+  "equifax_oauth_exchange_disabled"
 );
 assert.equal(clientCredentialsBlocked.safeToRunLiveCall, false);
 assertSafePayload(clientCredentialsBlocked, createSandboxClientCredentialEnv());
+
+const clientCredentialsReady = createStatus(createSandboxClientCredentialEnv({
+  EQUIFAX_PROVIDER_CALLS_ENABLED: "true",
+  EQUIFAX_TOKEN_STRATEGY: "client_credentials",
+  EQUIFAX_OAUTH_TOKEN_EXCHANGE_ENABLED: "true",
+  EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT: "basic_auth",
+  EQUIFAX_SANDBOX_OAUTH_TOKEN_URL: "https://api.sandbox.equifax.com/v2/oauth/token"
+}));
+
+assert.equal(clientCredentialsReady.tokenStrategy, "client_credentials");
+assert.equal(clientCredentialsReady.tokenReady, true);
+assert.equal(clientCredentialsReady.blockedReason, "ready_for_safe_client_credentials_provider_check");
+assert.equal(clientCredentialsReady.safeToRunLiveCall, false);
+assertSafePayload(clientCredentialsReady, createSandboxClientCredentialEnv());
+
+assert.equal(
+  validateSandboxVerificationInput({}).blockedReason,
+  "credit_consent_required"
+);
+assert.equal(
+  validateSandboxVerificationInput({
+    consent: { provided: true },
+    sandboxIdentity: true
+  }).blockedReason,
+  "credit_permissible_purpose_required"
+);
+assert.equal(
+  validateSandboxVerificationInput({
+    consent: { provided: true },
+    permissiblePurposeCode: "57"
+  }).blockedReason,
+  "sandbox_identity_required"
+);
+assert.throws(
+  () =>
+    validateSandboxVerificationInput({
+      consent: { provided: true },
+      permissiblePurposeCode: "57",
+      sandboxIdentity: true,
+      identity: {
+        ssn: "123-45-6789"
+      }
+    }),
+  /Sandbox verification does not accept/
+);
+
+const gatewayInput = buildGatewayVerificationInput({
+  consent: { provided: true },
+  permissiblePurposeCode: "57",
+  sandboxIdentity: true,
+  identity: {
+    firstName: "Do not forward"
+  }
+});
+assert.deepEqual(gatewayInput, {
+  consent: {
+    provided: true,
+    permissiblePurposeCode: "57"
+  },
+  permissiblePurposeCode: "57",
+  sandboxIdentity: true,
+  sandboxIdentityMarker: "equifax_sandbox_test_identity"
+});
+
+const shaped = shapeProviderVerificationResponse({
+  status: "success",
+  provider: "equifax",
+  environment: "sandbox",
+  verified: true,
+  providerStatus: "verified_provider",
+  transactionId: "safe-transaction-id",
+  scoreSummary: { value: 700, sourceResponse: "drop-this" },
+  debtSummary: { totalBalance: 1000 },
+  riskFlags: { fraudAlertIndicator: false },
+  rawProviderResponse: "drop-this",
+  sourceResponse: "drop-this",
+  contentBase64: "drop-this",
+  token: "drop-this"
+});
+assert.equal(shaped.provider, "equifax");
+assert.equal(shaped.verified, true);
+assert.equal(JSON.stringify(shaped).includes("rawProviderResponse"), false);
+assert.equal(JSON.stringify(shaped).includes("sourceResponse"), false);
+assert.equal(JSON.stringify(shaped).includes("contentBase64"), false);
+assert.equal(JSON.stringify(shaped).includes("drop-this"), false);
+assertSafePayload(shaped, {});
 
 console.log("Credit provider status check passed.");
 

@@ -15,6 +15,7 @@ import { OnboardingService } from "./onboarding/onboarding.service";
 import { ListingsModule } from "./listings/listings.module";
 import { CreditProviderStatusController } from "./credit/credit-provider-status.controller";
 import { CreditProviderStatusService } from "./credit/credit-provider-status.service";
+import { CreditProviderVerificationService } from "./credit/credit-provider-verification.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -49,6 +50,7 @@ class HealthController {
     CreditAssessmentsService,
     CreditConsentsService,
     CreditProviderStatusService,
+    CreditProviderVerificationService,
     UserFinancialProfilesService,
     DashboardService,
     SupabaseAuthGuard,

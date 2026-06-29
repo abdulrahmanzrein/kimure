@@ -17,6 +17,10 @@ const {
   getEquifaxCreditProfileData
 } = require('../src/services/equifaxCreditService');
 const {
+  runEquifaxSandboxVerification,
+  validateEquifaxSandboxVerificationInput
+} = require('../src/services/equifaxSandboxVerificationService');
+const {
   resetEquifaxTokenCache
 } = require('../src/services/equifax/equifaxTokenService');
 const {
@@ -29,8 +33,12 @@ async function run() {
   checkResponseNormalizerAllowlist();
   checkResponseNormalizerHandlesEmptyResponse();
   await checkServiceBlocksUnconfirmedRequestBeforeNetwork();
+  await checkSandboxVerificationBlocksByDefault();
+  await checkSandboxVerificationRequiresConsentPurposeAndMarker();
+  await checkSandboxVerificationRejectsSocialNumberInput();
+  await checkSandboxVerificationUsesMockedProviderPathSafely();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider request/response contract checks (6 assertion groups)');
+  console.log('[PASS] Equifax provider request/response contract checks (10 assertion groups)');
 }
 
 function checkRequestBuilderRequiresConsentAndPurpose() {
@@ -246,6 +254,128 @@ async function checkServiceBlocksUnconfirmedRequestBeforeNetwork() {
   }
 }
 
+async function checkSandboxVerificationBlocksByDefault() {
+  let fetchCalled = false;
+  const result = await runEquifaxSandboxVerification(validSandboxVerificationInput(), {
+    env: {},
+    fetchImpl: async () => {
+      fetchCalled = true;
+      throw new Error('fetch must not be called when disabled');
+    }
+  });
+
+  assert.equal(fetchCalled, false);
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.blockedReason, 'equifax_provider_disabled');
+  assert.equal(result.safeToRunLiveCall, false);
+  assertSandboxVerificationResponseIsSafe(result);
+}
+
+async function checkSandboxVerificationRequiresConsentPurposeAndMarker() {
+  const env = createSandboxClientCredentialProviderEnv();
+
+  assert.equal(
+    validateEquifaxSandboxVerificationInput({
+      permissiblePurposeCode: '57',
+      sandboxIdentity: true
+    }, buildRuntimeConfigForCheck(env), env).blockedReason,
+    'credit_consent_required'
+  );
+  assert.equal(
+    validateEquifaxSandboxVerificationInput({
+      consent: { provided: true },
+      sandboxIdentity: true
+    }, buildRuntimeConfigForCheck(env), env).blockedReason,
+    'credit_permissible_purpose_required'
+  );
+  assert.equal(
+    validateEquifaxSandboxVerificationInput({
+      consent: { provided: true },
+      permissiblePurposeCode: '57'
+    }, buildRuntimeConfigForCheck(env), env).blockedReason,
+    'sandbox_identity_required'
+  );
+}
+
+async function checkSandboxVerificationRejectsSocialNumberInput() {
+  const env = createSandboxClientCredentialProviderEnv();
+  const result = await runEquifaxSandboxVerification({
+    ...validSandboxVerificationInput(),
+    identity: {
+      ssn: '123-45-6789'
+    }
+  }, {
+    env,
+    fetchImpl: async () => {
+      throw new Error('fetch must not be called when social number input is present');
+    }
+  });
+
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.blockedReason, 'sandbox_identity_required');
+  assertSandboxVerificationResponseIsSafe(result);
+}
+
+async function checkSandboxVerificationUsesMockedProviderPathSafely() {
+  const env = createSandboxClientCredentialProviderEnv();
+  const observedRequests = [];
+  const result = await runEquifaxSandboxVerification(validSandboxVerificationInput(), {
+    env,
+    fetchImpl: async (url, options) => {
+      observedRequests.push({ url, options });
+
+      if (String(url).includes('/v2/oauth/token')) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({
+            access_token: 'oauth-access-token-secret-value',
+            expires_in: 3600
+          })
+        };
+      }
+
+      return {
+        ok: true,
+        status: 200,
+        headers: {
+          get(name) {
+            return name === 'efx-transaction-id' ? 'safe-transaction-id' : null;
+          }
+        },
+        text: async () => JSON.stringify({
+          status: 'completed',
+          transactionId: 'safe-transaction-id',
+          creditScore: 721,
+          totalBalance: '$5,000',
+          totalMonthlyPayment: '250',
+          fraudAlertIndicator: false,
+          tradelines: [{ accountNumber: 'must-not-leak' }],
+          consumer: {
+            firstName: 'MustNotLeak',
+            address: '100 Private Street'
+          },
+          sourceResponse: {
+            raw: 'must-not-leak'
+          }
+        })
+      };
+    }
+  });
+
+  assert.equal(observedRequests.length, 2);
+  assert.equal(result.status, 'success');
+  assert.equal(result.verified, true);
+  assert.equal(result.transactionId, 'safe-transaction-id');
+  assert.equal(result.scoreSummary.value, 721);
+  assertSandboxVerificationResponseIsSafe(result);
+
+  const providerRequestBody = JSON.parse(observedRequests[1].options.body);
+  assert.equal(JSON.stringify(providerRequestBody).includes('123-45-6789'), false);
+  assert.equal(JSON.stringify(providerRequestBody).includes('DoNotForward'), false);
+  assert.equal(providerRequestBody.customerConfiguration.equifaxUSConsumerCreditReport.pdfComboIndicator, 'N');
+}
+
 function checkRegistryStillSupportsFutureProviders() {
   assert.equal(resolveCreditProviderName('equifax_oneview'), 'equifax_oneview');
   assert.equal(resolveCreditProviderName('thirdstream_equifax'), 'thirdstream_equifax');
@@ -294,6 +424,73 @@ function createSandboxStaticTokenEnv() {
     EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
     EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
   };
+}
+
+function createSandboxClientCredentialProviderEnv() {
+  return {
+    EQUIFAX_ENABLED: 'true',
+    EQUIFAX_ENVIRONMENT: 'sandbox',
+    EQUIFAX_TOKEN_STRATEGY: 'client_credentials',
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true',
+    EQUIFAX_OAUTH_TOKEN_EXCHANGE_ENABLED: 'true',
+    EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT: 'basic_auth',
+    EQUIFAX_TIMEOUT_MS: '10000',
+    EQUIFAX_RETRY_COUNT: '0',
+    EQUIFAX_PRODUCT_CODE: 'portal-product-code',
+    EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
+    EQUIFAX_SANDBOX_BASE_URL: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
+    EQUIFAX_SANDBOX_OAUTH_TOKEN_URL: 'https://api.sandbox.equifax.com/v2/oauth/token',
+    EQUIFAX_CLIENT_ID: 'sandbox-client-id-secret-value',
+    EQUIFAX_CLIENT_SECRET: 'sandbox-client-secret-value',
+    EQUIFAX_SCOPE: 'https://api.equifax.com/business/oneview/consumer-credit/v1',
+    EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
+    EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
+    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
+  };
+}
+
+function validSandboxVerificationInput() {
+  return {
+    consent: {
+      provided: true,
+      permissiblePurposeCode: '57'
+    },
+    permissiblePurposeCode: '57',
+    sandboxIdentity: true,
+    sandboxIdentityMarker: 'equifax_sandbox_test_identity'
+  };
+}
+
+function buildRuntimeConfigForCheck(env) {
+  return require('../src/services/equifax/equifaxProviderConfig').buildEquifaxRuntimeConfig(env);
+}
+
+function assertSandboxVerificationResponseIsSafe(result) {
+  const serialized = JSON.stringify(result);
+  [
+    'access_token',
+    'Authorization',
+    'client_secret',
+    'memberNumber',
+    'securityCode',
+    'customerCode',
+    'requestBody',
+    'rawProviderResponse',
+    'rawReport',
+    'tradelines',
+    'trades',
+    'pdfLink',
+    'MustNotLeak',
+    '100 Private Street',
+    '123-45-6789',
+    'oauth-access-token-secret-value',
+    'sandbox-client-secret-value',
+    'sandbox-member-secret-value',
+    'sandbox-security-secret-value'
+  ].forEach((forbidden) => {
+    assert.equal(serialized.includes(forbidden), false, `${forbidden} leaked`);
+  });
 }
 
 run().catch((error) => {

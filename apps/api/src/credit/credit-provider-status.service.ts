@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 type TokenStrategy =
   | "disabled"
   | "sandbox_static_token"
+  | "client_credentials"
   | "client_credentials_pending_docs";
 
 type BlockedReason =
@@ -15,9 +16,12 @@ type BlockedReason =
   | "provider_calls_enabled_required"
   | "official_sandbox_base_url_required"
   | "oauth_client_credentials_blocked_pending_docs"
-  | "oauth_response_expiry_unconfirmed"
+  | "equifax_oauth_exchange_disabled"
+  | "equifax_oauth_credential_placement_not_configured"
+  | "equifax_oauth_sandbox_token_url_required"
   | "sandbox_static_token_live_smoke_test_not_implemented"
-  | "ready_for_safe_static_token_readiness_check";
+  | "ready_for_safe_static_token_readiness_check"
+  | "ready_for_safe_client_credentials_provider_check";
 
 export interface CreditProviderStatusResponse {
   provider: "equifax";
@@ -31,13 +35,15 @@ export interface CreditProviderStatusResponse {
   sandboxStaticTokenLiveSmokeTestEnabled: boolean;
   oauthClientCredentialsConfigured: boolean;
   oauthClientCredentialPlacementConfigured: boolean;
-  oauthResponseExpiryConfirmed: boolean;
+  oauthTokenExchangeEnabled: boolean;
+  oauthSandboxTokenUrlConfigured: boolean;
   blockedReason: BlockedReason;
   safeToRunLiveCall: false;
 }
 
 const officialSandboxBaseUrl =
   "https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1";
+const officialSandboxTokenUrl = "https://api.sandbox.equifax.com/v2/oauth/token";
 
 @Injectable()
 export class CreditProviderStatusService {
@@ -61,7 +67,9 @@ export class CreditProviderStatusService {
       ? "disabled"
       : sandboxStaticTokenStrategy
         ? "sandbox_static_token"
-        : "client_credentials_pending_docs";
+        : requestedTokenStrategy === "client_credentials"
+          ? "client_credentials"
+          : "client_credentials_pending_docs";
     const sandboxStaticTokenTestEnabled = this.getFlag(
       "EQUIFAX_SANDBOX_STATIC_TOKEN_TEST_ENABLED"
     );
@@ -91,18 +99,39 @@ export class CreditProviderStatusService {
           "EQUIFAX_SANDBOX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT"
         ) || ""
       );
-    const oauthResponseExpiryConfirmed = false;
+    const oauthTokenExchangeEnabled = this.getFlag(
+      "EQUIFAX_OAUTH_TOKEN_EXCHANGE_ENABLED"
+    );
+    const oauthSandboxTokenUrlConfigured =
+      this.getString("EQUIFAX_SANDBOX_OAUTH_TOKEN_URL") ===
+      officialSandboxTokenUrl;
+    const oauthScopeConfigured =
+      this.getString("EQUIFAX_SCOPE") ===
+        "https://api.equifax.com/business/oneview/consumer-credit/v1" ||
+      this.getString("EQUIFAX_SANDBOX_SCOPE") ===
+        "https://api.equifax.com/business/oneview/consumer-credit/v1";
+    const oauthTokenReady =
+      enabled &&
+      environment === "sandbox" &&
+      tokenStrategy === "client_credentials" &&
+      providerCallsEnabled &&
+      oauthTokenExchangeEnabled &&
+      oauthClientCredentialsConfigured &&
+      oauthClientCredentialPlacementConfigured &&
+      oauthSandboxTokenUrlConfigured &&
+      oauthScopeConfigured;
     const blockedReason = this.getBlockedReason({
       enabled,
       environment,
       providerCallsEnabled,
       tokenStrategy,
-      tokenReady,
+      tokenReady: tokenReady || oauthTokenReady,
       sandboxStaticTokenTestEnabled,
       sandboxStaticTokenLiveSmokeTestEnabled,
       sandboxBaseUrlAllowed,
       oauthClientCredentialPlacementConfigured,
-      oauthResponseExpiryConfirmed
+      oauthTokenExchangeEnabled,
+      oauthSandboxTokenUrlConfigured
     });
 
     return {
@@ -111,14 +140,15 @@ export class CreditProviderStatusService {
       enabled,
       providerCallsEnabled,
       tokenStrategy,
-      tokenReady,
+      tokenReady: tokenReady || oauthTokenReady,
       sandboxStaticTokenTestEnabled,
       sandboxStaticTokenTestReady:
         blockedReason === "ready_for_safe_static_token_readiness_check",
       sandboxStaticTokenLiveSmokeTestEnabled,
       oauthClientCredentialsConfigured,
       oauthClientCredentialPlacementConfigured,
-      oauthResponseExpiryConfirmed,
+      oauthTokenExchangeEnabled,
+      oauthSandboxTokenUrlConfigured,
       blockedReason,
       safeToRunLiveCall: false
     };
@@ -134,16 +164,28 @@ export class CreditProviderStatusService {
     sandboxStaticTokenLiveSmokeTestEnabled: boolean;
     sandboxBaseUrlAllowed: boolean;
     oauthClientCredentialPlacementConfigured: boolean;
-    oauthResponseExpiryConfirmed: boolean;
+    oauthTokenExchangeEnabled: boolean;
+    oauthSandboxTokenUrlConfigured: boolean;
   }): BlockedReason {
     if (!input.enabled) return "equifax_provider_disabled";
+
+    if (input.tokenStrategy === "client_credentials") {
+      if (input.environment !== "sandbox") return "sandbox_environment_required";
+      if (!input.providerCallsEnabled) return "provider_calls_enabled_required";
+      if (!input.oauthTokenExchangeEnabled) return "equifax_oauth_exchange_disabled";
+      if (!input.oauthSandboxTokenUrlConfigured) {
+        return "equifax_oauth_sandbox_token_url_required";
+      }
+      if (!input.oauthClientCredentialPlacementConfigured) {
+        return "equifax_oauth_credential_placement_not_configured";
+      }
+      if (!input.tokenReady) return "oauth_client_credentials_blocked_pending_docs";
+      return "ready_for_safe_client_credentials_provider_check";
+    }
 
     if (input.tokenStrategy !== "sandbox_static_token") {
       if (!input.oauthClientCredentialPlacementConfigured) {
         return "oauth_client_credentials_blocked_pending_docs";
-      }
-      if (!input.oauthResponseExpiryConfirmed) {
-        return "oauth_response_expiry_unconfirmed";
       }
       return "oauth_client_credentials_blocked_pending_docs";
     }
