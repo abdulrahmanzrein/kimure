@@ -1,5 +1,7 @@
 const {
   OFFICIAL_ONEVIEW_BASE_URLS,
+  OAUTH_TOKEN_EXCHANGE_FLAG,
+  SANDBOX_OAUTH_TOKEN_URL,
   SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG,
   SANDBOX_STATIC_TOKEN_TEST_FLAG,
   TOKEN_STRATEGY_MODES,
@@ -22,6 +24,12 @@ const REQUIRED_SMOKE_TEST_GATES = Object.freeze([
   'EQUIFAX_SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_ENABLED',
   'EQUIFAX_SANDBOX_BASE_URL',
   'EQUIFAX_SANDBOX_ACCESS_TOKEN',
+  'EQUIFAX_CLIENT_ID',
+  'EQUIFAX_CLIENT_SECRET',
+  'EQUIFAX_SCOPE',
+  'EQUIFAX_SANDBOX_OAUTH_TOKEN_URL',
+  'EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT',
+  'EQUIFAX_OAUTH_TOKEN_EXCHANGE_ENABLED',
   'EQUIFAX_SANDBOX_MEMBER_NUMBER',
   'EQUIFAX_SANDBOX_SECURITY_CODE',
   'EQUIFAX_SANDBOX_CUSTOMER_CODE',
@@ -119,8 +127,12 @@ function validateSmokeTestGates(config, env) {
     return blocked('sandbox_environment_required');
   }
 
-  if (env.EQUIFAX_TOKEN_STRATEGY !== TOKEN_STRATEGY_MODES.sandboxStaticToken) {
-    return blocked('sandbox_static_token_strategy_required');
+  const tokenStrategy = env.EQUIFAX_TOKEN_STRATEGY;
+  const isStaticToken = tokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken;
+  const isClientCredentials = tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials;
+
+  if (!isStaticToken && !isClientCredentials) {
+    return blocked('sandbox_static_token_or_client_credentials_strategy_required');
   }
 
   if (env.EQUIFAX_PROVIDER_CALLS_ENABLED !== 'true') {
@@ -139,8 +151,30 @@ function validateSmokeTestGates(config, env) {
     return blocked('official_sandbox_base_url_required');
   }
 
-  if (!config.sandboxAccessToken) {
+  if (isStaticToken && !config.sandboxAccessToken) {
     return blocked('sandbox_access_token_required');
+  }
+
+  if (isClientCredentials) {
+    if (env[OAUTH_TOKEN_EXCHANGE_FLAG] !== 'true') {
+      return blocked('equifax_oauth_token_exchange_disabled');
+    }
+
+    if (config.tokenUrl !== SANDBOX_OAUTH_TOKEN_URL) {
+      return blocked('equifax_oauth_sandbox_token_url_required');
+    }
+
+    if (!config.clientId || !config.clientSecret || !config.scope) {
+      return blocked('equifax_oauth_client_credentials_missing');
+    }
+
+    if (config.scope !== config.officialScope) {
+      return blocked('equifax_oauth_scope_invalid');
+    }
+
+    if (!config.oauthClientCredentialPlacementConfigured) {
+      return blocked('equifax_oauth_credential_placement_not_configured');
+    }
   }
 
   if (!config.memberNumber) {

@@ -4,6 +4,7 @@ const {
   OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
   OAUTH_GRANT_TYPE,
   OAUTH_TOKEN_CONTENT_TYPE,
+  OAUTH_TOKEN_EXCHANGE_FLAG,
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE,
@@ -11,6 +12,7 @@ const {
   POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
   POSTMAN_TOKEN_REQUEST_AUTH_MODE,
   SANDBOX_OAUTH_TOKEN_URL,
+  TOKEN_STRATEGY_MODES,
   statusContainsSecretValue,
   validateEquifaxProviderConfig
 } = require('../src/services/equifax/equifaxProviderConfig');
@@ -27,13 +29,14 @@ function run() {
   checkProductionRequiresProductionPrefixedKeys();
   checkRuntimeConfigKeepsSecretsInternal();
   checkGenericSandboxClientCredentialsAreDetectedButBlocked();
+  checkSandboxClientCredentialsCanBeMadeTokenReadyWithExplicitGates();
   checkPostmanAuthFindingIsRecorded();
   checkCredentialPlacementDefaultsToUnset();
   checkCredentialPlacementCanBeConfiguredSafely();
   checkInvalidCredentialPlacementFailsSafe();
   checkExplicitProviderCallGateRequired();
   checkRegistryStillSupportsFutureProviders();
-  console.log('[PASS] Equifax provider config checks (14 assertion groups)');
+  console.log('[PASS] Equifax provider config checks (15 assertion groups)');
 }
 
 function checkDisabledProvider() {
@@ -240,6 +243,47 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(runtimeConfig.oauthTokenContentType, 'application/x-www-form-urlencoded');
   assert.deepEqual(runtimeConfig.oauthTokenFormFields, OAUTH_TOKEN_FORM_FIELDS);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
+  assert.equal(statusContainsSecretValue(status, env), false);
+}
+
+function checkSandboxClientCredentialsCanBeMadeTokenReadyWithExplicitGates() {
+  const env = {
+    EQUIFAX_ENABLED: 'true',
+    EQUIFAX_ENVIRONMENT: 'sandbox',
+    EQUIFAX_TOKEN_STRATEGY: TOKEN_STRATEGY_MODES.clientCredentials,
+    EQUIFAX_PROVIDER_CALLS_ENABLED: 'true',
+    [OAUTH_TOKEN_EXCHANGE_FLAG]: 'true',
+    EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT: OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.basicAuth,
+    EQUIFAX_TIMEOUT_MS: '10000',
+    EQUIFAX_RETRY_COUNT: '0',
+    EQUIFAX_PRODUCT_CODE: 'portal-product-code',
+    EQUIFAX_CONSENT_VERSION: 'kimure-credit-consent-v1',
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: '57',
+    EQUIFAX_SANDBOX_BASE_URL: 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1',
+    EQUIFAX_SANDBOX_OAUTH_TOKEN_URL: SANDBOX_OAUTH_TOKEN_URL,
+    EQUIFAX_CLIENT_ID: 'sandbox-client-id-secret-value',
+    EQUIFAX_CLIENT_SECRET: 'sandbox-client-secret-value',
+    EQUIFAX_SCOPE: ONEVIEW_OAUTH_SCOPE,
+    EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
+    EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
+    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
+  };
+  const status = validateEquifaxProviderConfig(env);
+
+  assert.equal(status.configReady, true);
+  assert.equal(status.tokenStrategy, 'client_credentials');
+  assert.equal(status.clientCredentialsConfigured, true);
+  assert.equal(status.oauthTokenExchangeEnabled, true);
+  assert.equal(status.oauthTokenExchangeReady, true);
+  assert.equal(status.oauthTokenEndpointConfigured, true);
+  assert.equal(status.oauthClientCredentialPlacementConfigured, true);
+  assert.equal(status.oauthClientCredentialPlacementMode, 'basic_auth');
+  assert.equal(status.oauthBlockedUntilPortalDocs, false);
+  assert.equal(status.oauthBlockedUntilCredentialPlacement, false);
+  assert.equal(status.oauthBlockedUntilTokenExchangeEnabled, false);
+  assert.equal(status.oauthBlockedUntilSandboxTokenUrl, false);
+  assert.equal(status.tokenReady, true);
+  assert.equal(status.canAttemptProviderCall, true);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
 

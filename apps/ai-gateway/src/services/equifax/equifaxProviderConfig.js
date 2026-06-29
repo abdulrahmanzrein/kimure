@@ -19,9 +19,11 @@ const ALLOWED_OAUTH_CLIENT_CREDENTIAL_PLACEMENTS = new Set(Object.values(OAUTH_C
 const TOKEN_STRATEGY_MODES = Object.freeze({
   auto: 'auto',
   sandboxStaticToken: 'sandbox_static_token',
+  clientCredentials: 'client_credentials',
   clientCredentialsPendingDocs: 'client_credentials_pending_docs'
 });
 const ALLOWED_TOKEN_STRATEGIES = new Set(Object.values(TOKEN_STRATEGY_MODES));
+const OAUTH_TOKEN_EXCHANGE_FLAG = 'EQUIFAX_OAUTH_TOKEN_EXCHANGE_ENABLED';
 const SANDBOX_STATIC_TOKEN_TEST_FLAG = 'EQUIFAX_SANDBOX_STATIC_TOKEN_TEST_ENABLED';
 const SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG = 'EQUIFAX_SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_ENABLED';
 
@@ -113,6 +115,10 @@ function validateEquifaxProviderConfig(env = process.env) {
       oauthBlockedUntilCredentialPlacement: false,
       oauthBlockedUntilResponseExpiry: false,
       oauthBlockedUntilProviderCallsEnabled: false,
+      oauthTokenExchangeEnabled: false,
+      oauthTokenExchangeReady: false,
+      oauthBlockedUntilTokenExchangeEnabled: false,
+      oauthBlockedUntilSandboxTokenUrl: false,
       sandboxStaticTokenTestEnabled: false,
       sandboxStaticTokenLiveSmokeTestEnabled: false,
       sandboxStaticTokenTestReady: false,
@@ -141,14 +147,19 @@ function validateEquifaxProviderConfig(env = process.env) {
   const oauthClientCredentialPlacementConfigured = oauthClientCredentialPlacementMode !== OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.unset;
   const staticSandboxTokenPresent = hasValue(env.EQUIFAX_SANDBOX_ACCESS_TOKEN);
   const sandboxStaticTokenStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken;
-  const clientCredentialsStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
+  const clientCredentialsStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials;
+  const clientCredentialsPendingDocsStrategyRequested = requestedTokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
   const staticSandboxTokenAllowed = environment === 'sandbox' && staticSandboxTokenPresent;
   const clientCredentialsConfigured = Boolean(credentials.clientId && credentials.clientSecret && credentials.scope);
-  const tokenStrategy = sandboxStaticTokenStrategyRequested || (staticSandboxTokenAllowed && !clientCredentialsStrategyRequested)
+  const tokenStrategy = sandboxStaticTokenStrategyRequested || (staticSandboxTokenAllowed && !clientCredentialsStrategyRequested && !clientCredentialsPendingDocsStrategyRequested)
     ? TOKEN_STRATEGY_MODES.sandboxStaticToken
-    : TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
+    : clientCredentialsStrategyRequested
+      ? TOKEN_STRATEGY_MODES.clientCredentials
+      : TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs;
   const providerCallsEnabled = env.EQUIFAX_PROVIDER_CALLS_ENABLED === 'true';
+  const oauthTokenExchangeEnabled = env[OAUTH_TOKEN_EXCHANGE_FLAG] === 'true';
   const sandboxStaticTokenMode = tokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken;
+  const clientCredentialsMode = tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials;
   const sandboxStaticTokenTestEnabled = env[SANDBOX_STATIC_TOKEN_TEST_FLAG] === 'true';
   const sandboxStaticTokenLiveSmokeTestEnabled = env[SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG] === 'true';
   const sandboxStaticTokenTestUrlAllowed = isOfficialSandboxBaseUrl(credentials.baseUrl);
@@ -167,6 +178,10 @@ function validateEquifaxProviderConfig(env = process.env) {
 
   requirePresentKeys(env, requiredEnvironmentKeys, missingKeys);
 
+  if (clientCredentialsMode && environment === 'sandbox' && !hasValue(env.EQUIFAX_SANDBOX_OAUTH_TOKEN_URL)) {
+    missingKeys.push('EQUIFAX_SANDBOX_OAUTH_TOKEN_URL');
+  }
+
   if (staticSandboxTokenPresent && environment !== 'sandbox') {
     errors.push('EQUIFAX_SANDBOX_ACCESS_TOKEN is only allowed when EQUIFAX_ENVIRONMENT is sandbox.');
   }
@@ -176,11 +191,19 @@ function validateEquifaxProviderConfig(env = process.env) {
   }
 
   if (!ALLOWED_TOKEN_STRATEGIES.has(requestedTokenStrategy)) {
-    errors.push('EQUIFAX_TOKEN_STRATEGY must be one of: auto, sandbox_static_token, client_credentials_pending_docs.');
+    errors.push('EQUIFAX_TOKEN_STRATEGY must be one of: auto, sandbox_static_token, client_credentials, client_credentials_pending_docs.');
   }
 
   if (sandboxStaticTokenStrategyRequested && environment !== 'sandbox') {
     errors.push('EQUIFAX_TOKEN_STRATEGY=sandbox_static_token is only allowed when EQUIFAX_ENVIRONMENT is sandbox.');
+  }
+
+  if (clientCredentialsStrategyRequested && environment !== 'sandbox') {
+    errors.push('EQUIFAX_TOKEN_STRATEGY=client_credentials is currently allowed only when EQUIFAX_ENVIRONMENT is sandbox.');
+  }
+
+  if (clientCredentialsMode && environment === 'sandbox' && hasValue(env.EQUIFAX_SANDBOX_OAUTH_TOKEN_URL) && env.EQUIFAX_SANDBOX_OAUTH_TOKEN_URL.trim() !== SANDBOX_OAUTH_TOKEN_URL) {
+    errors.push('EQUIFAX_SANDBOX_OAUTH_TOKEN_URL must exactly match the official Equifax sandbox OAuth token URL.');
   }
 
   if (sandboxStaticTokenMode && !staticSandboxTokenPresent) {
@@ -209,20 +232,37 @@ function validateEquifaxProviderConfig(env = process.env) {
   const configReady = enabled && uniqueMissingKeys.length === 0 && uniqueErrors.length === 0;
   const tokenConfigured = staticSandboxTokenAllowed || clientCredentialsConfigured;
   const oauthTokenEndpointConfigured = environment === 'sandbox'
-    ? true
+    ? (clientCredentialsMode ? credentials.tokenUrl === SANDBOX_OAUTH_TOKEN_URL : true)
     : Boolean(credentials.tokenUrl);
   const oauthClientCredentialPlacementConfirmed = false;
-  const oauthResponseExpiryConfirmed = false;
-  const oauthRequestFormatConfirmed = false;
+  const oauthResponseExpiryConfirmed = clientCredentialsMode;
+  const oauthRequestFormatConfirmed = clientCredentialsMode;
+  const oauthScopeMatchesOneView = Boolean(credentials.scope && credentials.scope === ONEVIEW_OAUTH_SCOPE);
+  const oauthTokenExchangeReady = enabled &&
+    uniqueErrors.length === 0 &&
+    clientCredentialsMode &&
+    environment === 'sandbox' &&
+    oauthTokenExchangeEnabled &&
+    providerCallsEnabled &&
+    clientCredentialsConfigured &&
+    oauthScopeMatchesOneView &&
+    oauthClientCredentialPlacementConfigured &&
+    credentials.tokenUrl === SANDBOX_OAUTH_TOKEN_URL;
   const tokenReady = tokenStrategy === TOKEN_STRATEGY_MODES.sandboxStaticToken
     ? staticSandboxTokenAllowed
-    : false;
+    : oauthTokenExchangeReady;
   const tokenAvailableForProviderCall = tokenReady;
-  const oauthBlockedUntilCredentialPlacement = tokenStrategy === 'client_credentials_pending_docs' &&
+  const oauthBlockedUntilCredentialPlacement = (tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs ||
+    tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials) &&
     !oauthClientCredentialPlacementConfigured;
-  const oauthBlockedUntilResponseExpiry = tokenStrategy === 'client_credentials_pending_docs' &&
+  const oauthBlockedUntilResponseExpiry = tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs &&
     !oauthResponseExpiryConfirmed;
   const oauthBlockedUntilProviderCallsEnabled = !providerCallsEnabled;
+  const oauthBlockedUntilTokenExchangeEnabled = tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials &&
+    !oauthTokenExchangeEnabled;
+  const oauthBlockedUntilSandboxTokenUrl = tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials &&
+    environment === 'sandbox' &&
+    credentials.tokenUrl !== SANDBOX_OAUTH_TOKEN_URL;
   const sandboxStaticTokenTestBlockedReason = getSandboxStaticTokenTestBlockedReason({
     environment,
     tokenStrategy,
@@ -255,7 +295,7 @@ function validateEquifaxProviderConfig(env = process.env) {
     oauthTokenPostConfirmed: true,
     oauthTokenEndpointConfigured,
     oauthTokenContentTypeConfirmed: true,
-    oauthScopeConfirmed: Boolean(credentials.scope && credentials.scope === ONEVIEW_OAUTH_SCOPE),
+    oauthScopeConfirmed: oauthScopeMatchesOneView,
     oauthClientCredentialPlacementConfirmed,
     oauthClientCredentialPlacementConfigured,
     oauthClientCredentialPlacementMode,
@@ -264,10 +304,14 @@ function validateEquifaxProviderConfig(env = process.env) {
     postmanCredentialPlacementConfirmed: POSTMAN_CREDENTIAL_PLACEMENT_CONFIRMED,
     oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed,
-    oauthBlockedUntilPortalDocs: tokenStrategy === 'client_credentials_pending_docs',
+    oauthBlockedUntilPortalDocs: tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentialsPendingDocs,
     oauthBlockedUntilCredentialPlacement,
     oauthBlockedUntilResponseExpiry,
     oauthBlockedUntilProviderCallsEnabled,
+    oauthTokenExchangeEnabled,
+    oauthTokenExchangeReady,
+    oauthBlockedUntilTokenExchangeEnabled,
+    oauthBlockedUntilSandboxTokenUrl,
     sandboxStaticTokenTestEnabled,
     sandboxStaticTokenLiveSmokeTestEnabled,
     sandboxStaticTokenTestReady,
@@ -316,6 +360,10 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     oauthTokenEndpointConfigured: status.oauthTokenEndpointConfigured,
     oauthTokenContentTypeConfirmed: status.oauthTokenContentTypeConfirmed,
     oauthScopeConfirmed: status.oauthScopeConfirmed,
+    oauthTokenExchangeEnabled: status.oauthTokenExchangeEnabled,
+    oauthTokenExchangeReady: status.oauthTokenExchangeReady,
+    oauthBlockedUntilTokenExchangeEnabled: status.oauthBlockedUntilTokenExchangeEnabled,
+    oauthBlockedUntilSandboxTokenUrl: status.oauthBlockedUntilSandboxTokenUrl,
     oauthClientCredentialPlacementConfirmed: status.oauthClientCredentialPlacementConfirmed,
     oauthClientCredentialPlacementConfigured: status.oauthClientCredentialPlacementConfigured,
     oauthClientCredentialPlacementMode: status.oauthClientCredentialPlacementMode,
@@ -367,6 +415,7 @@ function addProductionGuardrails(env, errors) {
     'EQUIFAX_BASE_URL',
     'EQUIFAX_API_BASE_URL',
     'EQUIFAX_SANDBOX_BASE_URL',
+    'EQUIFAX_SANDBOX_OAUTH_TOKEN_URL',
     'EQUIFAX_SANDBOX_TOKEN_URL',
     'EQUIFAX_SANDBOX_CLIENT_ID',
     'EQUIFAX_SANDBOX_CLIENT_SECRET',
@@ -446,6 +495,10 @@ function safeStatus(status) {
     oauthBlockedUntilCredentialPlacement: Boolean(status.oauthBlockedUntilCredentialPlacement),
     oauthBlockedUntilResponseExpiry: Boolean(status.oauthBlockedUntilResponseExpiry),
     oauthBlockedUntilProviderCallsEnabled: Boolean(status.oauthBlockedUntilProviderCallsEnabled),
+    oauthTokenExchangeEnabled: Boolean(status.oauthTokenExchangeEnabled),
+    oauthTokenExchangeReady: Boolean(status.oauthTokenExchangeReady),
+    oauthBlockedUntilTokenExchangeEnabled: Boolean(status.oauthBlockedUntilTokenExchangeEnabled),
+    oauthBlockedUntilSandboxTokenUrl: Boolean(status.oauthBlockedUntilSandboxTokenUrl),
     sandboxStaticTokenTestEnabled: Boolean(status.sandboxStaticTokenTestEnabled),
     sandboxStaticTokenLiveSmokeTestEnabled: Boolean(status.sandboxStaticTokenLiveSmokeTestEnabled),
     sandboxStaticTokenTestReady: Boolean(status.sandboxStaticTokenTestReady),
@@ -463,14 +516,20 @@ function readEnvironmentCredentials(env, prefix) {
     clientId: valueOrNull(env[`${prefix}_CLIENT_ID`]) || valueOrNull(env.EQUIFAX_CLIENT_ID),
     clientSecret: valueOrNull(env[`${prefix}_CLIENT_SECRET`]) || valueOrNull(env.EQUIFAX_CLIENT_SECRET),
     scope: valueOrNull(env[`${prefix}_SCOPE`]) || valueOrNull(env.EQUIFAX_SCOPE),
-    tokenUrl: valueOrNull(env[`${prefix}_TOKEN_URL`]) || valueOrNull(env.EQUIFAX_TOKEN_URL),
+    tokenUrl: valueOrNull(env[`${prefix}_OAUTH_TOKEN_URL`]) ||
+      valueOrNull(env[`${prefix}_TOKEN_URL`]) ||
+      valueOrNull(env.EQUIFAX_OAUTH_TOKEN_URL) ||
+      valueOrNull(env.EQUIFAX_TOKEN_URL),
     memberNumber: valueOrNull(env[`${prefix}_MEMBER_NUMBER`]),
     securityCode: valueOrNull(env[`${prefix}_SECURITY_CODE`])
   };
 }
 
 function resolveTokenUrl(env, environment, prefix) {
-  const configuredTokenUrl = valueOrNull(env[`${prefix}_TOKEN_URL`]) || valueOrNull(env.EQUIFAX_TOKEN_URL);
+  const configuredTokenUrl = valueOrNull(env[`${prefix}_OAUTH_TOKEN_URL`]) ||
+    valueOrNull(env[`${prefix}_TOKEN_URL`]) ||
+    valueOrNull(env.EQUIFAX_OAUTH_TOKEN_URL) ||
+    valueOrNull(env.EQUIFAX_TOKEN_URL);
   if (configuredTokenUrl) return configuredTokenUrl;
   return environment === 'sandbox' ? SANDBOX_OAUTH_TOKEN_URL : null;
 }
@@ -577,6 +636,7 @@ function statusContainsSecretValue(status, env) {
 
 function isSafeControlKey(key) {
   return key === 'EQUIFAX_TOKEN_STRATEGY' ||
+    key === OAUTH_TOKEN_EXCHANGE_FLAG ||
     key === SANDBOX_STATIC_TOKEN_TEST_FLAG ||
     key === SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG ||
     /_ENABLED$/.test(key);
@@ -590,6 +650,7 @@ module.exports = {
   OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
   TOKEN_STRATEGY_MODES,
+  OAUTH_TOKEN_EXCHANGE_FLAG,
   SANDBOX_STATIC_TOKEN_TEST_FLAG,
   SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_FLAG,
   POSTMAN_TOKEN_REQUEST_AUTH_MODE,

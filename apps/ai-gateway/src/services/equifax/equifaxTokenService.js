@@ -1,5 +1,8 @@
 const {
   buildEquifaxRuntimeConfig,
+  OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES,
+  SANDBOX_OAUTH_TOKEN_URL,
+  TOKEN_STRATEGY_MODES,
   validateEquifaxProviderConfig
 } = require('./equifaxProviderConfig');
 
@@ -25,7 +28,7 @@ async function getEquifaxAccessToken(options = {}) {
     });
   }
 
-  if (!providerStatus.configReady) {
+  if (!providerStatus.configReady && providerStatus.tokenStrategy !== TOKEN_STRATEGY_MODES.clientCredentials) {
     updateLastStatus('configuration_not_ready', null);
     return buildTokenResult({
       ok: false,
@@ -56,7 +59,8 @@ async function getEquifaxAccessToken(options = {}) {
       environment: providerStatus.environment,
       tokenStrategy: providerStatus.tokenStrategy,
       lastTokenStatus: 'sandbox_static_token',
-      lastTokenHttpStatus: null
+      lastTokenHttpStatus: null,
+      expiresInSeconds: null
     };
 
     return buildTokenResult({
@@ -66,6 +70,71 @@ async function getEquifaxAccessToken(options = {}) {
       config,
       providerStatus,
       now
+    });
+  }
+
+  if (providerStatus.tokenStrategy === TOKEN_STRATEGY_MODES.clientCredentials) {
+    const clientCredentialsGate = validateClientCredentialsTokenGate({ config, providerStatus });
+    if (!clientCredentialsGate.ok) {
+      updateLastStatus(clientCredentialsGate.errorCode, null);
+      return buildTokenResult({
+        ok: false,
+        accessToken: null,
+        errorCode: clientCredentialsGate.errorCode,
+        config,
+        providerStatus,
+        now
+      });
+    }
+
+    if (!options.forceRefresh && isCachedTokenUsable(providerStatus, now)) {
+      tokenCache.lastTokenStatus = 'cache_hit';
+      return buildTokenResult({
+        ok: true,
+        accessToken: tokenCache.token,
+        errorCode: null,
+        config,
+        providerStatus,
+        now
+      });
+    }
+
+    const tokenResponse = await requestClientCredentialsToken({
+      config,
+      fetchImpl: options.fetchImpl || global.fetch
+    });
+
+    if (!tokenResponse.ok || !tokenResponse.accessToken) {
+      updateLastStatus(tokenResponse.errorCode, tokenResponse.httpStatus || null);
+      return buildTokenResult({
+        ok: false,
+        accessToken: null,
+        errorCode: tokenResponse.errorCode,
+        config,
+        providerStatus,
+        now,
+        tokenResponse
+      });
+    }
+
+    tokenCache = {
+      token: tokenResponse.accessToken,
+      expiresAt: tokenResponse.expiresAt,
+      environment: providerStatus.environment,
+      tokenStrategy: providerStatus.tokenStrategy,
+      lastTokenStatus: 'client_credentials',
+      lastTokenHttpStatus: tokenResponse.httpStatus || null,
+      expiresInSeconds: tokenResponse.expiresInSeconds
+    };
+
+    return buildTokenResult({
+      ok: true,
+      accessToken: tokenResponse.accessToken,
+      errorCode: null,
+      config,
+      providerStatus,
+      now,
+      tokenResponse
     });
   }
 
@@ -122,7 +191,8 @@ function createEmptyTokenCache() {
     environment: null,
     tokenStrategy: null,
     lastTokenStatus: 'not_requested',
-    lastTokenHttpStatus: null
+    lastTokenHttpStatus: null,
+    expiresInSeconds: null
   };
 }
 
@@ -141,17 +211,18 @@ function buildTokenResult({
   errorCode,
   config,
   providerStatus,
-  now
+  now,
+  tokenResponse = null
 }) {
   return {
     ok,
     accessToken,
     errorCode,
-    status: buildSafeTokenStatus({ config, providerStatus, now })
+    status: buildSafeTokenStatus({ config, providerStatus, now, tokenResponse })
   };
 }
 
-function buildSafeTokenStatus({ config, providerStatus, now }) {
+function buildSafeTokenStatus({ config, providerStatus, now, tokenResponse = null }) {
   const configuredForClientCredentials = Boolean(config.clientId && config.clientSecret && config.scope);
   const sandboxTokenConfigured = Boolean(config.sandboxAccessToken && providerStatus.environment === 'sandbox');
   const tokenConfigured = providerStatus.tokenStrategy === 'sandbox_static_token'
@@ -160,6 +231,7 @@ function buildSafeTokenStatus({ config, providerStatus, now }) {
 
   return {
     tokenConfigured,
+    missingKeys: Array.isArray(providerStatus.missingKeys) ? providerStatus.missingKeys : [],
     sandboxTokenConfigured,
     clientCredentialsConfigured: configuredForClientCredentials,
     memberNumberConfigured: Boolean(config.memberNumber),
@@ -183,20 +255,151 @@ function buildSafeTokenStatus({ config, providerStatus, now }) {
     oauthBlockedUntilCredentialPlacement: Boolean(providerStatus.oauthBlockedUntilCredentialPlacement),
     oauthBlockedUntilResponseExpiry: Boolean(providerStatus.oauthBlockedUntilResponseExpiry),
     oauthBlockedUntilProviderCallsEnabled: Boolean(providerStatus.oauthBlockedUntilProviderCallsEnabled),
+    oauthTokenExchangeEnabled: Boolean(providerStatus.oauthTokenExchangeEnabled),
+    oauthTokenExchangeReady: Boolean(providerStatus.oauthTokenExchangeReady),
+    oauthBlockedUntilTokenExchangeEnabled: Boolean(providerStatus.oauthBlockedUntilTokenExchangeEnabled),
+    oauthBlockedUntilSandboxTokenUrl: Boolean(providerStatus.oauthBlockedUntilSandboxTokenUrl),
     sandboxStaticTokenTestEnabled: Boolean(providerStatus.sandboxStaticTokenTestEnabled),
     sandboxStaticTokenLiveSmokeTestEnabled: Boolean(providerStatus.sandboxStaticTokenLiveSmokeTestEnabled),
     sandboxStaticTokenTestReady: Boolean(providerStatus.sandboxStaticTokenTestReady),
     sandboxStaticTokenTestUrlAllowed: Boolean(providerStatus.sandboxStaticTokenTestUrlAllowed),
     sandboxStaticTokenTestBlockedReason: providerStatus.sandboxStaticTokenTestBlockedReason || null,
-    tokenReady: Boolean(providerStatus.tokenReady),
     providerCallsEnabled: Boolean(providerStatus.providerCallsEnabled),
     tokenCached: Boolean(tokenCache.token),
+    tokenReady: Boolean(providerStatus.tokenReady || tokenResponse && tokenResponse.accessToken),
+    expiresInSeconds: tokenResponse && Number.isFinite(tokenResponse.expiresInSeconds)
+      ? tokenResponse.expiresInSeconds
+      : tokenCache.expiresInSeconds,
     expiresSoon: doesTokenExpireSoon(now),
     environment: providerStatus.environment,
     tokenStrategy: providerStatus.tokenStrategy,
     lastTokenStatus: tokenCache.lastTokenStatus,
     lastTokenHttpStatus: tokenCache.lastTokenHttpStatus
   };
+}
+
+function validateClientCredentialsTokenGate({ config, providerStatus }) {
+  if (providerStatus.environment !== 'sandbox') {
+    return { ok: false, errorCode: 'equifax_oauth_sandbox_environment_required' };
+  }
+
+  if (!providerStatus.providerCallsEnabled) {
+    return { ok: false, errorCode: 'equifax_provider_calls_disabled' };
+  }
+
+  if (!providerStatus.oauthTokenExchangeEnabled) {
+    return { ok: false, errorCode: 'equifax_oauth_token_exchange_disabled' };
+  }
+
+  if (config.tokenUrl !== SANDBOX_OAUTH_TOKEN_URL) {
+    return { ok: false, errorCode: 'equifax_oauth_sandbox_token_url_required' };
+  }
+
+  if (!config.clientId || !config.clientSecret || !config.scope) {
+    return { ok: false, errorCode: 'equifax_oauth_client_credentials_missing' };
+  }
+
+  if (config.scope !== config.officialScope) {
+    return { ok: false, errorCode: 'equifax_oauth_scope_invalid' };
+  }
+
+  if (!providerStatus.oauthClientCredentialPlacementConfigured) {
+    return { ok: false, errorCode: 'equifax_oauth_credential_placement_not_configured' };
+  }
+
+  if (![
+    OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.basicAuth,
+    OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.formBody
+  ].includes(config.oauthClientCredentialPlacementMode)) {
+    return { ok: false, errorCode: 'equifax_oauth_credential_placement_invalid' };
+  }
+
+  if (Array.isArray(providerStatus.errors) && providerStatus.errors.length > 0) {
+    return { ok: false, errorCode: 'equifax_configuration_invalid' };
+  }
+
+  return { ok: true, errorCode: null };
+}
+
+async function requestClientCredentialsToken({ config, fetchImpl }) {
+  if (typeof fetchImpl !== 'function') {
+    return {
+      ok: false,
+      errorCode: 'equifax_fetch_unavailable',
+      httpStatus: null,
+      accessToken: null,
+      expiresAt: null,
+      expiresInSeconds: null
+    };
+  }
+
+  const body = new URLSearchParams();
+  body.set('grant_type', config.oauthGrantType);
+  body.set('scope', config.scope);
+
+  const headers = {
+    'Content-Type': config.oauthTokenContentType,
+    Accept: 'application/json'
+  };
+
+  if (config.oauthClientCredentialPlacementMode === OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.basicAuth) {
+    headers.Authorization = `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`, 'utf8').toString('base64')}`;
+  } else if (config.oauthClientCredentialPlacementMode === OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.formBody) {
+    body.set('client_id', config.clientId);
+    body.set('client_secret', config.clientSecret);
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+
+  try {
+    const response = await fetchImpl(config.tokenUrl, {
+      method: config.oauthTokenMethod,
+      headers,
+      body: body.toString(),
+      signal: controller.signal
+    });
+    const responseText = await response.text();
+    const parsedBody = parseJsonSafely(responseText);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        errorCode: 'equifax_oauth_token_http_error',
+        httpStatus: response.status,
+        accessToken: null,
+        expiresAt: null,
+        expiresInSeconds: null
+      };
+    }
+
+    const accessToken = parsedBody && typeof parsedBody.access_token === 'string'
+      ? parsedBody.access_token
+      : null;
+    const expiresInSeconds = parsedBody && Number.isFinite(Number(parsedBody.expires_in))
+      ? Number(parsedBody.expires_in)
+      : null;
+
+    return {
+      ok: Boolean(accessToken),
+      errorCode: accessToken ? null : 'equifax_oauth_access_token_missing',
+      httpStatus: response.status,
+      accessToken,
+      expiresAt: expiresInSeconds ? new Date(Date.now() + expiresInSeconds * 1000) : null,
+      expiresInSeconds
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseJsonSafely(text) {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 function doesTokenExpireSoon(now) {

@@ -50,10 +50,12 @@ function checkSmokeScriptExistsAndIsGated() {
   assert.ok(source.includes('EQUIFAX_RETRY_COUNT'));
   assert.ok(source.includes('EQUIFAX_PRODUCT_CODE'));
   assert.ok(source.includes('OFFICIAL_ONEVIEW_BASE_URLS.sandbox'));
-  assert.ok(source.includes("env.EQUIFAX_TOKEN_STRATEGY !== TOKEN_STRATEGY_MODES.sandboxStaticToken"));
+  assert.ok(source.includes("TOKEN_STRATEGY_MODES.sandboxStaticToken"));
+  assert.ok(source.includes("TOKEN_STRATEGY_MODES.clientCredentials"));
+  assert.ok(source.includes("equifax_oauth_token_exchange_disabled"));
+  assert.ok(source.includes("equifax_oauth_credential_placement_not_configured"));
   assert.ok(source.includes("config.baseUrl !== OFFICIAL_ONEVIEW_BASE_URLS.sandbox"));
   assert.ok(source.includes("normalizeEquifaxOneViewResponseV1"));
-  assert.equal(source.includes('oauth_client_credentials'), false);
   assert.equal(/console\.(log|error)\([^)]*(token|Authorization|memberNumber|securityCode|requestBody|body|raw)/i.test(source), false);
 }
 
