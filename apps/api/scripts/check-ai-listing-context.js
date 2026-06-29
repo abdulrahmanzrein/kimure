@@ -27,6 +27,9 @@ assert.equal(controllerSource.includes("isLiveProviderData: true"), false);
 
 const query = buildListingContextQuery({
   question: "Find matching properties",
+  metadata: {
+    listingProvider: "mock_provider"
+  },
   filters: {
     location: "Ottawa",
     maxPrice: "$700,000",
@@ -41,6 +44,7 @@ assert.equal(query.maxPrice, 700000);
 assert.equal(query.type, "detached");
 assert.equal(query.bedrooms, 3);
 assert.equal(query.intent, "primary residence");
+assert.equal(query.provider, undefined);
 
 const listings = new ListingsService(
   new ListingsProviderRegistry(new MockListingsProvider(), new CreaDdfPendingProvider())
@@ -50,7 +54,12 @@ const serialized = JSON.stringify(context);
 
 assert.equal(context.source, "mock_provider");
 assert.equal(context.providerStatus, "mock_only");
+assert.equal(context.blockedReason, null);
 assert.equal(context.isLiveProviderData, false);
+assert.equal(context.resultCount, context.results.length);
+assert.equal(context.providerGuidance.dataMode, "mock_sample_preview");
+assert.equal(context.providerGuidance.instruction.includes("mock/sample"), true);
+assert.equal(context.providerGuidance.instruction.includes("Do not describe it as live CREA"), true);
 assert.equal(context.results.length > 0, true);
 
 context.results.forEach((result) => {
@@ -78,11 +87,22 @@ const pendingContext = buildSafeListingContext(pendingListings, {
 });
 const pendingSerialized = JSON.stringify(pendingContext);
 
+const pendingQuery = buildListingContextQuery({
+  metadata: { listingProvider: "crea_ddf" },
+  filters: { location: "Vancouver" }
+});
+
+assert.equal(pendingQuery.provider, "crea_ddf");
 assert.equal(pendingContext.source, "crea_ddf_pending_access");
 assert.equal(pendingContext.providerStatus, "pending_access");
+assert.equal(pendingContext.blockedReason, "crea_ddf_access_not_configured");
 assert.equal(pendingContext.isLiveProviderData, false);
+assert.equal(pendingContext.resultCount, 0);
 assert.equal(pendingContext.results.length, 0);
-assert.equal(pendingSerialized.includes("crea_ddf_access_not_configured"), false);
+assert.equal(pendingContext.providerGuidance.dataMode, "pending_access_no_live_listings");
+assert.equal(pendingContext.providerGuidance.instruction.includes("Do not invent live CREA/DDF listings"), true);
+assert.equal(pendingContext.providerGuidance.instruction.includes("MLS IDs"), true);
+assert.equal(pendingSerialized.includes("crea_ddf_access_not_configured"), true);
 assert.equal(pendingSerialized.includes("sourceResponse"), false);
 assert.equal(pendingSerialized.includes("contentBase64"), false);
 assert.equal(pendingSerialized.includes("token"), false);

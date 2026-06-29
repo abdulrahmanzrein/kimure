@@ -33,6 +33,10 @@ const listingsPreviewJs = sliceBetween(
 [
   'provider === "crea_ddf"',
   'params.set("provider", provider)',
+  "getSelectedListingsProvider",
+  "marketplaceAiMetadata",
+  'listingProvider: provider || "mock_provider"',
+  "provider: listingProvider || undefined",
   'response.providerStatus === "pending_access"',
   'response.source === "crea_ddf_pending_access"',
   "CREA DDF access is prepared but pending approval/configuration",

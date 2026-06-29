@@ -232,6 +232,10 @@ function firstNumber(...values: unknown[]): number | undefined {
   return undefined;
 }
 
+function firstProvider(...values: unknown[]): ListingSearchQuery["provider"] {
+  return firstText(...values) === "crea_ddf" ? "crea_ddf" : undefined;
+}
+
 export function buildListingContextQuery(
   input: Record<string, unknown>
 ): ListingSearchQuery {
@@ -240,6 +244,7 @@ export function buildListingContextQuery(
   const property = asRecord(input.property);
   const context = asRecord(input.context);
   const financials = asRecord(input.financials);
+  const metadata = asRecord(input.metadata);
 
   return {
     q: firstText(input.q, input.search, listing.address, property.address),
@@ -260,7 +265,15 @@ export function buildListingContextQuery(
       financials.availableFunds
     ),
     bedrooms: firstNumber(filters.bedrooms, input.bedrooms, property.bedrooms),
-    intent: firstText(input.intent, input.goals, filters.intent, filters.preferences)
+    intent: firstText(input.intent, input.goals, filters.intent, filters.preferences),
+    provider: firstProvider(
+      input.provider,
+      filters.provider,
+      listing.provider,
+      property.provider,
+      context.provider,
+      metadata.listingProvider
+    )
   };
 }
 
@@ -271,8 +284,11 @@ export function buildSafeListingContext(
   return {
     source: listingsResponse.source,
     providerStatus: listingsResponse.providerStatus,
+    blockedReason: listingsResponse.blockedReason || null,
     isLiveProviderData: false,
     disclaimer: listingsResponse.disclaimer,
+    resultCount: listingsResponse.results.length,
+    providerGuidance: getListingProviderGuidance(listingsResponse),
     query,
     results: listingsResponse.results.map((listing) => ({
       id: listing.id,
@@ -289,5 +305,23 @@ export function buildSafeListingContext(
       isLiveProviderData: false,
       matchSignals: listing.matchSignals
     }))
+  };
+}
+
+function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
+  if (listingsResponse.providerStatus === "pending_access") {
+    return {
+      label: "CREA DDF pending access",
+      instruction:
+        "CREA DDF access is pending. Do not invent live CREA/DDF listings, MLS IDs, exact live prices, addresses, or availability. Explain that no live CREA/DDF listing data is available yet.",
+      dataMode: "pending_access_no_live_listings"
+    };
+  }
+
+  return {
+    label: "Sample/provider-ready preview data",
+    instruction:
+      "Listing context is mock/sample provider-ready preview data. Do not describe it as live CREA, MLS, IDX, or REALTOR.ca listing data.",
+    dataMode: "mock_sample_preview"
   };
 }

@@ -293,6 +293,19 @@
       .filter(Boolean);
   }
 
+  function getSelectedListingsProvider() {
+    var selector = document.getElementById("mpProviderSelector");
+    return selector && selector.value === "crea_ddf" ? "crea_ddf" : "";
+  }
+
+  function marketplaceAiMetadata() {
+    var provider = getSelectedListingsProvider();
+    return {
+      source: "marketplace_ai_tools",
+      listingProvider: provider || "mock_provider"
+    };
+  }
+
   function buildAiPayload(tool, formToRead) {
     var location = textValue(formToRead, "location");
     var address = textValue(formToRead, "address");
@@ -305,6 +318,8 @@
     var details = textValue(formToRead, "details");
     var needs = textValue(formToRead, "needs");
     var question = textValue(formToRead, "question");
+    var listingProvider = getSelectedListingsProvider();
+    var metadata = marketplaceAiMetadata();
 
     if (tool === "scout") {
       return {
@@ -312,10 +327,11 @@
         filters: {
           location: location,
           maxPrice: budget || undefined,
-          preferences: goals
+          preferences: goals,
+          provider: listingProvider || undefined
         },
         goals: goals,
-        metadata: { source: "marketplace_ai_tools" }
+        metadata: metadata
       };
     }
 
@@ -325,10 +341,11 @@
         listing: {
           address: address,
           price: price,
-          details: details
+          details: details,
+          provider: listingProvider || undefined
         },
         goals: goals,
-        metadata: { source: "marketplace_ai_tools" }
+        metadata: metadata
       };
     }
 
@@ -338,10 +355,11 @@
         filters: {
           location: location,
           monthlyBudget: monthlyBudget,
-          needs: needs
+          needs: needs,
+          provider: listingProvider || undefined
         },
         goals: splitList(needs),
-        metadata: { source: "marketplace_ai_tools" }
+        metadata: metadata
       };
     }
 
@@ -351,9 +369,10 @@
         property: {
           address: address,
           details: details,
-          price: price
+          price: price,
+          provider: listingProvider || undefined
         },
-        metadata: { source: "marketplace_ai_tools" }
+        metadata: metadata
       };
     }
 
@@ -365,16 +384,20 @@
           availableFunds: availableFunds
         },
         context: {
-          timeline: timeline
+          timeline: timeline,
+          provider: listingProvider || undefined
         },
-        metadata: { source: "marketplace_ai_tools" }
+        metadata: metadata
       };
     }
 
     return {
       question: question,
       message: question,
-      metadata: { source: "marketplace_ai_tools" }
+      context: {
+        provider: listingProvider || undefined
+      },
+      metadata: metadata
     };
   }
 
