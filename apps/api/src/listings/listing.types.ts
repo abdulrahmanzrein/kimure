@@ -34,6 +34,8 @@ export interface NormalizedListing {
   propertySize: string;
   listingStatus: string;
   imageUrl: string | null;
+  imageAlt?: string;
+  imageCount?: number;
   sourceProvider: ListingProviderSource;
   isLiveProviderData: false;
   matchSignals: string[];

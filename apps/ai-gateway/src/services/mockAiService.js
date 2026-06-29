@@ -389,7 +389,7 @@ function getListingProviderNotice(listingContext) {
   if (listingContext.providerStatus === 'mock_only' || listingContext.source === 'mock_provider') {
     return {
       summarySuffix:
-        'Listing context is sample/provider-ready preview data, not live CREA, MLS, IDX, or REALTOR.ca listing data.',
+        'Listing context is sample/provider-ready preview data, not live MLS listing data.',
       visibleNotice:
         'The listing context is mock/sample provider-ready preview data and should not be treated as live marketplace inventory.',
       recommendation:
@@ -404,9 +404,9 @@ function getListingProviderNotice(listingContext) {
   ) {
     return {
       summarySuffix:
-        'Repliers preview/sample listing context may be used for sandbox reasoning, but it is not live CREA, DDF, MLS, IDX, or REALTOR.ca inventory.',
+        'Using Repliers preview/sample listing data for sandbox reasoning. This is not live MLS data.',
       visibleNotice:
-        'Repliers preview data is sample provider API data; it must not be treated as live CREA/DDF/MLS listing data.',
+        'Repliers preview data is sample provider API data; it must not be treated as live MLS listing data.',
       recommendation:
         'Use Repliers preview results for prototype matching only and verify live availability through an approved licensed provider before acting.'
     };

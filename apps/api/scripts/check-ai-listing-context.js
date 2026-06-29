@@ -72,7 +72,7 @@ async function run() {
   assert.equal(context.resultCount, context.results.length);
   assert.equal(context.providerGuidance.dataMode, "mock_sample_preview");
   assert.equal(context.providerGuidance.instruction.includes("mock/sample"), true);
-  assert.equal(context.providerGuidance.instruction.includes("Do not describe it as live CREA"), true);
+  assert.equal(context.providerGuidance.instruction.includes("Do not describe it as live MLS"), true);
   assert.equal(context.results.length > 0, true);
 
   context.results.forEach((result) => {
@@ -167,8 +167,17 @@ async function run() {
             id: "sample-1",
             listPrice: 725000,
             class: "condo",
+            photoCount: 40,
+            images: [
+              "area/IMG-N8418368_1.jpg",
+              { medium: "https://cdn.example.test/repliers/sample-condo-2.jpg" }
+            ],
             address: { city: "Toronto", state: "ON", neighborhood: "Sample District" },
-            details: { numBedrooms: 2, numBathrooms: 2, sqft: 850 },
+            details: {
+              numBedrooms: 2,
+              numBathrooms: 2,
+              sqft: 850
+            },
             status: "preview_sample"
           }
         ]
@@ -184,10 +193,12 @@ async function run() {
   assert.equal(repliersContext.resultCount, 1);
   assert.equal(repliersContext.providerGuidance.dataMode, "repliers_preview_sample_data");
   assert.equal(repliersContext.providerGuidance.instruction.includes("sample provider API data"), true);
-  assert.equal(repliersContext.providerGuidance.instruction.includes("not live CREA"), true);
+  assert.equal(repliersContext.providerGuidance.instruction.includes("not live MLS"), true);
   assert.equal(repliersContext.results[0].sourceProvider, "repliers_preview");
   assert.equal(repliersContext.results[0].providerStatus, "preview_ready");
   assert.equal(repliersContext.results[0].isLiveProviderData, false);
+  assert.equal(repliersListings.results[0].imageUrl, "https://cdn.repliers.io/area/IMG-N8418368_1.jpg");
+  assert.equal(repliersListings.results[0].imageCount, 40);
   assert.equal(repliersSerialized.includes("redacted-test-key"), false);
   assert.equal(repliersSerialized.includes("sourceResponse"), false);
   assert.equal(repliersSerialized.includes("contentBase64"), false);
@@ -199,7 +210,8 @@ async function run() {
   });
   const repliersMockSerialized = JSON.stringify(repliersMockResponse);
 
-  assert.equal(repliersMockResponse.summary.includes("Repliers preview/sample listing context"), true);
+  assert.equal(repliersMockResponse.summary.includes("Using Repliers preview/sample listing data"), true);
+  assert.equal(repliersMockResponse.summary.includes("not live MLS data"), true);
   assert.equal(
     repliersMockResponse.keyInsights.some((item) =>
       item.includes("sample provider API data")
@@ -207,6 +219,9 @@ async function run() {
     true
   );
   assert.equal(repliersMockSerialized.includes("redacted-test-key"), false);
+  assert.equal(repliersMockSerialized.includes("CREA"), false);
+  assert.equal(repliersMockSerialized.includes("DDF"), false);
+  assert.equal(repliersMockSerialized.includes("REALTOR"), false);
   assert.equal(repliersMockSerialized.includes("live CREA listings are connected"), false);
   assert.equal(/MLS[-\s]?\d{4,}/i.test(repliersMockSerialized), false);
 
@@ -215,6 +230,10 @@ async function run() {
   });
 
   assert.equal(mockProviderResponse.summary.includes("sample/provider-ready preview data"), true);
+  assert.equal(mockProviderResponse.summary.includes("not live MLS listing data"), true);
+  assert.equal(JSON.stringify(mockProviderResponse).includes("CREA"), false);
+  assert.equal(JSON.stringify(mockProviderResponse).includes("DDF"), false);
+  assert.equal(JSON.stringify(mockProviderResponse).includes("REALTOR"), false);
   assert.equal(JSON.stringify(mockProviderResponse).includes("live CREA listings are connected"), false);
 
   console.log("AI listing context check passed.");

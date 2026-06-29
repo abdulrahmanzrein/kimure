@@ -8,7 +8,7 @@ import {
 import { ListingProviderAdapter } from "./listings-provider.interface";
 
 export const REPLIERS_PREVIEW_DISCLAIMER =
-  "Repliers preview/sample data is used for provider integration testing. It is not live CREA/DDF, MLS, IDX, or REALTOR.ca listing data.";
+  "Repliers preview/sample data is used for provider integration testing. It is not live MLS listing data.";
 
 export type RepliersBlockedReason =
   | "repliers_provider_disabled"
@@ -29,6 +29,7 @@ interface RepliersReadinessStatus {
 }
 
 const allowedPreviewBaseUrl = "https://api.repliers.io";
+const defaultImageCdnBaseUrl = "https://cdn.repliers.io";
 const requestTimeoutMs = 8000;
 const resultLimit = 6;
 
@@ -162,7 +163,20 @@ function blockedResponse(readiness: RepliersReadinessStatus): ListingsSearchResp
 
 function buildRepliersSearchBody(query: ListingSearchQuery) {
   const body: Record<string, unknown> = {
-    limit: resultLimit
+    limit: resultLimit,
+    hasImages: true,
+    fields: [
+      "images[3]",
+      "address",
+      "details",
+      "listPrice",
+      "price",
+      "class",
+      "type",
+      "propertyType",
+      "status",
+      "lastStatus"
+    ]
   };
 
   if (query.location) body.city = query.location;
@@ -198,21 +212,26 @@ function normalizeRepliersListings(body: unknown): NormalizedListing[] {
     const squareFeet = firstNumber(details.sqft, details.squareFeet, listing.squareFeet);
     const neighbourhood = firstString(address.neighborhood, address.community, listing.neighbourhood) || undefined;
     const description = firstString(listing.description, details.description) || undefined;
+    const imageInfo = extractImageInfo(listing, details);
+    const title = firstString(listing.title, details.style, propertyType) || "Repliers preview sample listing";
+    const location = [city, state].filter(Boolean).join(", ") || "Location unavailable";
 
     return {
       id: `repliers-preview-${index + 1}`,
-      title: firstString(listing.title, details.style, propertyType) || "Repliers preview sample listing",
+      title,
       type: propertyType,
       price: listPrice || 0,
       priceLabel: listPrice ? formatCurrency(listPrice) : "Price unavailable",
-      location: [city, state].filter(Boolean).join(", ") || "Location unavailable",
+      location,
       addressSummary: firstString(address.neighborhood, address.community, listing.neighbourhood) ||
         "Repliers preview address summary unavailable",
       bedrooms,
       bathrooms,
       propertySize: squareFeet ? `${squareFeet} sq ft` : "Size unavailable",
       listingStatus: firstString(listing.status, listing.lastStatus) || "preview_sample",
-      imageUrl: null,
+      imageUrl: imageInfo.imageUrl,
+      imageAlt: imageInfo.imageUrl ? `${title} preview image in ${location}` : undefined,
+      imageCount: imageInfo.imageCount,
       sourceProvider: "repliers_preview",
       providerStatus: "preview_ready",
       isLiveProviderData: false,
@@ -233,6 +252,128 @@ function extractListingArray(body: unknown): unknown[] {
   if (Array.isArray(source.results)) return source.results;
   if (Array.isArray(source.data)) return source.data;
   return [];
+}
+
+function extractImageInfo(
+  listing: Record<string, unknown>,
+  details: Record<string, unknown>
+): { imageUrl: string | null; imageCount: number } {
+  const candidates = [
+    listing.imageUrl,
+    listing.photoUrl,
+    listing.thumbnailUrl,
+    listing.primaryPhoto,
+    listing.mainImage,
+    listing.image,
+    listing.photo,
+    listing.thumbnail,
+    listing.images,
+    listing.photos,
+    listing.media,
+    listing.gallery,
+    details.images,
+    details.photos,
+    details.media,
+    details.gallery
+  ];
+  const urls = Array.from(
+    new Set(candidates.flatMap(extractImageUrls).map(toSafeImageUrl).filter((url): url is string => Boolean(url)))
+  );
+  const imageCount = firstNumber(listing.photoCount, details.photoCount) || urls.length;
+
+  return {
+    imageUrl: urls[0] || null,
+    imageCount
+  };
+}
+
+function extractImageUrls(value: unknown): string[] {
+  if (!value) return [];
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(extractImageUrls);
+
+  const record = asRecord(value);
+  if (!Object.keys(record).length) return [];
+
+  const nested = [
+    record.url,
+    record.href,
+    record.src,
+    record.cdnUrl,
+    record.photoUrl,
+    record.imageUrl,
+    record.thumbnailUrl,
+    record.thumbnail,
+    record.small,
+    record.medium,
+    record.large,
+    record.original,
+    record.full,
+    record.highRes,
+    record.urlSmall,
+    record.urlMedium,
+    record.urlLarge,
+    record.uri,
+    record.images,
+    record.photos,
+    record.media,
+    record.gallery,
+    ...Object.values(record).filter((nestedValue) =>
+      typeof nestedValue === "string" ||
+      Array.isArray(nestedValue) ||
+      Boolean(nestedValue && typeof nestedValue === "object")
+    )
+  ];
+
+  return nested.flatMap(extractImageUrls);
+}
+
+function toSafeImageUrl(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (isUnsafeImagePath(trimmed)) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "https:") return null;
+    const normalized = parsed.href.toLowerCase();
+    if (normalized.includes(".pdf")) return null;
+    if (normalized.includes("realtor.ca")) return null;
+    return parsed.href;
+  } catch {
+    if (!isSafeRelativeImagePath(trimmed)) return null;
+    return `${getRepliersImageCdnBaseUrl()}/${trimmed.replace(/^\/+/, "")}`;
+  }
+}
+
+function getRepliersImageCdnBaseUrl(): string {
+  const configured = readString(process.env.REPLIERS_IMAGE_CDN_BASE_URL);
+  if (!configured) return defaultImageCdnBaseUrl;
+
+  try {
+    const parsed = new URL(configured);
+    if (parsed.protocol !== "https:") return defaultImageCdnBaseUrl;
+    return parsed.href.replace(/\/+$/, "");
+  } catch {
+    return defaultImageCdnBaseUrl;
+  }
+}
+
+function isUnsafeImagePath(value: string): boolean {
+  const normalized = value.toLowerCase();
+  return normalized.startsWith("javascript:") ||
+    normalized.startsWith("data:") ||
+    normalized.startsWith("file:") ||
+    normalized.startsWith("blob:") ||
+    normalized.includes("../") ||
+    normalized.includes("..\\");
+}
+
+function isSafeRelativeImagePath(value: string): boolean {
+  if (value.startsWith("/") || value.startsWith("\\")) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return false;
+  if (!/\.(jpe?g|png|webp|avif)(\?.*)?$/i.test(value)) return false;
+  return /^[a-z0-9/_.,%+@=~: -]+$/i.test(value);
 }
 
 function buildMatchSignals(input: {

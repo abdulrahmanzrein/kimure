@@ -339,7 +339,7 @@ function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
     return {
       label: "Repliers preview/sample data",
       instruction:
-        "Repliers preview data is sample provider API data. It is not live CREA, DDF, MLS, IDX, or REALTOR.ca listing data. Do not describe it as live CREA/DDF inventory.",
+        "Repliers preview data is sample provider API data. It is not live MLS listing data. Do not describe it as live marketplace inventory.",
       dataMode: "repliers_preview_sample_data"
     };
   }
@@ -347,7 +347,7 @@ function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
   return {
     label: "Sample/provider-ready preview data",
     instruction:
-      "Listing context is mock/sample provider-ready preview data. Do not describe it as live CREA, MLS, IDX, or REALTOR.ca listing data.",
+      "Listing context is mock/sample provider-ready preview data. Do not describe it as live MLS listing data.",
     dataMode: "mock_sample_preview"
   };
 }

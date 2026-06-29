@@ -117,6 +117,13 @@
     });
   }
 
+  function truncateText(value, maxLength) {
+    var text = String(value || "").trim();
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength - 1).trim() + "…";
+  }
+
   function buildProviderListingsQuery(formToRead) {
     var params = new URLSearchParams();
     var provider = textValue(formToRead, "provider");
@@ -161,46 +168,77 @@
 
   function renderProviderListingCard(grid, listing) {
     var card = appendNode(grid, "article", "mp-provider-card");
-    var top = appendNode(card, "div", "mp-provider-card-top");
-    var titleWrap = appendNode(top, "div");
-    var badges = appendNode(top, "div", "mp-provider-badges");
-
-    appendNode(titleWrap, "h3", null, listing.title || "Sample listing");
-    appendNode(titleWrap, "p", "mp-provider-price", formatMoney(listing.price, listing));
-
     var sourceProvider = listing.sourceProvider || "mock_provider";
     var isRepliersPreview = sourceProvider === "repliers_preview";
+    var imageUrl = typeof listing.imageUrl === "string" && listing.imageUrl ? listing.imageUrl : "";
+    var imageWrap = appendNode(card, "div", "mp-provider-image");
+    var imageBadges = appendNode(imageWrap, "div", "mp-provider-image-badges");
 
     appendNode(
-      badges,
+      imageBadges,
       "span",
       "mp-provider-badge",
       isRepliersPreview ? "REPLIERS PREVIEW" : formatProviderLabel(sourceProvider)
     );
     appendNode(
-      badges,
+      imageBadges,
       "span",
       "mp-provider-badge mp-provider-badge--mock",
       isRepliersPreview ? "SAMPLE DATA" : "Mock data"
     );
 
-    appendNode(card, "p", "mp-provider-location", listing.location || "Location unavailable");
-    appendNode(card, "p", "mp-provider-address", listing.addressSummary || "Address summary unavailable");
+    if (imageUrl) {
+      var image = appendNode(imageWrap, "img", "mp-provider-photo");
+      image.src = imageUrl;
+      image.alt = listing.imageAlt || listing.title || "Property preview image";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.addEventListener("error", function () {
+        image.remove();
+        imageWrap.classList.add("has-placeholder");
+        appendNode(imageWrap, "span", "mp-provider-image-placeholder", "Preview image");
+      }, { once: true });
+    } else {
+      imageWrap.classList.add("has-placeholder");
+      appendNode(imageWrap, "span", "mp-provider-image-placeholder", "Preview image");
+    }
+
+    if (Number(listing.imageCount) > 1) {
+      appendNode(imageWrap, "span", "mp-provider-photo-count", String(listing.imageCount) + " photos");
+    }
+
+    var body = appendNode(card, "div", "mp-provider-card-body");
+    var top = appendNode(body, "div", "mp-provider-card-top");
+    var titleWrap = appendNode(top, "div");
+
+    appendNode(titleWrap, "p", "mp-provider-price", listing.priceLabel || formatMoney(listing.price, listing));
+    appendNode(titleWrap, "h3", null, listing.title || "Sample listing");
+
+    appendNode(body, "p", "mp-provider-location", listing.location || "Location unavailable");
+    appendNode(body, "p", "mp-provider-address", listing.neighbourhood || listing.addressSummary || "Address summary unavailable");
 
     var meta = [];
-    if (listing.type) meta.push(String(listing.type));
     if (Number(listing.bedrooms) > 0) meta.push(String(listing.bedrooms) + " bed");
     if (Number(listing.bathrooms) > 0) meta.push(String(listing.bathrooms) + " bath");
     if (listing.propertySize) meta.push(String(listing.propertySize));
-    appendNode(card, "p", "mp-provider-meta", meta.join(" • "));
+    if (!meta.length && listing.type) meta.push(String(listing.type));
+    appendNode(body, "p", "mp-provider-meta", meta.join(" • ") || "Property details unavailable");
 
-    var signals = Array.isArray(listing.matchSignals) ? listing.matchSignals : [];
+    if (listing.description) {
+      appendNode(body, "p", "mp-provider-description", truncateText(listing.description, 150));
+    }
+
+    var signals = Array.isArray(listing.tags) && listing.tags.length
+      ? listing.tags
+      : Array.isArray(listing.matchSignals) ? listing.matchSignals : [];
     if (signals.length) {
-      var signalWrap = appendNode(card, "div", "mp-provider-signals");
+      var signalWrap = appendNode(body, "div", "mp-provider-signals");
       signals.slice(0, 4).forEach(function (signal) {
         appendNode(signalWrap, "span", "mp-provider-signal", signal);
       });
     }
+
+    appendNode(body, "button", "mp-provider-preview-cta", "Preview details").setAttribute("type", "button");
   }
 
   function renderProviderListings(response) {
@@ -230,7 +268,7 @@
     if (isRepliersPreviewResponse(response) && !results.length) {
       if (emptyEl) {
         emptyEl.hidden = false;
-        emptyEl.textContent = "Repliers preview is not configured or returned no sample listings. No live CREA/DDF listing data is being displayed.";
+        emptyEl.textContent = "Repliers preview is not configured or returned no sample listings. No live MLS listing data is being displayed.";
       }
       setProviderStatus(
         statusEl,
@@ -240,7 +278,7 @@
           ". " +
           formatBlockedReason(response.blockedReason || "repliers_preview_request_failed") +
           ". " +
-          (response.disclaimer || "Repliers preview/sample data is not live CREA/DDF listing data.")
+          (response.disclaimer || "Repliers preview/sample data is not live MLS listing data.")
       );
       return;
     }

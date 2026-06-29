@@ -10,7 +10,8 @@ const { MockListingsProvider, MOCK_LISTINGS } = require("../src/listings/mock-li
 const {
   RepliersPreviewProvider,
   REPLIERS_PREVIEW_DISCLAIMER,
-  buildRepliersSearchBody
+  buildRepliersSearchBody,
+  normalizeRepliersListings
 } = require("../src/listings/repliers-preview.provider");
 const { ListingsProviderRegistry } = require("../src/listings/listings-provider.registry");
 const {
@@ -21,6 +22,7 @@ const {
 
 const apiRoot = path.resolve(__dirname, "..");
 const requiredFiles = [
+  "scripts/run-repliers-preview-image-shape-smoke.js",
   "src/listings/listings.controller.ts",
   "src/listings/listings.service.ts",
   "src/listings/listings.module.ts",
@@ -141,6 +143,9 @@ async function run() {
   assert.equal(repliersBody.type, "condo");
   assert.equal(repliersBody.maxPrice, 750000);
   assert.equal(repliersBody.keywords, "investment");
+  assert.equal(repliersBody.hasImages, true);
+  assert.equal(Array.isArray(repliersBody.fields), true);
+  assert.equal(repliersBody.fields.includes("images[3]"), true);
   assert.equal(JSON.stringify(repliersBody).includes("redacted-test-key"), false);
 
   let fetchCalled = false;
@@ -169,6 +174,13 @@ async function run() {
                 id: "sample-1",
                 listPrice: 725000,
                 class: "condo",
+                photoCount: 29,
+                images: [
+                  "area/IMG-N8418368_1.jpg",
+                  {
+                    large: "https://cdn.example.test/repliers/sample-condo-2.jpg"
+                  }
+                ],
                 address: {
                   city: "Toronto",
                   state: "ON",
@@ -196,9 +208,36 @@ async function run() {
   assert.equal(repliersReady.results[0].sourceProvider, "repliers_preview");
   assert.equal(repliersReady.results[0].isLiveProviderData, false);
   assert.equal(repliersReady.results[0].providerStatus, "preview_ready");
+  assert.equal(repliersReady.results[0].imageUrl, "https://cdn.repliers.io/area/IMG-N8418368_1.jpg");
+  assert.equal(repliersReady.results[0].imageAlt.includes("preview image"), true);
+  assert.equal(repliersReady.results[0].imageCount, 29);
+  assert.equal(repliersReady.results[0].id, "repliers-preview-1");
+  assert.equal(JSON.stringify(repliersReady.results[0]).includes("sample-1"), false);
   assert.equal(JSON.stringify(repliersReady).includes("redacted-test-key"), false);
   assert.equal(JSON.stringify(repliersReady).includes("REPLIERS-API-KEY"), false);
   assert.equal(JSON.stringify(repliersReady).includes("isLiveProviderData\":true"), false);
+
+  const unsafeImageListings = normalizeRepliersListings({
+    listings: [
+      {
+        images: [
+          "javascript:alert(1)",
+          "data:image/png;base64,abc",
+          "file:///tmp/image.jpg",
+          "blob:https://example.test/id",
+          "../private/image.jpg",
+          "area/safe-preview.webp"
+        ]
+      },
+      {
+        images: ["https://cdn.example.test/repliers/absolute-safe.jpg"]
+      }
+    ]
+  });
+
+  assert.equal(unsafeImageListings[0].imageUrl, "https://cdn.repliers.io/area/safe-preview.webp");
+  assert.equal(unsafeImageListings[0].imageCount, 1);
+  assert.equal(unsafeImageListings[1].imageUrl, "https://cdn.example.test/repliers/absolute-safe.jpg");
 
   const requiredResultFields = [
     "id",
@@ -239,6 +278,11 @@ async function run() {
     path.join(apiRoot, "src/listings/repliers-preview.provider.ts"),
     "utf8"
   );
+  const repliersSmokeSource = fs.readFileSync(
+    path.join(apiRoot, "scripts/run-repliers-preview-image-shape-smoke.js"),
+    "utf8"
+  );
+  const packageJson = JSON.parse(fs.readFileSync(path.join(apiRoot, "package.json"), "utf8"));
   const allListingSource = requiredFiles
     .map((file) => fs.readFileSync(path.join(apiRoot, file), "utf8"))
     .join("\n");
@@ -253,9 +297,25 @@ async function run() {
   assert.equal(creaSource.includes("REALTOR.ca"), true);
   assert.equal(creaSource.includes("never scrapes REALTOR.ca"), true);
   assert.equal(repliersSource.includes("https://api.repliers.io"), true);
+  assert.equal(repliersSource.includes("https://cdn.repliers.io"), true);
+  assert.equal(repliersSource.includes("REPLIERS_IMAGE_CDN_BASE_URL"), true);
+  assert.equal(repliersSource.includes("javascript:"), true);
+  assert.equal(repliersSource.includes("data:"), true);
+  assert.equal(repliersSource.includes("../"), true);
   assert.equal(repliersSource.includes("REPLIERS_API_KEY="), false);
   assert.equal(repliersSource.includes("REPLIERS_API_SECRET"), false);
   assert.equal(repliersSource.includes("REPLIERS-API-KEY"), true);
+  assert.equal(packageJson.scripts["smoke:repliers-image-shape"], "node scripts/run-repliers-preview-image-shape-smoke.js");
+  assert.equal(repliersSmokeSource.includes("REPLIERS_IMAGE_SHAPE_SMOKE_ENABLED"), true);
+  assert.equal(repliersSmokeSource.includes("hasImages: true"), true);
+  assert.equal(repliersSmokeSource.includes("images[5]"), true);
+  assert.equal(repliersSmokeSource.includes("topLevelKeys"), true);
+  assert.equal(repliersSmokeSource.includes("firstImageShape"), true);
+  assert.equal(repliersSmokeSource.includes("printSafe(body"), false);
+  assert.equal(repliersSmokeSource.includes("printSafe(response"), false);
+  assert.equal(repliersSmokeSource.includes("printSafe(headers"), false);
+  assert.equal(repliersSmokeSource.includes("console.log"), false);
+  assert.equal(repliersSmokeSource.includes("raw"), false);
   assert.equal(allListingSource.includes("https://www.realtor.ca"), false);
   assert.equal(allListingSource.includes("https://realtor.ca"), false);
   assert.equal(allListingSource.includes("isLiveProviderData: true"), false);
