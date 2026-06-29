@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "check:credit-provider-status": "node scripts/check-credit-provider-status-panel.js",
     "check:dashboard-ai-credit": "node scripts/check-dashboard-ai-credit.js",
     "start": "next start",
     "lint": "next lint"

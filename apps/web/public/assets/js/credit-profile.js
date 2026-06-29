@@ -14,6 +14,9 @@
   var errorBox = document.getElementById("creditFormErrors");
   var results = document.getElementById("creditResults");
   var sinInput = document.getElementById("creditSin");
+  var providerReadinessState = document.getElementById("creditProviderReadinessState");
+  var providerStatusList = document.getElementById("creditProviderStatusList");
+  var providerRefresh = document.getElementById("creditProviderRefresh");
   var creditAssessmentId = null;
   var bureauOptions = Object.freeze({
     equifax: { label: "Equifax", providerChoice: "thirdstream_equifax" },
@@ -258,6 +261,86 @@
     if (element) element.textContent = text;
   }
 
+  function formatBoolean(valueToCheck) {
+    return valueToCheck === true ? "Yes" : "No";
+  }
+
+  function formatStatusValue(valueToCheck) {
+    if (typeof valueToCheck === "boolean") return formatBoolean(valueToCheck);
+    return humanize(valueToCheck);
+  }
+
+  function normalizeProviderStatus(status) {
+    var source = safeObject(status);
+    return {
+      provider: safeText(source.provider, "equifax"),
+      environment: safeText(source.environment, "unknown"),
+      enabled: source.enabled === true,
+      providerCallsEnabled: source.providerCallsEnabled === true,
+      tokenStrategy: safeText(source.tokenStrategy, "disabled"),
+      tokenReady: source.tokenReady === true,
+      sandboxStaticTokenTestEnabled: source.sandboxStaticTokenTestEnabled === true,
+      sandboxStaticTokenTestReady: source.sandboxStaticTokenTestReady === true,
+      safeToRunLiveCall: source.safeToRunLiveCall === true,
+      blockedReason: safeText(source.blockedReason, "unavailable")
+    };
+  }
+
+  function renderProviderStatus(status) {
+    var safeStatus = normalizeProviderStatus(status);
+    var fields = {
+      creditStatusProvider: safeStatus.provider,
+      creditStatusEnvironment: safeStatus.environment,
+      creditStatusEnabled: safeStatus.enabled,
+      creditStatusProviderCalls: safeStatus.providerCallsEnabled,
+      creditStatusTokenStrategy: safeStatus.tokenStrategy,
+      creditStatusTokenReady: safeStatus.tokenReady,
+      creditStatusStaticTestEnabled: safeStatus.sandboxStaticTokenTestEnabled,
+      creditStatusStaticTestReady: safeStatus.sandboxStaticTokenTestReady,
+      creditStatusSafeLiveCall: safeStatus.safeToRunLiveCall,
+      creditStatusBlockedReason: safeStatus.blockedReason
+    };
+
+    Object.keys(fields).forEach(function (id) {
+      setText(id, formatStatusValue(fields[id]));
+    });
+
+    if (providerReadinessState) {
+      providerReadinessState.dataset.state = "loaded";
+      providerReadinessState.textContent = "Provider readiness loaded from the Kimure API.";
+    }
+    if (providerStatusList) providerStatusList.hidden = false;
+  }
+
+  function renderProviderStatusUnavailable(message) {
+    if (providerStatusList) providerStatusList.hidden = true;
+    if (!providerReadinessState) return;
+    providerReadinessState.dataset.state = "error";
+    providerReadinessState.textContent = message || "Provider readiness is unavailable right now.";
+  }
+
+  async function loadProviderStatus() {
+    if (!providerReadinessState || !window.KIMURE_AUTH || !window.KIMURE_AUTH.fetchCreditProviderStatus) {
+      renderProviderStatusUnavailable("Provider readiness helper is unavailable on this page.");
+      return;
+    }
+
+    providerReadinessState.dataset.state = "loading";
+    providerReadinessState.textContent = "Loading provider readiness…";
+    if (providerStatusList) providerStatusList.hidden = true;
+    if (providerRefresh) providerRefresh.disabled = true;
+
+    var response = await window.KIMURE_AUTH.fetchCreditProviderStatus();
+    if (providerRefresh) providerRefresh.disabled = false;
+
+    if (!response.ok) {
+      renderProviderStatusUnavailable(response.message || "Provider readiness could not be loaded.");
+      return;
+    }
+
+    renderProviderStatus(response.data);
+  }
+
   function getBureauLabel() {
     if (!isProviderMode()) return "Not used";
     var bureau = bureauOptions[bureauChoice.value];
@@ -339,6 +422,7 @@
 
   assessmentType.addEventListener("change", updateMode);
   document.addEventListener("kimure-auth-changed", updateAuthStatus);
+  if (providerRefresh) providerRefresh.addEventListener("click", loadProviderStatus);
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -383,4 +467,5 @@
 
   updateMode();
   updateAuthStatus();
+  loadProviderStatus();
 })();

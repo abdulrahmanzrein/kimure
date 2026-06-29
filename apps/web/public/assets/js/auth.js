@@ -488,6 +488,32 @@
     return { ok: true, data: body };
   }
 
+  // Read safe backend-only credit provider readiness metadata. This endpoint
+  // does not call Equifax, request tokens, or return secrets/raw bureau data.
+  async function fetchCreditProviderStatus() {
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/credit/provider-status", {
+        method: "GET"
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "Provider readiness could not be loaded.";
+      return { ok: false, message: message };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -576,6 +602,7 @@
     requestCreditProfile: requestCreditProfile,
     requestMortgage: requestMortgage,
     fetchDashboardAiCredit: fetchDashboardAiCredit,
+    fetchCreditProviderStatus: fetchCreditProviderStatus,
     saveCreditAssessmentReference: saveCreditAssessmentReference,
     getCreditAssessmentReference: getCreditAssessmentReference,
     clearCreditAssessmentReference: clearCreditAssessmentReference
