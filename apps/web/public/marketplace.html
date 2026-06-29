@@ -67,6 +67,7 @@
             <a href="marketplace.html#sell-your-item" class="nav-dropdown-link" role="menuitem" data-i18n="nav.sellItem">Sell / List Your Item</a>
           </div>
         </div>
+        <a href="dashboard.html" class="nav-link">Dashboard</a>
         <div class="nav-dropdown">
           <a href="investors.html" class="nav-link nav-dropdown-trigger" data-i18n="nav.investors">Investors</a>
           <div class="nav-dropdown-menu" role="menu">
@@ -101,11 +102,11 @@
               <span data-i18n="nav.marketplace">Marketplace</span>
             </div>
             <h1 class="mp-hero-title" data-i18n="mp.title">Marketplace Intelligence</h1>
-            <p class="mp-hero-sub" data-i18n="mp.sub">
-              Buy, sell, lease, and invest in verified real estate, rural land, and agricultural assets with AI-guided navigation.
+            <p class="mp-hero-sub">
+              Buy, sell, lease, and invest in real estate, rural land, and agricultural assets with AI-guided navigation and provider-ready marketplace tools.
             </p>
             <form class="mp-search-bar" id="mpSearchForm" role="search" data-i18n-aria-label="aria.searchListings" aria-label="Search listings">
-              <input type="search" id="mpSearchInput" name="q" placeholder="Search by location, ROI, or property type" data-i18n-placeholder="mp.placeholder" autocomplete="off" />
+              <input type="search" id="mpSearchInput" name="q" placeholder="Search by location, sample signal, or property type" autocomplete="off" />
               <button type="submit" data-i18n="mp.search">Search</button>
             </form>
           </div>
@@ -115,9 +116,219 @@
         </div>
       </section>
 
-      <section class="mp-listings mp-listings--featured" id="browse-listings" data-i18n-aria-label="aria.featuredListings" aria-label="Featured listings">
+      <section class="mp-ai-tools" id="marketplace-ai-tools" aria-labelledby="marketplaceAiToolsTitle">
+        <div class="mp-ai-tools-head">
+          <div>
+            <div class="tag">
+              <span class="tag-dot"></span>
+              <span>AI workspace</span>
+            </div>
+            <h2 class="mp-ai-tools-title" id="marketplaceAiToolsTitle">Kimure AI Marketplace Workspace</h2>
+            <p class="mp-ai-tools-lead">
+              Explore listings, evaluate properties, estimate value, plan investments, find rental fit, and ask Kimure from one focused workspace.
+            </p>
+          </div>
+          <p class="mp-ai-tools-note">
+            Live listing and provider integrations are coming later. Current results are AI-generated from available platform signals and user-entered details.
+          </p>
+        </div>
+
+        <div class="mp-ai-workspace">
+          <div class="mp-ai-workspace-main">
+            <div class="mp-ai-tabs" role="tablist" aria-label="Marketplace AI tools">
+              <button class="mp-ai-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="mp-ai-panel-scout" id="mp-ai-tab-scout" data-ai-tab="scout">Property Scout</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-analyze" id="mp-ai-tab-analyze" data-ai-tab="analyze">Property Analyzer</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-rental" id="mp-ai-tab-rental" data-ai-tab="rental">Rental Finder</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-valuate" id="mp-ai-tab-valuate" data-ai-tab="valuate">Property Evaluator</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-investment-planner" id="mp-ai-tab-investment-planner" data-ai-tab="investment-planner">Investment Planner</button>
+              <button class="mp-ai-tab" type="button" role="tab" aria-selected="false" aria-controls="mp-ai-panel-chat" id="mp-ai-tab-chat" data-ai-tab="chat">Ask Kimure</button>
+            </div>
+
+            <div class="mp-ai-panels">
+              <article class="mp-ai-card mp-ai-panel is-active" id="mp-ai-panel-scout" role="tabpanel" aria-labelledby="mp-ai-tab-scout" data-ai-panel="scout">
+                <div class="mp-ai-card-head">
+                  <h3>Property Scout</h3>
+                  <p>Find property matches based on budget, location, goals, and preferences.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="scout" data-ai-label="Property Scout">
+                  <label>Location <input name="location" type="text" placeholder="Ottawa, Ontario" required></label>
+                  <label>Purchase budget <input name="budget" type="text" inputmode="decimal" placeholder="$650,000" required></label>
+                  <label>Property goals <input name="goals" type="text" placeholder="Primary residence, rural land, investment"></label>
+                  <button type="submit" class="btn btn-primary">Generate matches</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-analyze" role="tabpanel" aria-labelledby="mp-ai-tab-analyze" data-ai-panel="analyze" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Property Analyzer</h3>
+                  <p>Review a specific property for fit, risks, and investment-style reasoning.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="analyze" data-ai-label="Property Analyzer">
+                  <label>Property or address <input name="address" type="text" placeholder="123 Example Road" required></label>
+                  <label>Asking price <input name="price" type="text" inputmode="decimal" placeholder="$725,000"></label>
+                  <label>Use case <input name="goals" type="text" placeholder="Buy, hold, rent, renovate"></label>
+                  <button type="submit" class="btn btn-primary">Analyze property</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-rental" role="tabpanel" aria-labelledby="mp-ai-tab-rental" data-ai-panel="rental" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Rental Finder</h3>
+                  <p>Match rental needs against lifestyle, location, budget, and timing.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="rental" data-ai-label="Rental Finder">
+                  <label>Location <input name="location" type="text" placeholder="Toronto, Ontario" required></label>
+                  <label>Monthly budget <input name="monthlyBudget" type="text" inputmode="decimal" placeholder="$2,500" required></label>
+                  <label>Needs <input name="needs" type="text" placeholder="2 bedrooms, transit, pet friendly"></label>
+                  <button type="submit" class="btn btn-primary">Find rental fit</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-valuate" role="tabpanel" aria-labelledby="mp-ai-tab-valuate" data-ai-panel="valuate" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Property Evaluator</h3>
+                  <p>Estimate a fair value range using user-entered property details.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="valuate" data-ai-label="Property Evaluator">
+                  <label>Property or address <input name="address" type="text" placeholder="456 Market Street" required></label>
+                  <label>Property details <input name="details" type="text" placeholder="3 bed, 2 bath, detached"></label>
+                  <label>Known price <input name="price" type="text" inputmode="decimal" placeholder="$640,000"></label>
+                  <button type="submit" class="btn btn-primary">Evaluate value</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-investment-planner" role="tabpanel" aria-labelledby="mp-ai-tab-investment-planner" data-ai-panel="investment-planner" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Investment Planner</h3>
+                  <p>Plan a property investment path around capital, timeline, and risk tolerance.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="investment-planner" data-ai-label="Investment Planner">
+                  <label>Investment goal <input name="goals" type="text" placeholder="Long-term rental portfolio" required></label>
+                  <label>Available capital <input name="availableFunds" type="text" inputmode="decimal" placeholder="$120,000"></label>
+                  <label>Timeline <input name="timeline" type="text" placeholder="12–24 months"></label>
+                  <button type="submit" class="btn btn-primary">Plan strategy</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+
+              <article class="mp-ai-card mp-ai-panel" id="mp-ai-panel-chat" role="tabpanel" aria-labelledby="mp-ai-tab-chat" data-ai-panel="chat" hidden>
+                <div class="mp-ai-card-head">
+                  <h3>Ask Kimure</h3>
+                  <p>Ask a general property, finance, or marketplace question.</p>
+                </div>
+                <form class="mp-ai-form" data-ai-tool="chat" data-ai-label="Ask Kimure">
+                  <label>Your question <textarea name="question" rows="4" placeholder="What should I compare before buying rural land?" required></textarea></label>
+                  <button type="submit" class="btn btn-primary">Ask Kimure</button>
+                </form>
+                <div class="mp-ai-result" aria-live="polite"></div>
+              </article>
+            </div>
+          </div>
+
+          <aside class="mp-ai-help-panel" aria-labelledby="mpAiHelpTitle">
+            <p class="mp-ai-help-kicker">How it helps</p>
+            <h3 id="mpAiHelpTitle">Property Scout</h3>
+            <p id="mpAiHelpText">
+              Turns your budget, location, and property goals into a practical matching brief.
+            </p>
+            <div class="mp-ai-output-preview">
+              <p>Output preview</p>
+              <ul id="mpAiOutputPreview">
+                <li>Suggested property fit</li>
+                <li>Important tradeoffs</li>
+                <li>Next steps before live listing search</li>
+              </ul>
+            </div>
+            <p class="mp-ai-live-note">
+              Future versions will rank real listings with connected listing/provider data. Today’s workspace uses AI guidance from available platform signals.
+            </p>
+          </aside>
+        </div>
+
+        <article class="mp-ai-readiness-card">
+          <div>
+            <h3>Mortgage / Credit Readiness</h3>
+            <p>Use the dedicated readiness flows for credit profile and mortgage estimate handoff.</p>
+          </div>
+          <div class="mp-ai-cta-actions">
+            <a class="btn btn-primary" href="credit-profile.html">Credit readiness</a>
+            <a class="btn btn-outline" href="mortgage.html">Mortgage estimate</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="mp-provider-listings" id="marketplace-listings-preview" aria-labelledby="marketplaceListingsPreviewTitle">
+        <div class="mp-provider-listings-head">
+          <div>
+            <div class="tag">
+              <span class="tag-dot"></span>
+              <span>Provider-ready preview</span>
+            </div>
+            <h2 class="mp-listings-title" id="marketplaceListingsPreviewTitle">Marketplace Listings Preview</h2>
+            <p class="mp-provider-listings-note">
+              Sample listings are shown from Kimure's provider-ready listings contract. Live MLS/CREA/IDX provider data will be connected once licensed access is confirmed.
+              CREA DDF access is prepared but pending approval/configuration. No REALTOR.ca scraping or live CREA listing data is used in this preview.
+            </p>
+          </div>
+        </div>
+
+        <form class="mp-provider-search" id="mpProviderListingsForm">
+          <label>
+            Listing provider
+            <select name="provider" id="mpProviderSelector">
+              <option value="">Sample provider</option>
+              <option value="crea_ddf">CREA DDF pending access</option>
+              <option value="repliers_preview">Repliers preview data</option>
+            </select>
+          </label>
+          <label>
+            Location
+            <input name="location" type="text" placeholder="Ottawa, Toronto, Calgary">
+          </label>
+          <label>
+            Property type
+            <select name="type">
+              <option value="">Any type</option>
+              <option value="detached">Detached</option>
+              <option value="condo">Condo</option>
+              <option value="townhome">Townhome</option>
+              <option value="land">Land</option>
+            </select>
+          </label>
+          <label>
+            Max price
+            <input name="maxPrice" type="text" inputmode="decimal" placeholder="$700,000">
+          </label>
+          <label>
+            Intent
+            <select name="intent">
+              <option value="">Any intent</option>
+              <option value="primary residence">Primary residence</option>
+              <option value="rental">Rental</option>
+              <option value="investment">Investment</option>
+              <option value="rural land">Rural land</option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-primary">Search preview</button>
+        </form>
+
+        <div class="mp-provider-status" id="mpProviderListingsStatus" aria-live="polite"></div>
+        <div class="mp-provider-grid" id="mpProviderListingsGrid"></div>
+        <div class="mp-provider-empty" id="mpProviderListingsEmpty" hidden>No sample listings match those filters yet.</div>
+      </section>
+
+      <section class="mp-listings mp-listings--featured" id="browse-listings" aria-label="Marketplace category preview">
         <div class="mp-listings-head" id="mp-featured">
-          <h2 class="mp-listings-title" data-i18n="mp.listingsTitle2">Featured listings</h2>
+          <div>
+            <h2 class="mp-listings-title">Marketplace Category Preview</h2>
+            <p class="mp-sample-listings-note">
+              These category cards are sample UI content. Live provider listings will come from the listings provider integration once licensed access is connected.
+            </p>
+          </div>
         </div>
         <div class="mp-listings-grid" id="mpFeaturedGrid">
           <article class="mp-listing-card" id="mp-top-rated" data-modes="buy sale rent" data-category="apartment" data-search="urban 3 bed canada 860k 91 apartment condo" data-location="Canada" data-type="Urban" data-price="860000" data-roi="91">
@@ -125,13 +336,13 @@
               <img src="assets/images/listings/urban-apartment.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">Fit 91%</span>
+              <span class="badge">Preview card</span>
+              <span class="badge gold-badge">Sample fit</span>
             </div>
             <div class="mp-listing-info">
               <div class="mp-listing-price">$860K</div>
               <div class="mp-listing-meta" data-i18n="mp.listing1">Urban • 3 Bed • Canada</div>
-              <a class="mp-listing-cta" href="#listing-1" data-i18n="mp.viewDetails">View Details →</a>
+              <a class="mp-listing-cta" href="#listing-1">Preview details →</a>
             </div>
           </article>
 
@@ -140,13 +351,13 @@
               <img src="assets/images/listings/rural-land.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">ROI 12%</span>
+              <span class="badge">Preview card</span>
+              <span class="badge gold-badge">Sample ROI view</span>
             </div>
             <div class="mp-listing-info">
               <div class="mp-listing-price">$1.42M</div>
               <div class="mp-listing-meta" data-i18n="mp.listing2">Rural Land • 48 Acres</div>
-              <a class="mp-listing-cta" href="#listing-2" data-i18n="mp.viewDetails">View Details →</a>
+              <a class="mp-listing-cta" href="#listing-2">Preview details →</a>
             </div>
           </article>
 
@@ -155,13 +366,13 @@
               <img src="assets/images/listings/farmland.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">Fit 88%</span>
+              <span class="badge">Preview card</span>
+              <span class="badge gold-badge">Sample fit</span>
             </div>
             <div class="mp-listing-info">
               <div class="mp-listing-price">$320K</div>
               <div class="mp-listing-meta" data-i18n="mp.listing3">Agricultural • Lease Option</div>
-              <a class="mp-listing-cta" href="#listing-3" data-i18n="mp.viewDetails">View Details →</a>
+              <a class="mp-listing-cta" href="#listing-3">Preview details →</a>
             </div>
           </article>
 
@@ -170,43 +381,13 @@
               <img src="assets/images/listings/commercial.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">ROI 9%</span>
+              <span class="badge">Preview card</span>
+              <span class="badge gold-badge">Sample ROI view</span>
             </div>
             <div class="mp-listing-info">
               <div class="mp-listing-price">$2.1M</div>
               <div class="mp-listing-meta" data-i18n="mp.listing4">Commercial • Toronto • Canada</div>
-              <a class="mp-listing-cta" href="#listing-4" data-i18n="mp.viewDetails">View Details →</a>
-            </div>
-          </article>
-
-          <article class="mp-listing-card" data-modes="buy sale rent" data-category="house" data-search="residential 4 bed us 550k single family house" data-location="US" data-type="Residential" data-price="550000" data-roi="85">
-            <div class="mp-listing-thumb">
-              <img src="assets/images/listings/house-suburban.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
-            </div>
-            <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">Fit 85%</span>
-            </div>
-            <div class="mp-listing-info">
-              <div class="mp-listing-price">$550K</div>
-              <div class="mp-listing-meta" data-i18n="mp.listing5">Residential • 4 Bed • US</div>
-              <a class="mp-listing-cta" href="#listing-5" data-i18n="mp.viewDetails">View Details →</a>
-            </div>
-          </article>
-
-          <article class="mp-listing-card" data-modes="buy sale invest" data-category="urban-farm" data-search="farm agricultural canada 890k urban farm agri" data-location="Canada" data-type="Agricultural" data-price="890000" data-roi="11">
-            <div class="mp-listing-thumb">
-              <img src="assets/images/listings/farm-property.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
-            </div>
-            <div class="mp-listing-top">
-              <span class="badge" data-i18n="mp.verified">Verified</span>
-              <span class="badge gold-badge">ROI 11%</span>
-            </div>
-            <div class="mp-listing-info">
-              <div class="mp-listing-price">$890K</div>
-              <div class="mp-listing-meta" data-i18n="mp.listing6">Farm • Agricultural • Canada</div>
-              <a class="mp-listing-cta" href="#listing-6" data-i18n="mp.viewDetails">View Details →</a>
+              <a class="mp-listing-cta" href="#listing-4">Preview details →</a>
             </div>
           </article>
         </div>
@@ -214,7 +395,7 @@
 
       <div class="mp-intent-hub" id="mp-categories" data-i18n-aria-label="aria.mpBrowseCategories" aria-label="Marketplace categories">
         <h2 class="mp-category-browse-title" data-i18n="mp.catTitle">Buy, sell, rent, and invest</h2>
-        <p class="mp-category-browse-lead" data-i18n="mp.catLead">The same listing cards as featured above, grouped by how you want to participate. Use search to filter every section.</p>
+        <p class="mp-category-browse-lead">Sample category cards grouped by how you want to participate. Use search to filter every preview section.</p>
 
         <section class="mp-listings mp-listings--intent" id="mp-intent-buy" data-i18n-aria-label="aria.mpIntentBuy" aria-label="Buy listings">
           <div class="mp-listings-head">

@@ -13,6 +13,12 @@ Website / Mobile -> Kimure API -> AI Gateway -> Gemini / credit providers
 
 Clients must never call the Gateway, Gemini, or a credit provider directly.
 
+Direct Equifax integration through the Equifax platform is the active credit
+provider priority. The architecture remains multi-provider: Thirdstream,
+TransUnion, and other future provider adapters should stay in the provider
+registry as disabled or future options until approved credentials and product
+access are available.
+
 ## Credit-profile request
 
 `POST /api/ai/credit-profile` accepts a directional or provider request.
@@ -144,12 +150,51 @@ as provider/verification status or credit-reference status.
 Dashboard code should not call the AI Gateway directly, parse raw provider or
 Gemini responses, or read raw credit handoff data. When AI report persistence is
 added, it should store and return this sanitized contract shape only.
+## Consent and financial profile persistence
+
+Live bureau personalization requires API-owned consent and financial profile
+storage before provider calls are enabled. `public.credit_consents` records the
+provider, bureau, permissible purpose, consent version, consent text hash,
+status, and expiry for explicit bureau consent. It must not store SIN, raw
+identity, full address, raw provider request/response bodies, or bureau data.
+
+`public.user_financial_profiles` stores reusable user-provided financial inputs
+and safe derived credit summary fields for dashboard, mortgage, marketplace, and
+future listing personalization. It must not store raw Equifax, Thirdstream,
+Gemini, provider, or bureau payloads.
+
+The API includes service helpers for these tables, but live Equifax calls still
+remain disabled until approved Equifax credentials, product documentation,
+consent wording, and operating controls are configured server-side.
+
+Direct Equifax OneView integration must use environment-aware Gateway
+configuration. Sandbox, Test, and Production require separate Equifax
+portal-provided credentials and must not share tokens, base URLs, member
+numbers, product details, or approval status. Static sandbox access tokens are
+allowed only for sandbox validation workflows. Exact OneView token details,
+request schema, response mapping, and retention/display rules still require
+signed-in Equifax portal documentation before live provider calls are enabled.
+Thirdstream, TransUnion, and other provider adapters remain future/disabled
+multi-provider options.
+
+The Gateway includes an Equifax token-service boundary with safe token status
+metadata and in-memory cache plumbing. It does not perform a live token exchange
+until the Equifax portal confirms token URL, grant type, scopes, request body,
+headers, response fields, and expiry behavior. Production requires approved
+portal-backed credentials; static sandbox tokens remain sandbox-only.
+
+Future dashboard UI should call `GET /api/dashboard/ai-credit` for sanitized
+account, credit, consent, mortgage, and AI insight summaries. Browser clients
+should not read raw Supabase credit tables, Gateway responses, or provider
+payloads directly.
 
 ## Remaining blocker
 
-Live bureau pulls remain blocked until the approved Thirdstream subscription,
-API key, product access, consent wording, and production operating controls are
-available in the external AI Gateway environment.
+Live bureau pulls remain blocked until approved Equifax platform credentials,
+product/API documentation, consent wording, and production operating controls
+are available in the external AI Gateway environment. Thirdstream and other
+provider options remain available only as future/disabled adapters until their
+own subscriptions, API keys, and operating controls are approved.
 
 The current bearer-token forwarding behavior is unchanged. Whether the Gateway
 needs the user's bearer token remains a future trust-boundary review item.

@@ -58,6 +58,7 @@
 
 .credit-card,
 .credit-privacy-card,
+.credit-provider-readiness,
 .credit-results {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 18px;
@@ -66,6 +67,7 @@
 
 .theme-light .credit-card,
 .theme-light .credit-privacy-card,
+.theme-light .credit-provider-readiness,
 .theme-light .credit-results {
   border-color: rgba(0, 0, 0, 0.1);
   background: rgba(0, 0, 0, 0.025);
@@ -266,13 +268,19 @@
 .credit-sidebar {
   position: sticky;
   top: 20px;
+  display: grid;
+  gap: 16px;
 }
 
-.credit-privacy-card {
+.credit-privacy-card,
+.credit-provider-readiness,
+.credit-sandbox-verification {
   padding: 22px;
 }
 
-.credit-privacy-card h2 {
+.credit-privacy-card h2,
+.credit-provider-readiness h2,
+.credit-sandbox-verification h2 {
   margin: 0 0 14px;
   font-size: 19px;
 }
@@ -290,6 +298,141 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.credit-provider-readiness-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.credit-provider-readiness-head h2 {
+  margin-bottom: 0;
+}
+
+.credit-provider-refresh {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 999px;
+  background: rgba(212, 175, 55, 0.08);
+  color: var(--gold);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.credit-provider-refresh:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.credit-provider-note,
+.credit-provider-state {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.credit-provider-state[data-state="error"] {
+  color: #fca5a5;
+}
+
+.credit-sandbox-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.credit-sandbox-consent input {
+  margin-top: 3px;
+  accent-color: var(--gold);
+}
+
+.credit-sandbox-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.credit-sandbox-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.credit-sandbox-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.credit-sandbox-summary section {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theme-light .credit-sandbox-summary section {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.credit-sandbox-summary h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.credit-sandbox-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.theme-light .credit-provider-state[data-state="error"] {
+  color: #991b1b;
+}
+
+.credit-provider-status-list {
+  display: grid;
+  gap: 9px;
+  margin: 16px 0 0;
+}
+
+.credit-provider-status-list div {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theme-light .credit-provider-status-list div {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.credit-provider-status-list dt,
+.credit-provider-status-list dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.credit-provider-status-list dt {
+  color: var(--muted2);
+}
+
+.credit-provider-status-list dd {
+  max-width: 150px;
+  color: var(--text);
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .credit-results {

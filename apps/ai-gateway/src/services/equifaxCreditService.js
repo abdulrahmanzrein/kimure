@@ -1,27 +1,27 @@
-const DEFAULT_EQUIFAX_TIMEOUT_MS = 10000;
-const DEFAULT_EQUIFAX_BASE_URL = 'https://api.sandbox.equifax.com/business/oneview/consumer-credit/v1';
 const ONEVIEW_CREDIT_REPORT_PATH = '/reports/credit-report';
+const {
+  buildEquifaxRuntimeConfig,
+  validateEquifaxProviderConfig
+} = require('./equifax/equifaxProviderConfig');
+const {
+  getEquifaxAccessToken
+} = require('./equifax/equifaxTokenService');
+const {
+  buildEquifaxOneViewRequestV1
+} = require('./equifax/equifaxOneViewRequestBuilder');
+const {
+  normalizeEquifaxOneViewResponseV1
+} = require('./equifax/equifaxOneViewResponseNormalizer');
 
 // Equifax OneView integration boundary.
 // Keep all Equifax credentials, tokens, raw payloads, and provider-specific request details here.
 // Do not expose Equifax secrets or raw bureau payloads to frontend clients or Gemini.
 
 function getEquifaxConfig(env = process.env) {
+  const config = buildEquifaxRuntimeConfig(env);
   return {
-    enabled: env.EQUIFAX_ENABLED === 'true',
-    environment: env.EQUIFAX_ENVIRONMENT || 'sandbox',
-    baseUrl: env.EQUIFAX_BASE_URL || env.EQUIFAX_API_BASE_URL || DEFAULT_EQUIFAX_BASE_URL,
-    reportPath: env.EQUIFAX_REPORT_PATH || ONEVIEW_CREDIT_REPORT_PATH,
-    scope: env.EQUIFAX_SCOPE || null,
-    sandboxAccessToken: env.EQUIFAX_SANDBOX_ACCESS_TOKEN || null,
-    clientId: env.EQUIFAX_CLIENT_ID || null,
-    clientSecret: env.EQUIFAX_CLIENT_SECRET || null,
-    tokenUrl: env.EQUIFAX_TOKEN_URL || null,
-    memberNumber: env.EQUIFAX_MEMBER_NUMBER || null,
-    securityCode: env.EQUIFAX_SECURITY_CODE || null,
-    customerCode: env.EQUIFAX_CUSTOMER_CODE || null,
-    productCode: env.EQUIFAX_PRODUCT_CODE || 'ONEVIEW',
-    timeoutMs: Number(env.EQUIFAX_TIMEOUT_MS) || DEFAULT_EQUIFAX_TIMEOUT_MS
+    ...config,
+    reportPath: config.reportPath || ONEVIEW_CREDIT_REPORT_PATH
   };
 }
 
@@ -33,7 +33,7 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
     requestContext,
     config
   });
-  const configValidation = validateEquifaxConfig(config);
+  const configValidation = config.providerConfigStatus || validateEquifaxConfig(config);
 
   logInfo('credit-profile request start', {
     provider: 'equifax',
@@ -43,18 +43,18 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
     consentProvided: request.consent.provided
   });
 
-  if (!config.enabled) {
+  if (!configValidation.enabled) {
     logInfo('Equifax disabled; using safe fallback', {
       equifaxStatus: 'not_connected'
     });
 
     return createUnavailableEquifaxResult({
       equifaxStatus: 'not_connected',
-      unavailableReason: 'Equifax integration is disabled. Set EQUIFAX_ENABLED=true to attempt sandbox OneView calls.',
+      unavailableReason: 'Equifax integration is disabled. Set EQUIFAX_ENABLED=true only after approved environment credentials and consent controls are configured.',
       config,
       request,
       startedAt,
-      nextIntegrationStep: 'Enable Equifax only after sandbox credentials, consent capture, and request fields are ready.'
+      nextIntegrationStep: 'Enable Equifax only after Sandbox/Test/Production credentials, consent capture, and request fields are ready.'
     });
   }
 
@@ -73,18 +73,19 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
     });
   }
 
-  if (!configValidation.ready) {
+  if (!configValidation.canAttemptProviderCall) {
     logWarn('Equifax config missing; using safe fallback', {
-      missing: configValidation.missing
+      missing: configValidation.missingKeys,
+      errors: configValidation.errors
     });
 
     return createUnavailableEquifaxResult({
       equifaxStatus: 'configuration_missing',
-      unavailableReason: `Equifax integration is enabled but missing backend config: ${configValidation.missing.join(', ')}.`,
+      unavailableReason: `Equifax integration is enabled but provider config is not ready: ${configValidation.missingKeys.join(', ') || configValidation.errors.join(', ')}.`,
       config,
       request,
       startedAt,
-      nextIntegrationStep: 'Add the missing Equifax backend environment variables from the sandbox app.'
+      nextIntegrationStep: 'Add the missing Equifax backend environment variables from the approved Equifax portal environment.'
     });
   }
 
@@ -105,6 +106,46 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 
   try {
     const oneViewUrl = buildOneViewUrl(config);
+    const tokenResult = await getEquifaxAccessToken({ config, env });
+
+    if (!tokenResult.ok) {
+      logWarn('Equifax token unavailable; using safe fallback', {
+        tokenStatus: tokenResult.status.lastTokenStatus,
+        environment: tokenResult.status.environment
+      });
+
+      return createUnavailableEquifaxResult({
+        equifaxStatus: 'configuration_missing',
+        unavailableReason: `Equifax token is not available: ${tokenResult.errorCode}.`,
+        config: {
+          ...config,
+          tokenStatus: tokenResult.status
+        },
+        request,
+        startedAt,
+        nextIntegrationStep: 'Implement the Equifax portal-approved token flow after signed-in OneView documentation is available.'
+      });
+    }
+
+    if (!request.providerCallReady) {
+      logWarn('Equifax request contract unconfirmed; using safe fallback', {
+        blockedReason: request.providerCallBlockedReason,
+        builderVersion: request.requestVersion
+      });
+
+      return createUnavailableEquifaxResult({
+        equifaxStatus: 'configuration_missing',
+        unavailableReason: `Equifax OneView request contract is not ready: ${request.providerCallBlockedReason}.`,
+        config: {
+          ...config,
+          tokenStatus: tokenResult.status
+        },
+        request,
+        startedAt,
+        nextIntegrationStep: 'Confirm the signed-in Equifax OneView endpoint, headers, request body, response schema, and retention/display rules before live provider calls.'
+      });
+    }
+
     logInfo('Equifax request start', {
       endpoint: oneViewUrl,
       requestMode: request.requestMode,
@@ -113,7 +154,7 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 
     const response = await postOneViewCreditReport({
       url: oneViewUrl,
-      token: await getEquifaxAccessToken(config),
+      token: tokenResult.accessToken,
       body: request.oneViewRequestBody,
       timeoutMs: config.timeoutMs
     });
@@ -127,7 +168,7 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
     if (!response.ok) {
       return createUnavailableEquifaxResult({
         equifaxStatus: 'provider_error',
-        unavailableReason: `Equifax sandbox returned HTTP ${response.httpStatus}.`,
+        unavailableReason: `Equifax provider returned HTTP ${response.httpStatus}.`,
         config,
         request,
         startedAt,
@@ -136,15 +177,19 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
       });
     }
 
-    const verifiedData = normalizeEquifaxVerifiedData(response.body);
+    const verifiedData = normalizeEquifaxVerifiedData(response.body, {
+      environment: config.environment
+    });
 
     return {
       provider: 'equifax',
-      source: 'equifax_oneview_sandbox',
+      source: `equifax_oneview_${config.environment}`,
       equifaxStatus: 'verified',
       status: 'verified',
       verified: true,
-      dataClassification: 'verified_sandbox_bureau_data',
+      dataClassification: config.environment === 'sandbox'
+        ? 'verified_sandbox_bureau_data'
+        : 'verified_provider_bureau_data',
       dataSource: 'equifax_oneview_consumer_credit_report',
       verifiedData,
       rawResponseStored: false,
@@ -159,7 +204,7 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
         reportId: verifiedData.referenceIds.reportId || null
       },
       unavailableReason: null,
-      nextIntegrationStep: 'Review sanitized verifiedData mapping against the official OneView response schema before production.'
+      nextIntegrationStep: 'Review sanitized verifiedData mapping against the signed-in Equifax OneView response schema before production.'
     };
   } catch (error) {
     logWarn('Equifax request failed; using safe fallback', {
@@ -179,50 +224,12 @@ async function getEquifaxCreditProfileData({ providedData, requestContext = {}, 
 }
 
 function buildEquifaxCreditRequest({ providedData, requestContext = {}, config = getEquifaxConfig() }) {
-  const applicant = normalizeApplicantInput({
+  return buildEquifaxOneViewRequestV1({
     providedData,
     requestContext
+  }, {
+    config
   });
-  const consentInput = requestContext.consent || providedData.consent || {};
-  const missingRequestFields = getMissingEquifaxRequestFields(applicant);
-  const requestReady = missingRequestFields.length === 0;
-  const requestMode = applicant.socialNumber ? 'social_number' : 'name_address';
-  const oneViewRequestBody = requestReady
-    ? buildOneViewRequestBody({
-      applicant,
-      requestContext,
-      config
-    })
-    : null;
-
-  return {
-    requestType: 'credit_profile',
-    providerProduct: 'oneview_consumer_credit_report',
-    endpointPath: config.reportPath,
-    consumerReferenceId: requestContext.consumerReferenceId || null,
-    permissiblePurpose: requestContext.permissiblePurpose || consentInput.permissiblePurpose || null,
-    consent: {
-      provided: consentInput.provided === true || consentInput.accepted === true,
-      capturedAt: consentInput.capturedAt || null,
-      version: consentInput.version || null
-    },
-    requestedProducts: [
-      'oneview_consumer_credit_report'
-    ],
-    applicantSnapshot: {
-      firstNameProvided: Boolean(applicant.firstName),
-      lastNameProvided: Boolean(applicant.lastName),
-      dateOfBirthProvided: Boolean(applicant.dateOfBirth),
-      addressProvided: Boolean(applicant.address && applicant.address.addressLine1 && applicant.address.city && applicant.address.region && applicant.address.postalCode),
-      socialNumberProvided: Boolean(applicant.socialNumber),
-      incomeProvided: Boolean(providedData.income && (providedData.income.annualGross || providedData.income.monthlyGross)),
-      liabilitiesProvided: hasLiabilityData(providedData.liabilities)
-    },
-    requestMode,
-    requestReady,
-    missingRequestFields,
-    oneViewRequestBody
-  };
 }
 
 function normalizeApplicantInput({ providedData, requestContext }) {
@@ -333,26 +340,13 @@ function buildOneViewRequestBody({ applicant, requestContext, config }) {
 }
 
 function validateEquifaxConfig(config) {
-  const missing = [];
-
-  if (!config.baseUrl) missing.push('EQUIFAX_BASE_URL');
-  if (!config.sandboxAccessToken) missing.push('EQUIFAX_SANDBOX_ACCESS_TOKEN');
-
+  const status = config.providerConfigStatus || validateEquifaxProviderConfig();
   return {
-    ready: missing.length === 0,
-    missing,
-    tokenGenerationReady: Boolean(config.clientId && config.clientSecret && config.scope && config.tokenUrl)
+    ...status,
+    ready: status.configReady,
+    missing: status.missingKeys,
+    tokenGenerationReady: status.tokenStrategy === 'client_credentials' && status.configReady
   };
-}
-
-async function getEquifaxAccessToken(config) {
-  if (config.sandboxAccessToken) {
-    return config.sandboxAccessToken;
-  }
-
-  // TODO: Implement OAuth2 token generation from EQUIFAX_CLIENT_ID, EQUIFAX_CLIENT_SECRET,
-  // EQUIFAX_SCOPE, and EQUIFAX_TOKEN_URL after confirming the account-specific auth docs.
-  throw new Error('Equifax access token is not configured');
 }
 
 async function postOneViewCreditReport({ url, token, body, timeoutMs }) {
@@ -387,90 +381,8 @@ async function postOneViewCreditReport({ url, token, body, timeoutMs }) {
   }
 }
 
-function normalizeEquifaxVerifiedData(responseBody) {
-  return {
-    referenceIds: {
-      transactionId: findFirstValue(responseBody, [
-        'transactionId',
-        'transactionID',
-        'correlationId',
-        'customerReferenceIdentifier'
-      ]),
-      reportId: findFirstValue(responseBody, [
-        'reportId',
-        'reportID',
-        'consumerReportId',
-        'identifier'
-      ])
-    },
-    creditScore: normalizeCreditScore(responseBody),
-    fileSummary: {
-      totalTradelines: findFirstNumber(responseBody, [
-        'totalTradelines',
-        'numberOfTradeLines',
-        'totalTradeLineCount'
-      ]),
-      openAccounts: findFirstNumber(responseBody, [
-        'openAccounts',
-        'openAccountCount',
-        'numberOfOpenAccounts'
-      ]),
-      totalInquiries: findFirstNumber(responseBody, [
-        'totalInquiries',
-        'inquiryCount',
-        'numberOfInquiries'
-      ]),
-      publicRecords: findFirstNumber(responseBody, [
-        'publicRecords',
-        'publicRecordCount',
-        'numberOfPublicRecords'
-      ]),
-      collections: findFirstNumber(responseBody, [
-        'collections',
-        'collectionCount',
-        'numberOfCollections'
-      ])
-    },
-    debtSummary: {
-      totalBalance: findFirstMoney(responseBody, [
-        'totalBalance',
-        'totalDebt',
-        'aggregateBalance'
-      ]),
-      totalMonthlyPayment: findFirstMoney(responseBody, [
-        'totalMonthlyPayment',
-        'monthlyPaymentAmount',
-        'aggregateMonthlyPayment'
-      ]),
-      revolvingUtilization: findFirstNumber(responseBody, [
-        'revolvingUtilization',
-        'utilization',
-        'debtToCreditRatio'
-      ])
-    },
-    riskSignals: {
-      delinquencyCount: findFirstNumber(responseBody, [
-        'delinquencyCount',
-        'delinquencies',
-        'numberOfDelinquencies'
-      ]),
-      bankruptcyIndicator: findFirstBoolean(responseBody, [
-        'bankruptcyIndicator',
-        'bankruptcy',
-        'hasBankruptcy'
-      ]),
-      fraudAlertIndicator: findFirstBoolean(responseBody, [
-        'fraudAlertIndicator',
-        'fraudAlert',
-        'hasFraudAlert'
-      ])
-    },
-    extractionNotes: [
-      'VerifiedData is sanitized from the Equifax OneView sandbox response.',
-      'Raw bureau response is not stored or returned by this gateway.',
-      'Field names should be reviewed against the account-specific OneView API schema before production.'
-    ]
-  };
+function normalizeEquifaxVerifiedData(responseBody, options = {}) {
+  return normalizeEquifaxOneViewResponseV1(responseBody, options);
 }
 
 function normalizeCreditScore(responseBody) {
@@ -508,7 +420,7 @@ function createUnavailableEquifaxResult({
 }) {
   return {
     provider: 'equifax',
-    source: 'equifax_oneview_sandbox',
+    source: `equifax_oneview_${config.environment}`,
     equifaxStatus,
     status: equifaxStatus,
     verified: false,
@@ -546,7 +458,17 @@ function sanitizeEquifaxConfig(config) {
     securityCodeConfigured: Boolean(config.securityCode),
     customerCodeConfigured: Boolean(config.customerCode),
     productCodeConfigured: Boolean(config.productCode),
-    timeoutMs: config.timeoutMs
+    timeoutMs: config.timeoutMs,
+    retryCount: config.retryCount,
+    configReady: Boolean(config.configReady),
+    tokenStrategy: config.tokenStrategy || 'none',
+    tokenReady: Boolean(config.tokenReady),
+    sandboxStaticTokenTestEnabled: Boolean(config.sandboxStaticTokenTestEnabled),
+    sandboxStaticTokenTestReady: Boolean(config.sandboxStaticTokenTestReady),
+    sandboxStaticTokenTestBlockedReason: config.sandboxStaticTokenTestBlockedReason || null,
+    tokenStatus: config.tokenStatus || null,
+    warnings: config.providerConfigStatus ? config.providerConfigStatus.warnings : [],
+    errors: config.providerConfigStatus ? config.providerConfigStatus.errors : []
   };
 }
 
@@ -563,11 +485,16 @@ function sanitizeEquifaxRequest(request) {
     requestMode: request.requestMode,
     requestReady: request.requestReady,
     missingRequestFields: request.missingRequestFields,
+    providerCallReady: request.providerCallReady,
+    providerCallBlockedReason: request.providerCallBlockedReason,
+    portalDependency: request.portalDependency,
+    safeDebugMetadata: request.safeDebugMetadata,
     requestBodyFieldsSent: request.oneViewRequestBody ? Object.keys(request.oneViewRequestBody) : []
   };
 }
 
 function buildOneViewUrl(config) {
+  if (!config.baseUrl) return null;
   return `${config.baseUrl.replace(/\/$/, '')}${config.reportPath}`;
 }
 
@@ -792,4 +719,3 @@ module.exports = {
   validateEquifaxConfig,
   normalizeEquifaxVerifiedData
 };
-

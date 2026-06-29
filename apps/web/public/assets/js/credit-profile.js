@@ -14,6 +14,14 @@
   var errorBox = document.getElementById("creditFormErrors");
   var results = document.getElementById("creditResults");
   var sinInput = document.getElementById("creditSin");
+  var providerReadinessState = document.getElementById("creditProviderReadinessState");
+  var providerStatusList = document.getElementById("creditProviderStatusList");
+  var providerRefresh = document.getElementById("creditProviderRefresh");
+  var sandboxConsent = document.getElementById("creditSandboxConsent");
+  var sandboxVerifyButton = document.getElementById("creditSandboxVerifyButton");
+  var sandboxVerificationState = document.getElementById("creditSandboxVerificationState");
+  var sandboxVerificationList = document.getElementById("creditSandboxVerificationList");
+  var sandboxSummary = document.getElementById("creditSandboxSummary");
   var creditAssessmentId = null;
   var bureauOptions = Object.freeze({
     equifax: { label: "Equifax", providerChoice: "thirdstream_equifax" },
@@ -258,6 +266,234 @@
     if (element) element.textContent = text;
   }
 
+  function formatBoolean(valueToCheck) {
+    return valueToCheck === true ? "Yes" : "No";
+  }
+
+  function formatStatusValue(valueToCheck) {
+    if (typeof valueToCheck === "boolean") return formatBoolean(valueToCheck);
+    return humanize(valueToCheck);
+  }
+
+  function normalizeProviderStatus(status) {
+    var source = safeObject(status);
+    return {
+      provider: safeText(source.provider, "equifax"),
+      environment: safeText(source.environment, "unknown"),
+      enabled: source.enabled === true,
+      providerCallsEnabled: source.providerCallsEnabled === true,
+      tokenStrategy: safeText(source.tokenStrategy, "disabled"),
+      tokenReady: source.tokenReady === true,
+      sandboxStaticTokenTestEnabled: source.sandboxStaticTokenTestEnabled === true,
+      sandboxStaticTokenTestReady: source.sandboxStaticTokenTestReady === true,
+      safeToRunLiveCall: source.safeToRunLiveCall === true,
+      blockedReason: safeText(source.blockedReason, "unavailable")
+    };
+  }
+
+  function safeBoolean(valueToCheck) {
+    return valueToCheck === true;
+  }
+
+  function safeScalar(valueToCheck, fallback) {
+    if (typeof valueToCheck === "number" && Number.isFinite(valueToCheck)) return String(valueToCheck);
+    if (typeof valueToCheck === "boolean") return formatBoolean(valueToCheck);
+    return safeText(valueToCheck, fallback || "—");
+  }
+
+  function normalizeSafeSummary(valueToCheck) {
+    if (Array.isArray(valueToCheck)) {
+      return valueToCheck
+        .filter(function (item) {
+          return typeof item === "string" || typeof item === "number" || typeof item === "boolean";
+        })
+        .slice(0, 8)
+        .map(function (item) { return safeScalar(item, "—"); });
+    }
+
+    if (valueToCheck && typeof valueToCheck === "object") {
+      return Object.keys(valueToCheck).slice(0, 8).reduce(function (items, key) {
+        var item = valueToCheck[key];
+        if (typeof item === "string" || typeof item === "number" || typeof item === "boolean") {
+          items.push(humanize(key) + ": " + safeScalar(item, "—"));
+        }
+        return items;
+      }, []);
+    }
+
+    if (typeof valueToCheck === "string" || typeof valueToCheck === "number" || typeof valueToCheck === "boolean") {
+      return [safeScalar(valueToCheck, "—")];
+    }
+
+    return [];
+  }
+
+  function normalizeSandboxVerification(response) {
+    var source = safeObject(response);
+    var providerStatus = safeObject(source.providerStatus);
+    var verificationStatus = safeObject(source.verificationStatus);
+
+    return {
+      provider: safeText(source.provider, safeText(providerStatus.provider, "equifax")),
+      status: safeText(source.status, safeText(providerStatus.status, "unavailable")),
+      providerStatus: safeText(providerStatus.status, safeText(source.providerStatus, "unavailable")),
+      verified: safeBoolean(source.verified) || safeBoolean(verificationStatus.verified),
+      transactionId: safeText(source.transactionId, safeText(providerStatus.transactionId, "—")),
+      safeToRunLiveCall: safeBoolean(source.safeToRunLiveCall),
+      blockedReason: safeText(source.blockedReason, safeText(providerStatus.blockedReason, "—")),
+      scoreSummary: normalizeSafeSummary(source.scoreSummary),
+      debtSummary: normalizeSafeSummary(source.debtSummary),
+      riskFlags: normalizeSafeSummary(source.riskFlags)
+    };
+  }
+
+  function renderProviderStatus(status) {
+    var safeStatus = normalizeProviderStatus(status);
+    var fields = {
+      creditStatusProvider: safeStatus.provider,
+      creditStatusEnvironment: safeStatus.environment,
+      creditStatusEnabled: safeStatus.enabled,
+      creditStatusProviderCalls: safeStatus.providerCallsEnabled,
+      creditStatusTokenStrategy: safeStatus.tokenStrategy,
+      creditStatusTokenReady: safeStatus.tokenReady,
+      creditStatusStaticTestEnabled: safeStatus.sandboxStaticTokenTestEnabled,
+      creditStatusStaticTestReady: safeStatus.sandboxStaticTokenTestReady,
+      creditStatusSafeLiveCall: safeStatus.safeToRunLiveCall,
+      creditStatusBlockedReason: safeStatus.blockedReason
+    };
+
+    Object.keys(fields).forEach(function (id) {
+      setText(id, formatStatusValue(fields[id]));
+    });
+
+    if (providerReadinessState) {
+      providerReadinessState.dataset.state = "loaded";
+      providerReadinessState.textContent = "Provider readiness loaded from the Kimure API.";
+    }
+    if (providerStatusList) providerStatusList.hidden = false;
+  }
+
+  function renderProviderStatusUnavailable(message) {
+    if (providerStatusList) providerStatusList.hidden = true;
+    if (!providerReadinessState) return;
+    providerReadinessState.dataset.state = "error";
+    providerReadinessState.textContent = message || "Provider readiness is unavailable right now.";
+  }
+
+  function setSandboxState(state, message) {
+    if (!sandboxVerificationState) return;
+    sandboxVerificationState.dataset.state = state;
+    sandboxVerificationState.textContent = message;
+  }
+
+  function renderSandboxList(id, items, emptyMessage) {
+    var list = document.getElementById(id);
+    if (!list) return;
+    list.replaceChildren();
+    var values = items.length ? items : [emptyMessage];
+    values.forEach(function (text) {
+      var item = document.createElement("li");
+      item.textContent = text;
+      list.appendChild(item);
+    });
+  }
+
+  function renderSandboxVerification(response) {
+    var result = normalizeSandboxVerification(response);
+    var fields = {
+      creditSandboxProvider: result.provider,
+      creditSandboxStatus: result.status,
+      creditSandboxProviderStatus: result.providerStatus,
+      creditSandboxVerified: result.verified,
+      creditSandboxTransactionId: result.transactionId,
+      creditSandboxSafeLiveCall: result.safeToRunLiveCall,
+      creditSandboxBlockedReason: result.blockedReason
+    };
+
+    Object.keys(fields).forEach(function (id) {
+      setText(id, formatStatusValue(fields[id]));
+    });
+
+    renderSandboxList("creditSandboxScoreSummary", result.scoreSummary, "No safe score summary was returned.");
+    renderSandboxList("creditSandboxDebtSummary", result.debtSummary, "No safe debt summary was returned.");
+    renderSandboxList("creditSandboxRiskFlags", result.riskFlags, "No safe risk flags were returned.");
+
+    if (sandboxVerificationList) sandboxVerificationList.hidden = false;
+    if (sandboxSummary) sandboxSummary.hidden = false;
+    setSandboxState("loaded", "Sandbox provider verification response loaded from the Kimure API.");
+  }
+
+  function renderSandboxUnavailable(message) {
+    if (sandboxVerificationList) sandboxVerificationList.hidden = true;
+    if (sandboxSummary) sandboxSummary.hidden = true;
+    setSandboxState("error", message || "Sandbox provider verification is unavailable right now.");
+  }
+
+  function updateSandboxVerifyButton() {
+    if (!sandboxVerifyButton || !sandboxConsent) return;
+    sandboxVerifyButton.disabled = !sandboxConsent.checked;
+    if (!sandboxConsent.checked) {
+      setSandboxState("idle", "Confirm sandbox consent to enable verification.");
+    }
+  }
+
+  async function runSandboxVerification() {
+    if (!sandboxConsent || !sandboxConsent.checked) {
+      renderSandboxUnavailable("Confirm sandbox/test consent before running verification.");
+      updateSandboxVerifyButton();
+      return;
+    }
+
+    if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.requestCreditProviderSandboxVerification) {
+      renderSandboxUnavailable("Sandbox provider verification helper is unavailable on this page.");
+      return;
+    }
+
+    if (sandboxVerifyButton) {
+      sandboxVerifyButton.disabled = true;
+      sandboxVerifyButton.textContent = "Running sandbox check…";
+    }
+    if (sandboxVerificationList) sandboxVerificationList.hidden = true;
+    if (sandboxSummary) sandboxSummary.hidden = true;
+    setSandboxState("loading", "Running sandbox provider verification through the Kimure API…");
+
+    var response = await window.KIMURE_AUTH.requestCreditProviderSandboxVerification();
+
+    if (sandboxVerifyButton) {
+      sandboxVerifyButton.textContent = "Run sandbox provider verification";
+    }
+    updateSandboxVerifyButton();
+
+    if (!response.ok) {
+      renderSandboxUnavailable(response.message || "Sandbox provider verification could not be completed.");
+      return;
+    }
+
+    renderSandboxVerification(response.data);
+  }
+
+  async function loadProviderStatus() {
+    if (!providerReadinessState || !window.KIMURE_AUTH || !window.KIMURE_AUTH.fetchCreditProviderStatus) {
+      renderProviderStatusUnavailable("Provider readiness helper is unavailable on this page.");
+      return;
+    }
+
+    providerReadinessState.dataset.state = "loading";
+    providerReadinessState.textContent = "Loading provider readiness…";
+    if (providerStatusList) providerStatusList.hidden = true;
+    if (providerRefresh) providerRefresh.disabled = true;
+
+    var response = await window.KIMURE_AUTH.fetchCreditProviderStatus();
+    if (providerRefresh) providerRefresh.disabled = false;
+
+    if (!response.ok) {
+      renderProviderStatusUnavailable(response.message || "Provider readiness could not be loaded.");
+      return;
+    }
+
+    renderProviderStatus(response.data);
+  }
+
   function getBureauLabel() {
     if (!isProviderMode()) return "Not used";
     var bureau = bureauOptions[bureauChoice.value];
@@ -339,6 +575,9 @@
 
   assessmentType.addEventListener("change", updateMode);
   document.addEventListener("kimure-auth-changed", updateAuthStatus);
+  if (providerRefresh) providerRefresh.addEventListener("click", loadProviderStatus);
+  if (sandboxConsent) sandboxConsent.addEventListener("change", updateSandboxVerifyButton);
+  if (sandboxVerifyButton) sandboxVerifyButton.addEventListener("click", runSandboxVerification);
 
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
@@ -383,4 +622,6 @@
 
   updateMode();
   updateAuthStatus();
+  updateSandboxVerifyButton();
+  loadProviderStatus();
 })();

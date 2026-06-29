@@ -20,6 +20,25 @@ calls, provider adapters, model selection, and structured AI output.
 Website and mobile clients must call `apps/api`; they must not call the Gateway,
 Gemini, Thirdstream, Equifax, or TransUnion directly.
 
+Direct Equifax integration through the Equifax platform is the current provider
+priority. The Gateway should keep its multi-provider boundary intact so
+Thirdstream, TransUnion, and other provider adapters can remain disabled or
+future options without changing client contracts.
+
+Equifax provider configuration is environment-aware: Sandbox, Test, and
+Production must use separate Equifax portal credentials. Static sandbox tokens
+are accepted only for sandbox validation, and production must not use sandbox
+URLs, sandbox tokens, placeholder/demo values, or non-production-prefixed
+credentials. Exact OneView token flow, scopes, request body, response schema,
+and live endpoints still require signed-in Equifax portal documentation before
+live provider calls are enabled.
+
+The Gateway has an Equifax token-service skeleton for safe status metadata,
+internal token caching, and sandbox-only static token handling. It intentionally
+does not implement a guessed OAuth/token request. Portal-backed token exchange
+must wait for signed-in Equifax docs covering token URL, grant type, scopes,
+request body, required headers, token response, and expiry semantics.
+
 ## Client Routes
 
 All routes use `POST` and require a Supabase access token.
@@ -210,9 +229,23 @@ Backend integration errors:
 ## Remaining Integration Work
 
 1. Add capability-specific required-field rules after those schemas are final.
-2. Add server-side `ai_requests` and `ai_reports` persistence.
-3. Add rate limiting.
-4. Connect the onboarding and marketplace frontend flows.
+2. Add API-owned consent persistence in `public.credit_consents` before live
+   bureau calls are enabled.
+3. Add reusable financial profile persistence in
+   `public.user_financial_profiles` so dashboard, mortgage, marketplace, and
+   future listing ranking can use safe account-level context.
+4. Add server-side `ai_requests` and `ai_reports` persistence.
+5. Add rate limiting.
+6. Connect the onboarding and marketplace frontend flows.
 
-Live bureau pulls remain blocked until the approved Thirdstream subscription,
-product access, and API key are available in the Gateway environment.
+Live bureau pulls remain blocked until approved Equifax platform credentials,
+product/API documentation, consent wording, and production operating controls
+are available in the Gateway environment. Thirdstream and other provider paths
+remain future/disabled options until separately approved.
+
+The API owns consent and reusable financial profile writes. Browser clients and
+the Gateway should not write those Supabase tables directly.
+
+Dashboard clients should read sanitized account and AI/credit summaries through
+`GET /api/dashboard/ai-credit`. They should not call the Gateway directly or
+parse raw `ai_requests`, provider responses, or bureau payloads.

@@ -9,6 +9,7 @@ Use this directory for team-facing technical and project documentation.
 - [API module ownership](api/modules.md)
 - [Database architecture](architecture/database.md)
 - [AI Gateway contract](integrations/ai-gateway.md)
+- [Equifax OneView sandbox setup](equifax-sandbox-setup.md)
 - [Supabase migrations](../supabase/README.md)
 
 ## Documentation Rules

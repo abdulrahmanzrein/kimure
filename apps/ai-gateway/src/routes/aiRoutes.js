@@ -9,6 +9,9 @@ const {
 const {
   createMortgageAssessment
 } = require('../services/mortgageService');
+const {
+  runEquifaxSandboxVerification
+} = require('../services/equifaxSandboxVerificationService');
 
 const router = express.Router();
 
@@ -80,6 +83,21 @@ router.post('/credit-profile', async (req, res, next) => {
   try {
     const response = await createCreditProfile(getRequestInput(req));
     sendAiResponse(res, response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/equifax-sandbox-verification', async (req, res, next) => {
+  try {
+    const response = await runEquifaxSandboxVerification(getRequestInput(req));
+    res.locals.aiResponseMetadata = {
+      tool: 'equifax-sandbox-verification',
+      status: response.status,
+      fallbackUsed: response.status !== 'success',
+      fallbackMode: response.blockedReason || null
+    };
+    res.json(response);
   } catch (error) {
     next(error);
   }
