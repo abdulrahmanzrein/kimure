@@ -1,6 +1,6 @@
-export type ListingProviderSource = "mock_provider";
+export type ListingProviderSource = "mock_provider" | "crea_ddf_pending_access";
 
-export type ListingProviderStatus = "mock_only";
+export type ListingProviderStatus = "mock_only" | "pending_access";
 
 export interface ListingSearchQuery {
   q?: string;
@@ -10,6 +10,7 @@ export interface ListingSearchQuery {
   maxPrice?: number;
   bedrooms?: number;
   intent?: string;
+  provider?: "mock_provider" | "crea_ddf";
 }
 
 export interface NormalizedListing {
@@ -33,5 +34,6 @@ export interface ListingsSearchResponse {
   source: ListingProviderSource;
   providerStatus: ListingProviderStatus;
   disclaimer: string;
+  blockedReason?: string;
   results: NormalizedListing[];
 }

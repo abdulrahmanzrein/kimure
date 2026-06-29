@@ -8,6 +8,7 @@ const {
 const { ListingsService } = require("../src/listings/listings.service");
 const { ListingsProviderRegistry } = require("../src/listings/listings-provider.registry");
 const { MockListingsProvider } = require("../src/listings/mock-listings.provider");
+const { CreaDdfPendingProvider } = require("../src/listings/crea-ddf-pending.provider");
 
 const controllerPath = path.resolve(__dirname, "../src/ai/ai.controller.ts");
 const controllerSource = fs.readFileSync(controllerPath, "utf8");
@@ -42,7 +43,7 @@ assert.equal(query.bedrooms, 3);
 assert.equal(query.intent, "primary residence");
 
 const listings = new ListingsService(
-  new ListingsProviderRegistry(new MockListingsProvider())
+  new ListingsProviderRegistry(new MockListingsProvider(), new CreaDdfPendingProvider())
 ).search(query);
 const context = buildSafeListingContext(listings, query);
 const serialized = JSON.stringify(context);
@@ -64,5 +65,28 @@ assert.equal(serialized.includes("token"), false);
 assert.equal(serialized.includes("secret"), false);
 assert.equal(serialized.includes("apiKey"), false);
 assert.equal(serialized.includes("Realtor.ca"), false);
+
+const pendingListings = new ListingsService(
+  new ListingsProviderRegistry(new MockListingsProvider(), new CreaDdfPendingProvider())
+).search({
+  provider: "crea_ddf",
+  location: "Vancouver"
+});
+const pendingContext = buildSafeListingContext(pendingListings, {
+  provider: "crea_ddf",
+  location: "Vancouver"
+});
+const pendingSerialized = JSON.stringify(pendingContext);
+
+assert.equal(pendingContext.source, "crea_ddf_pending_access");
+assert.equal(pendingContext.providerStatus, "pending_access");
+assert.equal(pendingContext.isLiveProviderData, false);
+assert.equal(pendingContext.results.length, 0);
+assert.equal(pendingSerialized.includes("crea_ddf_access_not_configured"), false);
+assert.equal(pendingSerialized.includes("sourceResponse"), false);
+assert.equal(pendingSerialized.includes("contentBase64"), false);
+assert.equal(pendingSerialized.includes("token"), false);
+assert.equal(pendingSerialized.includes("secret"), false);
+assert.equal(pendingSerialized.includes("https://www.realtor.ca"), false);
 
 console.log("AI listing context check passed.");

@@ -75,6 +75,7 @@ function includesText(value: string, search: string) {
 
 @Injectable()
 export class MockListingsProvider implements ListingProviderAdapter {
+  readonly providerId = "mock_provider" as const;
   readonly source = "mock_provider" as const;
   readonly providerStatus = "mock_only" as const;
 

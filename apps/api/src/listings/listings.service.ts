@@ -1,4 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import {
+  CREA_DDF_PENDING_ACCESS_DISCLAIMER,
+  CREA_DDF_BLOCKED_REASON
+} from "./crea-ddf-pending.provider";
 import { ListingSearchQuery, ListingsSearchResponse } from "./listing.types";
 import { ListingsProviderRegistry } from "./listings-provider.registry";
 
@@ -15,6 +19,11 @@ function parseText(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function parseProvider(value: unknown): ListingSearchQuery["provider"] {
+  const provider = parseText(value);
+  return provider === "crea_ddf" ? "crea_ddf" : undefined;
 }
 
 @Injectable()
@@ -34,9 +43,20 @@ export class ListingsService {
       minPrice: parseNumber(rawQuery.minPrice),
       maxPrice: parseNumber(rawQuery.maxPrice),
       bedrooms: parseNumber(rawQuery.bedrooms),
-      intent: parseText(rawQuery.intent)
+      intent: parseText(rawQuery.intent),
+      provider: parseProvider(rawQuery.provider)
     };
-    const provider = this.providers.getActiveProvider();
+    const provider = this.providers.getProvider(query.provider);
+
+    if (provider.source === "crea_ddf_pending_access") {
+      return {
+        source: provider.source,
+        providerStatus: provider.providerStatus,
+        blockedReason: CREA_DDF_BLOCKED_REASON,
+        disclaimer: CREA_DDF_PENDING_ACCESS_DISCLAIMER,
+        results: provider.search(query)
+      };
+    }
 
     return {
       source: provider.source,
@@ -47,4 +67,9 @@ export class ListingsService {
   }
 }
 
-export { MOCK_LISTINGS_DISCLAIMER, parseNumber };
+export {
+  CREA_DDF_BLOCKED_REASON,
+  CREA_DDF_PENDING_ACCESS_DISCLAIMER,
+  MOCK_LISTINGS_DISCLAIMER,
+  parseNumber
+};
