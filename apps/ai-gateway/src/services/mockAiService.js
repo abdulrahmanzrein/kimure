@@ -314,19 +314,96 @@ const tools = {
 
 function getMockToolResponse(tool, payload = {}) {
   const selectedTool = tools[tool] || tools.chat;
+  const listingContext = getSafeListingContext(payload);
+  const providerNotice = getListingProviderNotice(listingContext);
 
   return createAiResponse({
     ...selectedTool,
+    summary: providerNotice
+      ? `${selectedTool.summary} ${providerNotice.summarySuffix}`
+      : selectedTool.summary,
+    keyInsights: providerNotice
+      ? [providerNotice.visibleNotice, ...selectedTool.keyInsights]
+      : selectedTool.keyInsights,
+    recommendations: providerNotice
+      ? [providerNotice.recommendation, ...selectedTool.recommendations]
+      : selectedTool.recommendations,
     reportData: {
       ...selectedTool.reportData,
-      receivedPayload: payload,
+      listingContext: listingContext || undefined,
       mockMode: true
     },
     disclaimer: DISCLAIMER
   });
 }
 
+function getSafeListingContext(payload) {
+  const context = payload && typeof payload === 'object' && !Array.isArray(payload)
+    ? payload.listingContext
+    : null;
+
+  if (!context || typeof context !== 'object' || Array.isArray(context)) return null;
+
+  const providerStatus = stringOrNull(context.providerStatus) || 'unknown';
+  const source = stringOrNull(context.source) || 'unknown';
+  const providerGuidance = context.providerGuidance &&
+    typeof context.providerGuidance === 'object' &&
+    !Array.isArray(context.providerGuidance)
+    ? context.providerGuidance
+    : {};
+  const results = Array.isArray(context.results) ? context.results : [];
+
+  return {
+    source,
+    providerStatus,
+    blockedReason: stringOrNull(context.blockedReason),
+    isLiveProviderData: context.isLiveProviderData === true,
+    disclaimer: stringOrNull(context.disclaimer),
+    resultCount: Number.isFinite(Number(context.resultCount)) ? Number(context.resultCount) : results.length,
+    providerGuidance: {
+      dataMode: stringOrNull(providerGuidance.dataMode),
+      instruction: stringOrNull(providerGuidance.instruction),
+      label: stringOrNull(providerGuidance.label)
+    }
+  };
+}
+
+function getListingProviderNotice(listingContext) {
+  if (!listingContext) return null;
+
+  if (
+    listingContext.providerStatus === 'pending_access' ||
+    listingContext.source === 'crea_ddf_pending_access' ||
+    listingContext.providerGuidance.dataMode === 'pending_access_no_live_listings'
+  ) {
+    return {
+      summarySuffix:
+        'CREA DDF access is pending, so Kimure cannot show or rank live CREA/MLS listings yet. No live CREA/DDF listing data is available in this sandbox preview.',
+      visibleNotice:
+        'CREA DDF access is pending; no live CREA, MLS, IDX, or REALTOR.ca listing data is available for this response.',
+      recommendation:
+        'Use this as planning guidance only until CREA DDF access, credentials, and compliance are approved and configured.'
+    };
+  }
+
+  if (listingContext.providerStatus === 'mock_only' || listingContext.source === 'mock_provider') {
+    return {
+      summarySuffix:
+        'Listing context is sample/provider-ready preview data, not live CREA, MLS, IDX, or REALTOR.ca listing data.',
+      visibleNotice:
+        'The listing context is mock/sample provider-ready preview data and should not be treated as live marketplace inventory.',
+      recommendation:
+        'Validate any property assumptions against a licensed listing provider before acting.'
+    };
+  }
+
+  return null;
+}
+
+function stringOrNull(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 module.exports = {
   getMockToolResponse
 };
-

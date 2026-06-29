@@ -9,6 +9,9 @@ const { ListingsService } = require("../src/listings/listings.service");
 const { ListingsProviderRegistry } = require("../src/listings/listings-provider.registry");
 const { MockListingsProvider } = require("../src/listings/mock-listings.provider");
 const { CreaDdfPendingProvider } = require("../src/listings/crea-ddf-pending.provider");
+const {
+  getMockToolResponse
+} = require("../../ai-gateway/src/services/mockAiService");
 
 const controllerPath = path.resolve(__dirname, "../src/ai/ai.controller.ts");
 const controllerSource = fs.readFileSync(controllerPath, "utf8");
@@ -108,5 +111,36 @@ assert.equal(pendingSerialized.includes("contentBase64"), false);
 assert.equal(pendingSerialized.includes("token"), false);
 assert.equal(pendingSerialized.includes("secret"), false);
 assert.equal(pendingSerialized.includes("https://www.realtor.ca"), false);
+
+const pendingMockResponse = getMockToolResponse("scout", {
+  question: "Find real live MLS/CREA listings in Vancouver.",
+  listingContext: pendingContext
+});
+const pendingMockSerialized = JSON.stringify(pendingMockResponse);
+
+assert.equal(pendingMockResponse.summary.includes("CREA DDF access is pending"), true);
+assert.equal(
+  pendingMockResponse.keyInsights.some((item) =>
+    item.includes("no live CREA, MLS, IDX, or REALTOR.ca listing data")
+  ),
+  true
+);
+assert.equal(
+  pendingMockResponse.recommendations.some((item) =>
+    item.includes("until CREA DDF access")
+  ),
+  true
+);
+assert.equal(/MLS[-\s]?\d{4,}/i.test(pendingMockSerialized), false);
+assert.equal(pendingMockSerialized.includes("sourceResponse"), false);
+assert.equal(pendingMockSerialized.includes("contentBase64"), false);
+assert.equal(pendingMockSerialized.includes("https://www.realtor.ca"), false);
+
+const mockProviderResponse = getMockToolResponse("scout", {
+  listingContext: context
+});
+
+assert.equal(mockProviderResponse.summary.includes("sample/provider-ready preview data"), true);
+assert.equal(JSON.stringify(mockProviderResponse).includes("live CREA listings are connected"), false);
 
 console.log("AI listing context check passed.");

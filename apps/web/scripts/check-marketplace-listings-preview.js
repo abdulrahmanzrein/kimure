@@ -36,6 +36,7 @@ const listingsPreviewJs = sliceBetween(
   "getSelectedListingsProvider",
   "marketplaceAiMetadata",
   'listingProvider: provider || "mock_provider"',
+  "var listingProvider = getSelectedListingsProvider()",
   "provider: listingProvider || undefined",
   'response.providerStatus === "pending_access"',
   'response.source === "crea_ddf_pending_access"',
