@@ -271,11 +271,19 @@
             <h2 class="mp-listings-title" id="marketplaceListingsPreviewTitle">Marketplace Listings Preview</h2>
             <p class="mp-provider-listings-note">
               Sample listings are shown from Kimure's provider-ready listings contract. Live MLS/CREA/IDX provider data will be connected once licensed access is confirmed.
+              CREA DDF access is prepared but pending approval/configuration. No REALTOR.ca scraping or live CREA listing data is used in this preview.
             </p>
           </div>
         </div>
 
         <form class="mp-provider-search" id="mpProviderListingsForm">
+          <label>
+            Listing provider
+            <select name="provider" id="mpProviderSelector">
+              <option value="">Sample provider</option>
+              <option value="crea_ddf">CREA DDF pending access</option>
+            </select>
+          </label>
           <label>
             Location
             <input name="location" type="text" placeholder="Ottawa, Toronto, Calgary">

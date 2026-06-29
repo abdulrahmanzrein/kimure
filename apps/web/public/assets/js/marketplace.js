@@ -111,13 +111,21 @@
     return String(value || "mock_provider").replace(/_/g, " ");
   }
 
+  function formatBlockedReason(value) {
+    return formatProviderLabel(value || "unavailable").replace(/\b\w/g, function (letter) {
+      return letter.toUpperCase();
+    });
+  }
+
   function buildProviderListingsQuery(formToRead) {
     var params = new URLSearchParams();
+    var provider = textValue(formToRead, "provider");
     var location = textValue(formToRead, "location");
     var type = textValue(formToRead, "type");
     var maxPrice = parseMoney(textValue(formToRead, "maxPrice"));
     var intent = textValue(formToRead, "intent");
 
+    if (provider === "crea_ddf") params.set("provider", provider);
     if (location) params.set("location", location);
     if (type) params.set("type", type);
     if (maxPrice !== null) params.set("maxPrice", String(maxPrice));
@@ -137,6 +145,12 @@
     }
 
     return body;
+  }
+
+  function isPendingAccessResponse(response) {
+    return response &&
+      response.providerStatus === "pending_access" &&
+      response.source === "crea_ddf_pending_access";
   }
 
   function renderProviderListingCard(grid, listing) {
@@ -182,6 +196,23 @@
     var results = Array.isArray(response.results) ? response.results : [];
 
     clearNode(grid);
+
+    if (isPendingAccessResponse(response)) {
+      if (emptyEl) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = "CREA DDF access is prepared but pending approval/configuration. No live CREA/DDF listing data is being displayed yet.";
+      }
+      setProviderStatus(
+        statusEl,
+        "pending",
+        "Provider status: Pending access. " +
+          formatBlockedReason(response.blockedReason || "crea_ddf_access_not_configured") +
+          ". " +
+          (response.disclaimer || "CREA DDF access and compliance must be configured before live listings are used.")
+      );
+      return;
+    }
+
     if (emptyEl) emptyEl.hidden = results.length > 0;
     setProviderStatus(statusEl, "ready", response.disclaimer || "Sample listings are shown from Kimure's provider-ready listings contract.");
 
@@ -207,6 +238,7 @@
         submit.textContent = "Searching...";
       }
       emptyEl.hidden = true;
+      emptyEl.textContent = "No sample listings match those filters yet.";
       clearNode(grid);
       setProviderStatus(statusEl, "loading", "Loading sample listings...");
 
