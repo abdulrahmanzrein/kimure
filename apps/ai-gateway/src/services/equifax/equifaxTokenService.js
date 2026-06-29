@@ -81,11 +81,13 @@ async function getEquifaxAccessToken(options = {}) {
     });
   }
 
-  // Equifax portal docs confirm OAuth 2.0 client credentials, a POST token
-  // call, and use of client_id, client_secret, and scope. The exact token
-  // endpoint URL, Content-Type, auth placement (body vs Basic Auth), request
-  // body fields, response fields, and expiry semantics are still not visible.
-  // This skeleton intentionally makes no network call and no guessed token body.
+  // Equifax docs confirm OAuth 2.0 client credentials and a POST token call.
+  // The OneView Sandbox Postman collection confirms the sandbox token endpoint,
+  // application/x-www-form-urlencoded content type, and form fields:
+  // grant_type=client_credentials and the OneView scope. Client credential
+  // placement (body fields vs Basic Auth/inherited Postman auth), response
+  // fields, and expiry semantics are still not confirmed. This skeleton
+  // intentionally makes no network call and no guessed credential placement.
   updateLastStatus('equifax_token_flow_requires_portal_docs', null);
   return buildTokenResult({
     ok: false,
@@ -164,6 +166,10 @@ function buildSafeTokenStatus({ config, providerStatus, now }) {
     oauthGrantTypeConfirmed: true,
     oauthTokenPostConfirmed: true,
     oauthTokenEndpointConfigured: Boolean(config.tokenUrl),
+    oauthTokenContentTypeConfirmed: Boolean(config.oauthTokenContentType),
+    oauthScopeConfirmed: config.scope === config.officialScope,
+    oauthClientCredentialPlacementConfirmed: Boolean(config.oauthClientCredentialPlacementConfirmed),
+    oauthResponseExpiryConfirmed: Boolean(config.oauthResponseExpiryConfirmed),
     oauthRequestFormatConfirmed: Boolean(config.oauthRequestFormatConfirmed),
     oauthBlockedUntilPortalDocs: providerStatus.tokenStrategy === 'client_credentials_pending_docs',
     providerCallsEnabled: Boolean(providerStatus.providerCallsEnabled),

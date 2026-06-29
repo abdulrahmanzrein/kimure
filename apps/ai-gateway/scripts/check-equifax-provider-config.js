@@ -2,8 +2,11 @@ const assert = require('node:assert/strict');
 const {
   buildEquifaxRuntimeConfig,
   OAUTH_GRANT_TYPE,
+  OAUTH_TOKEN_CONTENT_TYPE,
+  OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_TOKEN_METHOD,
   ONEVIEW_OAUTH_SCOPE,
+  SANDBOX_OAUTH_TOKEN_URL,
   statusContainsSecretValue,
   validateEquifaxProviderConfig
 } = require('../src/services/equifax/equifaxProviderConfig');
@@ -50,7 +53,11 @@ function checkSandboxStaticTokenReady() {
   assert.equal(status.permissiblePurposeConfigured, true);
   assert.equal(status.oauthGrantTypeConfirmed, true);
   assert.equal(status.oauthTokenPostConfirmed, true);
-  assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthTokenEndpointConfigured, true);
+  assert.equal(status.oauthTokenContentTypeConfirmed, true);
+  assert.equal(status.oauthScopeConfirmed, false);
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(status.providerCallsEnabled, false);
   assert.equal(status.canAttemptProviderCall, false);
@@ -148,10 +155,17 @@ function checkRuntimeConfigKeepsSecretsInternal() {
   assert.equal(status.oauthGrantTypeConfirmed, true);
   assert.equal(status.oauthTokenPostConfirmed, true);
   assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthTokenContentTypeConfirmed, true);
+  assert.equal(status.oauthScopeConfirmed, true);
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(runtimeConfig.clientSecret, env.EQUIFAX_PRODUCTION_CLIENT_SECRET);
   assert.equal(runtimeConfig.oauthGrantType, OAUTH_GRANT_TYPE);
   assert.equal(runtimeConfig.oauthTokenMethod, OAUTH_TOKEN_METHOD);
+  assert.equal(runtimeConfig.oauthTokenContentType, OAUTH_TOKEN_CONTENT_TYPE);
+  assert.equal(runtimeConfig.oauthTokenFormFields.grant_type, 'client_credentials');
+  assert.equal(runtimeConfig.oauthTokenFormFields.scope, ONEVIEW_OAUTH_SCOPE);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
   assert.equal(statusContainsSecretValue(status, env), false);
 }
@@ -181,11 +195,18 @@ function checkGenericSandboxClientCredentialsAreDetectedButBlocked() {
   assert.equal(status.tokenStrategy, 'client_credentials_pending_docs');
   assert.equal(status.clientCredentialsConfigured, true);
   assert.equal(status.oauthBlockedUntilPortalDocs, true);
-  assert.equal(status.oauthTokenEndpointConfigured, false);
+  assert.equal(status.oauthTokenEndpointConfigured, true);
+  assert.equal(status.oauthTokenContentTypeConfirmed, true);
+  assert.equal(status.oauthScopeConfirmed, true);
+  assert.equal(status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(status.oauthResponseExpiryConfirmed, false);
   assert.equal(status.oauthRequestFormatConfirmed, false);
   assert.equal(status.providerCallsEnabled, true);
   assert.equal(status.canAttemptProviderCall, false);
   assert.equal(runtimeConfig.clientId, env.EQUIFAX_CLIENT_ID);
+  assert.equal(runtimeConfig.tokenUrl, SANDBOX_OAUTH_TOKEN_URL);
+  assert.equal(runtimeConfig.oauthTokenContentType, 'application/x-www-form-urlencoded');
+  assert.deepEqual(runtimeConfig.oauthTokenFormFields, OAUTH_TOKEN_FORM_FIELDS);
   assert.equal(runtimeConfig.scope, ONEVIEW_OAUTH_SCOPE);
   assert.equal(statusContainsSecretValue(status, env), false);
 }

@@ -5,9 +5,13 @@ const {
   resetEquifaxTokenCache
 } = require('../src/services/equifax/equifaxTokenService');
 const {
+  buildEquifaxRuntimeConfig,
   OAUTH_GRANT_TYPE,
+  OAUTH_TOKEN_CONTENT_TYPE,
+  OAUTH_TOKEN_FORM_FIELDS,
   OAUTH_TOKEN_METHOD,
-  ONEVIEW_OAUTH_SCOPE
+  ONEVIEW_OAUTH_SCOPE,
+  SANDBOX_OAUTH_TOKEN_URL
 } = require('../src/services/equifax/equifaxProviderConfig');
 const {
   getEquifaxCreditProfileData
@@ -78,12 +82,21 @@ async function checkSandboxStaticTokenWorksOnlyInSandbox() {
   assert.equal(result.status.permissiblePurposeConfigured, true);
   assert.equal(result.status.oauthGrantTypeConfirmed, true);
   assert.equal(result.status.oauthTokenPostConfirmed, true);
-  assert.equal(result.status.oauthTokenEndpointConfigured, false);
+  assert.equal(result.status.oauthTokenEndpointConfigured, true);
+  assert.equal(result.status.oauthTokenContentTypeConfirmed, true);
+  assert.equal(result.status.oauthScopeConfirmed, false);
+  assert.equal(result.status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(result.status.oauthResponseExpiryConfirmed, false);
   assert.equal(result.status.oauthRequestFormatConfirmed, false);
   assert.equal(result.status.providerCallsEnabled, false);
   assert.equal(result.status.tokenStrategy, 'sandbox_static_token');
   assert.equal(OAUTH_GRANT_TYPE, 'client_credentials');
   assert.equal(OAUTH_TOKEN_METHOD, 'POST');
+  assert.equal(OAUTH_TOKEN_CONTENT_TYPE, 'application/x-www-form-urlencoded');
+  assert.deepEqual(OAUTH_TOKEN_FORM_FIELDS, {
+    grant_type: 'client_credentials',
+    scope: ONEVIEW_OAUTH_SCOPE
+  });
   assert.equal(result.status.tokenCached, true);
   assert.equal(result.status.lastTokenStatus, 'sandbox_static_token');
   assertSafeStatus(result, env);
@@ -114,6 +127,7 @@ async function checkSandboxStaticTokenRejectedOutsideSandbox() {
 async function checkPortalBackedTokenTodoIsSafe() {
   resetEquifaxTokenCache();
   const env = createSandboxClientCredentialEnv();
+  const runtimeConfig = buildEquifaxRuntimeConfig(env);
   const result = await getEquifaxAccessToken({
     env,
     fetchImpl: failIfCalled
@@ -128,9 +142,14 @@ async function checkPortalBackedTokenTodoIsSafe() {
   assert.equal(result.status.oauthBlockedUntilPortalDocs, true);
   assert.equal(result.status.oauthGrantTypeConfirmed, true);
   assert.equal(result.status.oauthTokenPostConfirmed, true);
-  assert.equal(result.status.oauthTokenEndpointConfigured, false);
+  assert.equal(result.status.oauthTokenEndpointConfigured, true);
+  assert.equal(result.status.oauthTokenContentTypeConfirmed, true);
+  assert.equal(result.status.oauthScopeConfirmed, true);
+  assert.equal(result.status.oauthClientCredentialPlacementConfirmed, false);
+  assert.equal(result.status.oauthResponseExpiryConfirmed, false);
   assert.equal(result.status.oauthRequestFormatConfirmed, false);
   assert.equal(result.status.tokenStrategy, 'client_credentials_pending_docs');
+  assert.equal(runtimeConfig.tokenUrl, SANDBOX_OAUTH_TOKEN_URL);
   assertSafeStatus(result, env);
 }
 
@@ -169,6 +188,8 @@ function checkCacheMetadataIsSafe() {
     assert.equal(after.expiresSoon, false);
     assert.equal(after.oauthGrantTypeConfirmed, true);
     assert.equal(after.oauthTokenPostConfirmed, true);
+    assert.equal(after.oauthTokenEndpointConfigured, true);
+    assert.equal(after.oauthTokenContentTypeConfirmed, true);
     assert.equal(JSON.stringify(after).includes(env.EQUIFAX_SANDBOX_ACCESS_TOKEN), false);
   });
 }
