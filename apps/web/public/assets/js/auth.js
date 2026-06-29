@@ -514,6 +514,53 @@
     return { ok: true, data: body };
   }
 
+  // Run the protected backend-only Equifax sandbox verification route. The
+  // browser sends only the sandbox verification flags; provider credentials,
+  // request construction, and any provider call remain server-side.
+  async function requestCreditProviderSandboxVerification() {
+    var token = await getAccessToken();
+    if (!token) {
+      return {
+        ok: false,
+        needsLogin: true,
+        message: "Please sign in to run sandbox provider verification."
+      };
+    }
+
+    var payload = {
+      consent: true,
+      permissiblePurposeCode: "57",
+      sandboxIdentity: true
+    };
+
+    var response;
+    try {
+      response = await fetch(getApiBaseUrl() + "/credit/provider-sandbox-verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token
+        },
+        body: JSON.stringify(payload)
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        message: "Could not reach the Kimure API. Confirm the local API is running."
+      };
+    }
+
+    var body = await response.json().catch(function () { return {}; });
+    if (!response.ok) {
+      var message = typeof body.message === "string"
+        ? body.message
+        : "Sandbox provider verification could not be completed.";
+      return { ok: false, message: message, data: body };
+    }
+
+    return { ok: true, data: body };
+  }
+
   // Ask Supabase who is logged in right now.
   // Supabase checks the stored session token in the browser (localStorage).
   async function getCurrentUser() {
@@ -603,6 +650,7 @@
     requestMortgage: requestMortgage,
     fetchDashboardAiCredit: fetchDashboardAiCredit,
     fetchCreditProviderStatus: fetchCreditProviderStatus,
+    requestCreditProviderSandboxVerification: requestCreditProviderSandboxVerification,
     saveCreditAssessmentReference: saveCreditAssessmentReference,
     getCreditAssessmentReference: getCreditAssessmentReference,
     clearCreditAssessmentReference: clearCreditAssessmentReference

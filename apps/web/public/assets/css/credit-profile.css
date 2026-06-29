@@ -273,12 +273,14 @@
 }
 
 .credit-privacy-card,
-.credit-provider-readiness {
+.credit-provider-readiness,
+.credit-sandbox-verification {
   padding: 22px;
 }
 
 .credit-privacy-card h2,
-.credit-provider-readiness h2 {
+.credit-provider-readiness h2,
+.credit-sandbox-verification h2 {
   margin: 0 0 14px;
   font-size: 19px;
 }
@@ -337,6 +339,59 @@
 
 .credit-provider-state[data-state="error"] {
   color: #fca5a5;
+}
+
+.credit-sandbox-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 16px 0 12px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.credit-sandbox-consent input {
+  margin-top: 3px;
+  accent-color: var(--gold);
+}
+
+.credit-sandbox-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.credit-sandbox-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.credit-sandbox-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.credit-sandbox-summary section {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.theme-light .credit-sandbox-summary section {
+  border-top-color: rgba(0, 0, 0, 0.08);
+}
+
+.credit-sandbox-summary h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.credit-sandbox-summary ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .theme-light .credit-provider-state[data-state="error"] {

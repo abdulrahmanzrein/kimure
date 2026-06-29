@@ -24,6 +24,8 @@ export interface ProviderVerificationResponse {
   debtSummary?: unknown;
   riskFlags?: unknown;
   blockedReason: string | null;
+  sandboxVerificationReady: boolean;
+  sandboxVerificationBlockedReason: string | null;
   safeToRunLiveCall: false;
 }
 
@@ -127,6 +129,7 @@ export class CreditProviderVerificationService {
 export function validateSandboxVerificationInput(input: Record<string, unknown>) {
   const consent = asRecord(input.consent);
   const consentProvided =
+    input.consent === true ||
     input.consentGiven === true ||
     input.creditConsent === true ||
     input.bureauConsent === true ||
@@ -180,6 +183,10 @@ export function shapeProviderVerificationResponse(
     debtSummary: safeObject(body.debtSummary),
     riskFlags: safeObject(body.riskFlags),
     blockedReason: safeString(body.blockedReason),
+    sandboxVerificationReady: body.sandboxVerificationReady === true,
+    sandboxVerificationBlockedReason: safeString(
+      body.sandboxVerificationBlockedReason
+    ),
     safeToRunLiveCall: false
   };
 }
@@ -195,6 +202,8 @@ function blockedApiResponse(
     providerStatus: "blocked",
     transactionId: null,
     blockedReason,
+    sandboxVerificationReady: false,
+    sandboxVerificationBlockedReason: blockedReason,
     safeToRunLiveCall: false
   };
 }

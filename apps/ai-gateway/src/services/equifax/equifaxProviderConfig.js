@@ -124,6 +124,8 @@ function validateEquifaxProviderConfig(env = process.env) {
       sandboxStaticTokenTestReady: false,
       sandboxStaticTokenTestUrlAllowed: false,
       sandboxStaticTokenTestBlockedReason: 'equifax_provider_disabled',
+      sandboxVerificationReady: false,
+      sandboxVerificationBlockedReason: 'equifax_provider_disabled',
       tokenReady: false,
       providerCallsEnabled: false,
       canAttemptProviderCall: false
@@ -273,6 +275,31 @@ function validateEquifaxProviderConfig(env = process.env) {
     sandboxStaticTokenLiveSmokeTestEnabled
   });
   const sandboxStaticTokenTestReady = configReady && sandboxStaticTokenTestBlockedReason === null;
+  const sandboxVerificationBlockedReason = getSandboxVerificationBlockedReason({
+    enabled,
+    environment,
+    tokenStrategy,
+    providerCallsEnabled,
+    oauthTokenExchangeEnabled,
+    clientCredentialsConfigured,
+    oauthScopeMatchesOneView,
+    oauthClientCredentialPlacementMode,
+    oauthTokenExchangeReady,
+    tokenReady,
+    sandboxBaseUrlAllowed: isOfficialSandboxBaseUrl(credentials.baseUrl),
+    memberNumberConfigured: Boolean(credentials.memberNumber),
+    securityCodeConfigured: Boolean(credentials.securityCode),
+    customerCodeConfigured: hasValue(env[`${prefix}_CUSTOMER_CODE`]),
+    productCodeConfigured: hasValue(env.EQUIFAX_PRODUCT_CODE),
+    consentVersionConfigured: hasValue(env.EQUIFAX_CONSENT_VERSION),
+    permissiblePurposeConfigured: hasValue(env.EQUIFAX_PERMISSIBLE_PURPOSE_CODE),
+    timeoutConfigured: hasValue(env.EQUIFAX_TIMEOUT_MS),
+    retryConfigured: hasValue(env.EQUIFAX_RETRY_COUNT),
+    sandboxTokenUrlConfigured: credentials.tokenUrl === SANDBOX_OAUTH_TOKEN_URL,
+    missingKeys: uniqueMissingKeys,
+    errors: uniqueErrors
+  });
+  const sandboxVerificationReady = sandboxVerificationBlockedReason === null;
 
   return safeStatus({
     enabled,
@@ -317,6 +344,8 @@ function validateEquifaxProviderConfig(env = process.env) {
     sandboxStaticTokenTestReady,
     sandboxStaticTokenTestUrlAllowed,
     sandboxStaticTokenTestBlockedReason,
+    sandboxVerificationReady,
+    sandboxVerificationBlockedReason,
     tokenReady,
     providerCallsEnabled,
     canAttemptProviderCall: configReady &&
@@ -375,6 +404,8 @@ function buildEquifaxRuntimeConfig(env = process.env) {
     sandboxStaticTokenTestReady: status.sandboxStaticTokenTestReady,
     sandboxStaticTokenTestUrlAllowed: status.sandboxStaticTokenTestUrlAllowed,
     sandboxStaticTokenTestBlockedReason: status.sandboxStaticTokenTestBlockedReason,
+    sandboxVerificationReady: status.sandboxVerificationReady,
+    sandboxVerificationBlockedReason: status.sandboxVerificationBlockedReason,
     tokenReady: status.tokenReady,
     oauthResponseExpiryConfirmed: status.oauthResponseExpiryConfirmed,
     oauthRequestFormatConfirmed: status.oauthRequestFormatConfirmed,
@@ -504,6 +535,8 @@ function safeStatus(status) {
     sandboxStaticTokenTestReady: Boolean(status.sandboxStaticTokenTestReady),
     sandboxStaticTokenTestUrlAllowed: Boolean(status.sandboxStaticTokenTestUrlAllowed),
     sandboxStaticTokenTestBlockedReason: status.sandboxStaticTokenTestBlockedReason || null,
+    sandboxVerificationReady: Boolean(status.sandboxVerificationReady),
+    sandboxVerificationBlockedReason: status.sandboxVerificationBlockedReason || null,
     tokenReady: Boolean(status.tokenReady),
     providerCallsEnabled: Boolean(status.providerCallsEnabled),
     canAttemptProviderCall: Boolean(status.canAttemptProviderCall)
@@ -569,6 +602,56 @@ function getSandboxStaticTokenTestBlockedReason({
   if (!staticSandboxTokenPresent) return 'sandbox_access_token_required';
   if (!providerCallsEnabled) return 'provider_calls_enabled_required';
   if (!sandboxStaticTokenTestUrlAllowed) return 'official_sandbox_base_url_required';
+  return null;
+}
+
+function getSandboxVerificationBlockedReason({
+  enabled,
+  environment,
+  tokenStrategy,
+  providerCallsEnabled,
+  oauthTokenExchangeEnabled,
+  clientCredentialsConfigured,
+  oauthScopeMatchesOneView,
+  oauthClientCredentialPlacementMode,
+  oauthTokenExchangeReady,
+  tokenReady,
+  sandboxBaseUrlAllowed,
+  memberNumberConfigured,
+  securityCodeConfigured,
+  customerCodeConfigured,
+  productCodeConfigured,
+  consentVersionConfigured,
+  permissiblePurposeConfigured,
+  timeoutConfigured,
+  retryConfigured,
+  sandboxTokenUrlConfigured,
+  missingKeys,
+  errors
+}) {
+  if (!enabled) return 'equifax_provider_disabled';
+  if (environment !== 'sandbox') return 'equifax_environment_not_sandbox';
+  if (tokenStrategy !== TOKEN_STRATEGY_MODES.clientCredentials) return 'equifax_client_credentials_required';
+  if (!providerCallsEnabled) return 'equifax_provider_calls_disabled';
+  if (!oauthTokenExchangeEnabled) return 'equifax_oauth_exchange_disabled';
+  if (!clientCredentialsConfigured) return 'equifax_oauth_client_credentials_missing';
+  if (!oauthScopeMatchesOneView) return 'equifax_oauth_scope_invalid';
+  if (!sandboxTokenUrlConfigured) return 'equifax_oauth_sandbox_token_url_required';
+  if (oauthClientCredentialPlacementMode !== OAUTH_CLIENT_CREDENTIAL_PLACEMENT_MODES.basicAuth) {
+    return 'equifax_oauth_basic_auth_required';
+  }
+  if (!oauthTokenExchangeReady || !tokenReady) return 'equifax_token_not_ready';
+  if (!sandboxBaseUrlAllowed) return 'official_sandbox_base_url_required';
+  if (!memberNumberConfigured) return 'equifax_sandbox_member_number_required';
+  if (!securityCodeConfigured) return 'equifax_sandbox_security_code_required';
+  if (!customerCodeConfigured) return 'equifax_sandbox_customer_code_required';
+  if (!productCodeConfigured) return 'equifax_product_code_required';
+  if (!consentVersionConfigured) return 'equifax_consent_version_required';
+  if (!permissiblePurposeConfigured) return 'equifax_permissible_purpose_code_required';
+  if (!timeoutConfigured) return 'equifax_timeout_required';
+  if (!retryConfigured) return 'equifax_retry_count_required';
+  if (Array.isArray(missingKeys) && missingKeys.length > 0) return 'equifax_configuration_missing_required_keys';
+  if (Array.isArray(errors) && errors.length > 0) return 'equifax_configuration_invalid';
   return null;
 }
 

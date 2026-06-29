@@ -317,8 +317,16 @@ async function checkSandboxVerificationRejectsSocialNumberInput() {
 }
 
 async function checkSandboxVerificationUsesMockedProviderPathSafely() {
-  const env = createSandboxClientCredentialProviderEnv();
+  const env = createSandboxClientCredentialProviderEnv({
+    EQUIFAX_SANDBOX_STATIC_TOKEN_LIVE_SMOKE_TEST_ENABLED: 'true'
+  });
+  const runtimeConfig = buildRuntimeConfigForCheck(env);
   const observedRequests = [];
+
+  assert.equal(runtimeConfig.providerConfigStatus.canAttemptProviderCall, false);
+  assert.equal(runtimeConfig.providerConfigStatus.sandboxVerificationReady, true);
+  assert.equal(runtimeConfig.providerConfigStatus.sandboxVerificationBlockedReason, null);
+
   const result = await runEquifaxSandboxVerification(validSandboxVerificationInput(), {
     env,
     fetchImpl: async (url, options) => {
@@ -368,6 +376,9 @@ async function checkSandboxVerificationUsesMockedProviderPathSafely() {
   assert.equal(result.verified, true);
   assert.equal(result.transactionId, 'safe-transaction-id');
   assert.equal(result.scoreSummary.value, 721);
+  assert.equal(result.sandboxVerificationReady, true);
+  assert.equal(result.sandboxVerificationBlockedReason, null);
+  assert.equal(result.safeToRunLiveCall, false);
   assertSandboxVerificationResponseIsSafe(result);
 
   const providerRequestBody = JSON.parse(observedRequests[1].options.body);
@@ -426,7 +437,7 @@ function createSandboxStaticTokenEnv() {
   };
 }
 
-function createSandboxClientCredentialProviderEnv() {
+function createSandboxClientCredentialProviderEnv(overrides = {}) {
   return {
     EQUIFAX_ENABLED: 'true',
     EQUIFAX_ENVIRONMENT: 'sandbox',
@@ -446,7 +457,8 @@ function createSandboxClientCredentialProviderEnv() {
     EQUIFAX_SCOPE: 'https://api.equifax.com/business/oneview/consumer-credit/v1',
     EQUIFAX_SANDBOX_MEMBER_NUMBER: 'sandbox-member-secret-value',
     EQUIFAX_SANDBOX_SECURITY_CODE: 'sandbox-security-secret-value',
-    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value'
+    EQUIFAX_SANDBOX_CUSTOMER_CODE: 'sandbox-customer-secret-value',
+    ...overrides
   };
 }
 

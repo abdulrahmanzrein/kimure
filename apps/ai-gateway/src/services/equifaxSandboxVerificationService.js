@@ -70,6 +70,8 @@ async function runEquifaxSandboxVerification(input = {}, options = {}) {
     debtSummary: normalized.debtSummary || null,
     riskFlags: normalized.riskFlags || null,
     blockedReason: null,
+    sandboxVerificationReady: true,
+    sandboxVerificationBlockedReason: null,
     safeToRunLiveCall: false
   };
 }
@@ -84,11 +86,8 @@ function validateEquifaxSandboxVerificationInput(input = {}, config, env = proce
   }
   if (config.providerCallsEnabled !== true) return blocked('equifax_provider_calls_disabled');
   if (env[OAUTH_TOKEN_EXCHANGE_FLAG] !== 'true') return blocked('equifax_oauth_exchange_disabled');
-  if (!config.oauthTokenExchangeReady || !config.providerConfigStatus.tokenReady) {
-    return blocked('provider_not_ready');
-  }
-  if (!config.providerConfigStatus.canAttemptProviderCall) {
-    return blocked('provider_not_ready');
+  if (config.providerConfigStatus.sandboxVerificationReady !== true) {
+    return blocked(config.providerConfigStatus.sandboxVerificationBlockedReason || 'provider_not_ready');
   }
   if (consent.provided !== true) return blocked('credit_consent_required');
   if (!getPermissiblePurposeCode(input)) return blocked('credit_permissible_purpose_required');
@@ -111,6 +110,11 @@ function blockedResponse(config, blockedReason) {
     providerStatus: 'blocked',
     transactionId: null,
     blockedReason,
+    sandboxVerificationReady: config.providerConfigStatus &&
+      config.providerConfigStatus.sandboxVerificationReady === true,
+    sandboxVerificationBlockedReason: config.providerConfigStatus
+      ? config.providerConfigStatus.sandboxVerificationBlockedReason || blockedReason
+      : blockedReason,
     safeToRunLiveCall: false
   };
 }
@@ -121,7 +125,8 @@ function getConsent(input) {
     : {};
 
   return {
-    provided: input.consentGiven === true ||
+    provided: input.consent === true ||
+      input.consentGiven === true ||
       input.creditConsent === true ||
       input.bureauConsent === true ||
       consent.provided === true ||

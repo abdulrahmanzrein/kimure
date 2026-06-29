@@ -21,7 +21,22 @@ type BlockedReason =
   | "equifax_oauth_sandbox_token_url_required"
   | "sandbox_static_token_live_smoke_test_not_implemented"
   | "ready_for_safe_static_token_readiness_check"
-  | "ready_for_safe_client_credentials_provider_check";
+  | "ready_for_safe_client_credentials_provider_check"
+  | "equifax_environment_not_sandbox"
+  | "equifax_client_credentials_required"
+  | "equifax_provider_calls_disabled"
+  | "equifax_oauth_client_credentials_missing"
+  | "equifax_oauth_scope_invalid"
+  | "equifax_oauth_basic_auth_required"
+  | "equifax_token_not_ready"
+  | "equifax_sandbox_member_number_required"
+  | "equifax_sandbox_security_code_required"
+  | "equifax_sandbox_customer_code_required"
+  | "equifax_product_code_required"
+  | "equifax_consent_version_required"
+  | "equifax_permissible_purpose_code_required"
+  | "equifax_timeout_required"
+  | "equifax_retry_count_required";
 
 export interface CreditProviderStatusResponse {
   provider: "equifax";
@@ -37,6 +52,8 @@ export interface CreditProviderStatusResponse {
   oauthClientCredentialPlacementConfigured: boolean;
   oauthTokenExchangeEnabled: boolean;
   oauthSandboxTokenUrlConfigured: boolean;
+  sandboxVerificationReady: boolean;
+  sandboxVerificationBlockedReason: BlockedReason | null;
   blockedReason: BlockedReason;
   safeToRunLiveCall: false;
 }
@@ -120,6 +137,36 @@ export class CreditProviderStatusService {
       oauthClientCredentialPlacementConfigured &&
       oauthSandboxTokenUrlConfigured &&
       oauthScopeConfigured;
+    const sandboxVerificationBlockedReason =
+      this.getSandboxVerificationBlockedReason({
+        enabled,
+        environment,
+        providerCallsEnabled,
+        tokenStrategy,
+        oauthTokenExchangeEnabled,
+        oauthClientCredentialsConfigured,
+        oauthClientCredentialPlacementConfigured,
+        oauthClientCredentialPlacementMode:
+          this.getString("EQUIFAX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT") ||
+          this.getString(
+            "EQUIFAX_SANDBOX_OAUTH_CLIENT_CREDENTIAL_PLACEMENT"
+          ) ||
+          "",
+        oauthSandboxTokenUrlConfigured,
+        oauthScopeConfigured,
+        tokenReady: oauthTokenReady,
+        sandboxBaseUrlAllowed,
+        memberNumberConfigured: this.hasValue("EQUIFAX_SANDBOX_MEMBER_NUMBER"),
+        securityCodeConfigured: this.hasValue("EQUIFAX_SANDBOX_SECURITY_CODE"),
+        customerCodeConfigured: this.hasValue("EQUIFAX_SANDBOX_CUSTOMER_CODE"),
+        productCodeConfigured: this.hasValue("EQUIFAX_PRODUCT_CODE"),
+        consentVersionConfigured: this.hasValue("EQUIFAX_CONSENT_VERSION"),
+        permissiblePurposeConfigured: this.hasValue(
+          "EQUIFAX_PERMISSIBLE_PURPOSE_CODE"
+        ),
+        timeoutConfigured: this.hasValue("EQUIFAX_TIMEOUT_MS"),
+        retryConfigured: this.hasValue("EQUIFAX_RETRY_COUNT")
+      });
     const blockedReason = this.getBlockedReason({
       enabled,
       environment,
@@ -149,6 +196,8 @@ export class CreditProviderStatusService {
       oauthClientCredentialPlacementConfigured,
       oauthTokenExchangeEnabled,
       oauthSandboxTokenUrlConfigured,
+      sandboxVerificationReady: sandboxVerificationBlockedReason === null,
+      sandboxVerificationBlockedReason,
       blockedReason,
       safeToRunLiveCall: false
     };
@@ -202,6 +251,63 @@ export class CreditProviderStatusService {
     if (!input.sandboxBaseUrlAllowed) return "official_sandbox_base_url_required";
 
     return "ready_for_safe_static_token_readiness_check";
+  }
+
+  private getSandboxVerificationBlockedReason(input: {
+    enabled: boolean;
+    environment: string;
+    providerCallsEnabled: boolean;
+    tokenStrategy: TokenStrategy;
+    oauthTokenExchangeEnabled: boolean;
+    oauthClientCredentialsConfigured: boolean;
+    oauthClientCredentialPlacementConfigured: boolean;
+    oauthClientCredentialPlacementMode: string;
+    oauthSandboxTokenUrlConfigured: boolean;
+    oauthScopeConfigured: boolean;
+    tokenReady: boolean;
+    sandboxBaseUrlAllowed: boolean;
+    memberNumberConfigured: boolean;
+    securityCodeConfigured: boolean;
+    customerCodeConfigured: boolean;
+    productCodeConfigured: boolean;
+    consentVersionConfigured: boolean;
+    permissiblePurposeConfigured: boolean;
+    timeoutConfigured: boolean;
+    retryConfigured: boolean;
+  }): BlockedReason | null {
+    if (!input.enabled) return "equifax_provider_disabled";
+    if (input.environment !== "sandbox") return "equifax_environment_not_sandbox";
+    if (input.tokenStrategy !== "client_credentials") {
+      return "equifax_client_credentials_required";
+    }
+    if (!input.providerCallsEnabled) return "equifax_provider_calls_disabled";
+    if (!input.oauthTokenExchangeEnabled) return "equifax_oauth_exchange_disabled";
+    if (!input.oauthClientCredentialsConfigured) {
+      return "equifax_oauth_client_credentials_missing";
+    }
+    if (!input.oauthScopeConfigured) return "equifax_oauth_scope_invalid";
+    if (!input.oauthSandboxTokenUrlConfigured) {
+      return "equifax_oauth_sandbox_token_url_required";
+    }
+    if (
+      !input.oauthClientCredentialPlacementConfigured ||
+      input.oauthClientCredentialPlacementMode !== "basic_auth"
+    ) {
+      return "equifax_oauth_basic_auth_required";
+    }
+    if (!input.tokenReady) return "equifax_token_not_ready";
+    if (!input.sandboxBaseUrlAllowed) return "official_sandbox_base_url_required";
+    if (!input.memberNumberConfigured) return "equifax_sandbox_member_number_required";
+    if (!input.securityCodeConfigured) return "equifax_sandbox_security_code_required";
+    if (!input.customerCodeConfigured) return "equifax_sandbox_customer_code_required";
+    if (!input.productCodeConfigured) return "equifax_product_code_required";
+    if (!input.consentVersionConfigured) return "equifax_consent_version_required";
+    if (!input.permissiblePurposeConfigured) {
+      return "equifax_permissible_purpose_code_required";
+    }
+    if (!input.timeoutConfigured) return "equifax_timeout_required";
+    if (!input.retryConfigured) return "equifax_retry_count_required";
+    return null;
   }
 
   private getFlag(key: string): boolean {

@@ -144,6 +144,8 @@ const clientCredentialsReady = createStatus(createSandboxClientCredentialEnv({
 
 assert.equal(clientCredentialsReady.tokenStrategy, "client_credentials");
 assert.equal(clientCredentialsReady.tokenReady, true);
+assert.equal(clientCredentialsReady.sandboxVerificationReady, true);
+assert.equal(clientCredentialsReady.sandboxVerificationBlockedReason, null);
 assert.equal(clientCredentialsReady.blockedReason, "ready_for_safe_client_credentials_provider_check");
 assert.equal(clientCredentialsReady.safeToRunLiveCall, false);
 assertSafePayload(clientCredentialsReady, createSandboxClientCredentialEnv());
@@ -151,6 +153,14 @@ assertSafePayload(clientCredentialsReady, createSandboxClientCredentialEnv());
 assert.equal(
   validateSandboxVerificationInput({}).blockedReason,
   "credit_consent_required"
+);
+assert.deepEqual(
+  validateSandboxVerificationInput({
+    consent: true,
+    permissiblePurposeCode: "57",
+    sandboxIdentity: true
+  }),
+  { ok: true, blockedReason: null }
 );
 assert.equal(
   validateSandboxVerificationInput({
@@ -241,6 +251,11 @@ function createSandboxStaticTokenEnv(overrides = {}) {
     EQUIFAX_SANDBOX_MEMBER_NUMBER: "sandbox-member-secret-value",
     EQUIFAX_SANDBOX_SECURITY_CODE: "sandbox-security-secret-value",
     EQUIFAX_SANDBOX_CUSTOMER_CODE: "sandbox-customer-secret-value",
+    EQUIFAX_TIMEOUT_MS: "10000",
+    EQUIFAX_RETRY_COUNT: "0",
+    EQUIFAX_PRODUCT_CODE: "oneview-consumer-credit-report",
+    EQUIFAX_CONSENT_VERSION: "kimure-credit-consent-v1",
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: "57",
     ...overrides
   };
 }
@@ -256,6 +271,11 @@ function createSandboxClientCredentialEnv(overrides = {}) {
     EQUIFAX_SANDBOX_MEMBER_NUMBER: "sandbox-member-secret-value",
     EQUIFAX_SANDBOX_SECURITY_CODE: "sandbox-security-secret-value",
     EQUIFAX_SANDBOX_CUSTOMER_CODE: "sandbox-customer-secret-value",
+    EQUIFAX_TIMEOUT_MS: "10000",
+    EQUIFAX_RETRY_COUNT: "0",
+    EQUIFAX_PRODUCT_CODE: "oneview-consumer-credit-report",
+    EQUIFAX_CONSENT_VERSION: "kimure-credit-consent-v1",
+    EQUIFAX_PERMISSIBLE_PURPOSE_CODE: "57",
     ...overrides
   };
 }

@@ -341,6 +341,72 @@
               </div>
             </dl>
           </section>
+
+          <section class="credit-sandbox-verification" aria-labelledby="creditSandboxVerificationTitle">
+            <p class="credit-eyebrow">Sandbox verification</p>
+            <h2 id="creditSandboxVerificationTitle">Provider sandbox check</h2>
+            <p class="credit-provider-note">
+              Sandbox only. Requires a signed-in session and uses the backend’s fake sandbox identity.
+              Do not enter real SIN/SSN or personal credit data for this check.
+            </p>
+            <label class="credit-sandbox-consent">
+              <input id="creditSandboxConsent" type="checkbox" />
+              <span>I confirm this is a sandbox/test verification only.</span>
+            </label>
+            <button class="btn btn-outline credit-sandbox-button" id="creditSandboxVerifyButton" type="button" disabled>
+              Run sandbox provider verification
+            </button>
+            <p class="credit-provider-note">
+              No live Equifax call is made by the browser. Secrets and raw bureau data are never displayed.
+            </p>
+            <p class="credit-provider-state" id="creditSandboxVerificationState" aria-live="polite">
+              Confirm sandbox consent to enable verification.
+            </p>
+            <dl class="credit-provider-status-list" id="creditSandboxVerificationList" hidden>
+              <div>
+                <dt>Provider</dt>
+                <dd id="creditSandboxProvider">—</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd id="creditSandboxStatus">—</dd>
+              </div>
+              <div>
+                <dt>Provider status</dt>
+                <dd id="creditSandboxProviderStatus">—</dd>
+              </div>
+              <div>
+                <dt>Verified</dt>
+                <dd id="creditSandboxVerified">—</dd>
+              </div>
+              <div>
+                <dt>Transaction ID</dt>
+                <dd id="creditSandboxTransactionId">—</dd>
+              </div>
+              <div>
+                <dt>Safe to run live call</dt>
+                <dd id="creditSandboxSafeLiveCall">—</dd>
+              </div>
+              <div>
+                <dt>Blocked reason</dt>
+                <dd id="creditSandboxBlockedReason">—</dd>
+              </div>
+            </dl>
+            <div class="credit-sandbox-summary" id="creditSandboxSummary" hidden>
+              <section>
+                <h3>Score summary</h3>
+                <ul id="creditSandboxScoreSummary"></ul>
+              </section>
+              <section>
+                <h3>Debt summary</h3>
+                <ul id="creditSandboxDebtSummary"></ul>
+              </section>
+              <section>
+                <h3>Risk flags</h3>
+                <ul id="creditSandboxRiskFlags"></ul>
+              </section>
+            </div>
+          </section>
         </aside>
       </div>
 
