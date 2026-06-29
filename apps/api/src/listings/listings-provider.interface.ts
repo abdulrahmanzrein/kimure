@@ -9,5 +9,5 @@ export interface ListingProviderAdapter {
   readonly providerId?: string;
   readonly source: ListingProviderSource;
   readonly providerStatus: ListingProviderStatus;
-  search(query: ListingSearchQuery): NormalizedListing[];
+  search(query: ListingSearchQuery): NormalizedListing[] | Promise<NormalizedListing[]>;
 }

@@ -125,7 +125,7 @@
     var maxPrice = parseMoney(textValue(formToRead, "maxPrice"));
     var intent = textValue(formToRead, "intent");
 
-    if (provider === "crea_ddf") params.set("provider", provider);
+    if (provider === "crea_ddf" || provider === "repliers_preview") params.set("provider", provider);
     if (location) params.set("location", location);
     if (type) params.set("type", type);
     if (maxPrice !== null) params.set("maxPrice", String(maxPrice));
@@ -153,6 +153,12 @@
       response.source === "crea_ddf_pending_access";
   }
 
+  function isRepliersPreviewResponse(response) {
+    return response &&
+      response.source === "repliers_preview" &&
+      String(response.providerStatus || "").indexOf("preview_") === 0;
+  }
+
   function renderProviderListingCard(grid, listing) {
     var card = appendNode(grid, "article", "mp-provider-card");
     var top = appendNode(card, "div", "mp-provider-card-top");
@@ -162,12 +168,20 @@
     appendNode(titleWrap, "h3", null, listing.title || "Sample listing");
     appendNode(titleWrap, "p", "mp-provider-price", formatMoney(listing.price, listing));
 
-    appendNode(badges, "span", "mp-provider-badge", formatProviderLabel(listing.sourceProvider || "mock_provider"));
+    var sourceProvider = listing.sourceProvider || "mock_provider";
+    var isRepliersPreview = sourceProvider === "repliers_preview";
+
+    appendNode(
+      badges,
+      "span",
+      "mp-provider-badge",
+      isRepliersPreview ? "REPLIERS PREVIEW" : formatProviderLabel(sourceProvider)
+    );
     appendNode(
       badges,
       "span",
       "mp-provider-badge mp-provider-badge--mock",
-      "Mock data"
+      isRepliersPreview ? "SAMPLE DATA" : "Mock data"
     );
 
     appendNode(card, "p", "mp-provider-location", listing.location || "Location unavailable");
@@ -209,6 +223,24 @@
           formatBlockedReason(response.blockedReason || "crea_ddf_access_not_configured") +
           ". " +
           (response.disclaimer || "CREA DDF access and compliance must be configured before live listings are used.")
+      );
+      return;
+    }
+
+    if (isRepliersPreviewResponse(response) && !results.length) {
+      if (emptyEl) {
+        emptyEl.hidden = false;
+        emptyEl.textContent = "Repliers preview is not configured or returned no sample listings. No live CREA/DDF listing data is being displayed.";
+      }
+      setProviderStatus(
+        statusEl,
+        response.providerStatus === "preview_ready" ? "ready" : "pending",
+        "Provider status: " +
+          formatBlockedReason(response.providerStatus || "preview_not_configured") +
+          ". " +
+          formatBlockedReason(response.blockedReason || "repliers_preview_request_failed") +
+          ". " +
+          (response.disclaimer || "Repliers preview/sample data is not live CREA/DDF listing data.")
       );
       return;
     }
@@ -295,7 +327,9 @@
 
   function getSelectedListingsProvider() {
     var selector = document.getElementById("mpProviderSelector");
-    return selector && selector.value === "crea_ddf" ? "crea_ddf" : "";
+    if (!selector) return "";
+    if (selector.value === "crea_ddf" || selector.value === "repliers_preview") return selector.value;
+    return "";
   }
 
   function marketplaceAiMetadata() {

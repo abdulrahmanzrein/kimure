@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { CreaDdfPendingProvider } from "./crea-ddf-pending.provider";
 import { ListingsController } from "./listings.controller";
 import { MockListingsProvider } from "./mock-listings.provider";
+import { RepliersPreviewProvider } from "./repliers-preview.provider";
 import { ListingsProviderRegistry } from "./listings-provider.registry";
 import { ListingsService } from "./listings.service";
 
@@ -11,7 +12,8 @@ import { ListingsService } from "./listings.service";
     ListingsService,
     ListingsProviderRegistry,
     MockListingsProvider,
-    CreaDdfPendingProvider
+    CreaDdfPendingProvider,
+    RepliersPreviewProvider
   ],
   exports: [ListingsService]
 })

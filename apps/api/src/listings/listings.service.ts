@@ -23,6 +23,7 @@ function parseText(value: unknown): string | undefined {
 
 function parseProvider(value: unknown): ListingSearchQuery["provider"] {
   const provider = parseText(value);
+  if (provider === "repliers_preview") return "repliers_preview";
   return provider === "crea_ddf" ? "crea_ddf" : undefined;
 }
 
@@ -33,9 +34,9 @@ export class ListingsService {
   // GET /api/listings/search currently uses mock data only. This keeps the API
   // contract ready for a licensed listing provider without implying that live
   // MLS, CREA DDF, IDX, Realtor.ca, or other provider data is connected.
-  search(
+  async search(
     rawQuery: Record<string, unknown> | ListingSearchQuery
-  ): ListingsSearchResponse {
+  ): Promise<ListingsSearchResponse> {
     const query: ListingSearchQuery = {
       q: parseText(rawQuery.q),
       location: parseText(rawQuery.location),
@@ -54,15 +55,24 @@ export class ListingsService {
         providerStatus: provider.providerStatus,
         blockedReason: CREA_DDF_BLOCKED_REASON,
         disclaimer: CREA_DDF_PENDING_ACCESS_DISCLAIMER,
-        results: provider.search(query)
+        results: await provider.search(query)
       };
+    }
+
+    if (provider.source === "repliers_preview") {
+      const providerWithResponse = provider as typeof provider & {
+        searchResponse?: (query: ListingSearchQuery) => Promise<ListingsSearchResponse>;
+      };
+      if (providerWithResponse.searchResponse) {
+        return providerWithResponse.searchResponse(query);
+      }
     }
 
     return {
       source: provider.source,
       providerStatus: provider.providerStatus,
       disclaimer: MOCK_LISTINGS_DISCLAIMER,
-      results: provider.search(query)
+      results: await provider.search(query)
     };
   }
 }

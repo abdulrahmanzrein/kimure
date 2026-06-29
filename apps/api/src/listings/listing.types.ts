@@ -1,6 +1,15 @@
-export type ListingProviderSource = "mock_provider" | "crea_ddf_pending_access";
+export type ListingProviderSource =
+  | "mock_provider"
+  | "crea_ddf_pending_access"
+  | "repliers_preview";
 
-export type ListingProviderStatus = "mock_only" | "pending_access";
+export type ListingProviderStatus =
+  | "mock_only"
+  | "pending_access"
+  | "preview_ready"
+  | "preview_disabled"
+  | "preview_not_configured"
+  | "preview_error";
 
 export interface ListingSearchQuery {
   q?: string;
@@ -10,7 +19,7 @@ export interface ListingSearchQuery {
   maxPrice?: number;
   bedrooms?: number;
   intent?: string;
-  provider?: "mock_provider" | "crea_ddf";
+  provider?: "mock_provider" | "crea_ddf" | "repliers_preview";
 }
 
 export interface NormalizedListing {
@@ -28,6 +37,14 @@ export interface NormalizedListing {
   sourceProvider: ListingProviderSource;
   isLiveProviderData: false;
   matchSignals: string[];
+  priceLabel?: string;
+  neighbourhood?: string;
+  description?: string;
+  propertyType?: string;
+  squareFeet?: number | null;
+  tags?: string[];
+  intent?: string | null;
+  providerStatus?: ListingProviderStatus;
 }
 
 export interface ListingsSearchResponse {

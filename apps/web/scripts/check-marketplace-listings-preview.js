@@ -24,6 +24,7 @@ const listingsPreviewJs = sliceBetween(
   "mpProviderSelector",
   "Sample provider",
   "CREA DDF pending access",
+  "Repliers preview data",
   "CREA DDF access is prepared but pending approval/configuration",
   "No REALTOR.ca scraping or live CREA listing data is used in this preview"
 ].forEach((required) => {
@@ -32,7 +33,13 @@ const listingsPreviewJs = sliceBetween(
 
 [
   'provider === "crea_ddf"',
+  'provider === "repliers_preview"',
   'params.set("provider", provider)',
+  "isRepliersPreviewResponse",
+  "REPLIERS PREVIEW",
+  "SAMPLE DATA",
+  "Repliers preview is not configured or returned no sample listings",
+  "No live CREA/DDF listing data is being displayed",
   "getSelectedListingsProvider",
   "marketplaceAiMetadata",
   'listingProvider: provider || "mock_provider"',
@@ -58,12 +65,16 @@ assert.equal(html.includes("Live CREA listing data is used"), false);
   "CREA_DDF_CLIENT_ID",
   "CREA_DDF_CLIENT_SECRET",
   "CREA_DDF_ACCESS_TOKEN",
+  "REPLIERS_API_KEY",
+  "REPLIERS-API-KEY",
+  "REPLIERS_API_BASE_URL",
   "MLS_PASSWORD",
   "MLS_TOKEN",
   "Authorization",
   "Bearer ",
   "https://www.realtor.ca",
   "https://realtor.ca",
+  "https://api.repliers.io",
   "api.crea",
   "ddfapi"
 ].forEach((forbidden) => {

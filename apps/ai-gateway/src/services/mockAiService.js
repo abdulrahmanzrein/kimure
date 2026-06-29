@@ -397,6 +397,21 @@ function getListingProviderNotice(listingContext) {
     };
   }
 
+  if (
+    listingContext.source === 'repliers_preview' ||
+    listingContext.providerStatus === 'preview_ready' ||
+    listingContext.providerGuidance.dataMode === 'repliers_preview_sample_data'
+  ) {
+    return {
+      summarySuffix:
+        'Repliers preview/sample listing context may be used for sandbox reasoning, but it is not live CREA, DDF, MLS, IDX, or REALTOR.ca inventory.',
+      visibleNotice:
+        'Repliers preview data is sample provider API data; it must not be treated as live CREA/DDF/MLS listing data.',
+      recommendation:
+        'Use Repliers preview results for prototype matching only and verify live availability through an approved licensed provider before acting.'
+    };
+  }
+
   return null;
 }
 

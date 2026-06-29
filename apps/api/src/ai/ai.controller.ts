@@ -157,7 +157,7 @@ export class AiController {
 
     try {
       const query = buildListingContextQuery(input);
-      const listingsResponse = this.listings.search(query);
+      const listingsResponse = await this.listings.search(query);
 
       return {
         ...input,
@@ -233,7 +233,10 @@ function firstNumber(...values: unknown[]): number | undefined {
 }
 
 function firstProvider(...values: unknown[]): ListingSearchQuery["provider"] {
-  return firstText(...values) === "crea_ddf" ? "crea_ddf" : undefined;
+  const provider = firstText(...values);
+  if (provider === "crea_ddf") return "crea_ddf";
+  if (provider === "repliers_preview") return "repliers_preview";
+  return undefined;
 }
 
 export function buildListingContextQuery(
@@ -302,8 +305,16 @@ export function buildSafeListingContext(
       propertySize: listing.propertySize,
       listingStatus: listing.listingStatus,
       sourceProvider: listing.sourceProvider,
+      providerStatus: listing.providerStatus,
       isLiveProviderData: false,
-      matchSignals: listing.matchSignals
+      matchSignals: listing.matchSignals,
+      priceLabel: listing.priceLabel,
+      neighbourhood: listing.neighbourhood,
+      description: listing.description,
+      propertyType: listing.propertyType,
+      squareFeet: listing.squareFeet,
+      tags: listing.tags,
+      intent: listing.intent
     }))
   };
 }
@@ -315,6 +326,21 @@ function getListingProviderGuidance(listingsResponse: ListingsSearchResponse) {
       instruction:
         "CREA DDF access is pending. Do not invent live CREA/DDF listings, MLS IDs, exact live prices, addresses, or availability. Explain that no live CREA/DDF listing data is available yet.",
       dataMode: "pending_access_no_live_listings"
+    };
+  }
+
+  if (
+    listingsResponse.source === "repliers_preview" ||
+    listingsResponse.providerStatus === "preview_ready" ||
+    listingsResponse.providerStatus === "preview_not_configured" ||
+    listingsResponse.providerStatus === "preview_disabled" ||
+    listingsResponse.providerStatus === "preview_error"
+  ) {
+    return {
+      label: "Repliers preview/sample data",
+      instruction:
+        "Repliers preview data is sample provider API data. It is not live CREA, DDF, MLS, IDX, or REALTOR.ca listing data. Do not describe it as live CREA/DDF inventory.",
+      dataMode: "repliers_preview_sample_data"
     };
   }
 
