@@ -234,6 +234,7 @@ function firstNumber(...values: unknown[]): number | undefined {
 
 function firstProvider(...values: unknown[]): ListingSearchQuery["provider"] {
   const provider = firstText(...values);
+  if (provider === "mock_provider") return "mock_provider";
   if (provider === "crea_ddf") return "crea_ddf";
   if (provider === "repliers_preview") return "repliers_preview";
   return undefined;
@@ -261,8 +262,10 @@ export function buildListingContextQuery(
     maxPrice: firstNumber(
       filters.maxPrice,
       filters.budget,
+      filters.monthlyBudget,
       input.maxPrice,
       input.budget,
+      input.monthlyBudget,
       listing.price,
       property.price,
       financials.availableFunds
@@ -270,12 +273,14 @@ export function buildListingContextQuery(
     bedrooms: firstNumber(filters.bedrooms, input.bedrooms, property.bedrooms),
     intent: firstText(input.intent, input.goals, filters.intent, filters.preferences),
     provider: firstProvider(
+      input.listingProvider,
+      metadata.listingProvider,
+      metadata.provider,
       input.provider,
       filters.provider,
       listing.provider,
       property.provider,
-      context.provider,
-      metadata.listingProvider
+      context.provider
     )
   };
 }
@@ -310,11 +315,11 @@ export function buildSafeListingContext(
       matchSignals: listing.matchSignals,
       priceLabel: listing.priceLabel,
       neighbourhood: listing.neighbourhood,
-      description: listing.description,
       propertyType: listing.propertyType,
       squareFeet: listing.squareFeet,
       tags: listing.tags,
-      intent: listing.intent
+      intent: listing.intent,
+      imageCount: listing.imageCount
     }))
   };
 }

@@ -59,7 +59,7 @@ async function run() {
   assert.equal(query.type, "detached");
   assert.equal(query.bedrooms, 3);
   assert.equal(query.intent, "primary residence");
-  assert.equal(query.provider, undefined);
+  assert.equal(query.provider, "mock_provider");
 
   const listings = await createListingsService().search(query);
   const context = buildSafeListingContext(listings, query);
@@ -151,6 +151,104 @@ async function run() {
 
   assert.equal(repliersQuery.provider, "repliers_preview");
 
+  const topLevelRepliersQuery = buildListingContextQuery({
+    provider: "mock_provider",
+    listingProvider: "repliers_preview",
+    metadata: { listingProvider: "mock_provider" },
+    filters: { provider: "crea_ddf", location: "Toronto", maxPrice: "$750,000" }
+  });
+
+  assert.equal(topLevelRepliersQuery.provider, "repliers_preview");
+
+  const explicitMockQuery = buildListingContextQuery({
+    provider: "mock_provider",
+    listingProvider: "mock_provider",
+    metadata: { listingProvider: "mock_provider" },
+    filters: { provider: "repliers_preview", location: "Toronto" }
+  });
+
+  assert.equal(explicitMockQuery.provider, "mock_provider");
+
+  const originalRepliersEnv = {
+    REPLIERS_ENABLED: process.env.REPLIERS_ENABLED,
+    REPLIERS_PROVIDER_CALLS_ENABLED: process.env.REPLIERS_PROVIDER_CALLS_ENABLED,
+    REPLIERS_API_BASE_URL: process.env.REPLIERS_API_BASE_URL,
+    REPLIERS_API_KEY: process.env.REPLIERS_API_KEY
+  };
+
+  try {
+    process.env.REPLIERS_ENABLED = "false";
+    delete process.env.REPLIERS_PROVIDER_CALLS_ENABLED;
+    delete process.env.REPLIERS_API_BASE_URL;
+    delete process.env.REPLIERS_API_KEY;
+
+    const unavailableRepliers = await createListingsService().search({
+      provider: "repliers_preview",
+      location: "Toronto"
+    });
+
+    assert.equal(unavailableRepliers.source, "repliers_preview");
+    assert.notEqual(unavailableRepliers.source, "mock_provider");
+    assert.equal(unavailableRepliers.results.length, 0);
+    assert.equal(unavailableRepliers.blockedReason, "repliers_provider_disabled");
+
+    const unavailableContext = buildSafeListingContext(unavailableRepliers, {
+      provider: "repliers_preview",
+      location: "Toronto"
+    });
+    const unavailableMockResponse = getMockToolResponse("scout", {
+      listingContext: unavailableContext
+    });
+    const unavailableMockSerialized = JSON.stringify(unavailableMockResponse);
+
+    assert.equal(
+      unavailableMockResponse.summary.includes("Repliers preview data is selected but unavailable"),
+      true
+    );
+    assert.equal(unavailableMockSerialized.includes("did not substitute mock listings"), true);
+    assert.equal(unavailableMockSerialized.includes("Sample family home near parks and transit"), false);
+  } finally {
+    restoreEnv("REPLIERS_ENABLED", originalRepliersEnv.REPLIERS_ENABLED);
+    restoreEnv(
+      "REPLIERS_PROVIDER_CALLS_ENABLED",
+      originalRepliersEnv.REPLIERS_PROVIDER_CALLS_ENABLED
+    );
+    restoreEnv("REPLIERS_API_BASE_URL", originalRepliersEnv.REPLIERS_API_BASE_URL);
+    restoreEnv("REPLIERS_API_KEY", originalRepliersEnv.REPLIERS_API_KEY);
+  }
+
+  const originalFetch = global.fetch;
+  try {
+    process.env.REPLIERS_ENABLED = "true";
+    process.env.REPLIERS_PROVIDER_CALLS_ENABLED = "true";
+    process.env.REPLIERS_API_BASE_URL = "https://api.repliers.io";
+    process.env.REPLIERS_API_KEY = "redacted-test-key";
+    global.fetch = async () => ({
+      ok: true,
+      json: async () => mockRepliersResponseBody()
+    });
+
+    const serviceRepliersListings = await createListingsService().search(topLevelRepliersQuery);
+
+    assert.equal(serviceRepliersListings.source, "repliers_preview");
+    assert.equal(serviceRepliersListings.providerStatus, "preview_ready");
+    assert.equal(serviceRepliersListings.results[0].sourceProvider, "repliers_preview");
+    assert.equal(serviceRepliersListings.results[0].title, "Downtown Condo Preview");
+    assert.equal(
+      JSON.stringify(serviceRepliersListings).includes("Sample family home near parks and transit"),
+      false
+    );
+  } finally {
+    global.fetch = originalFetch;
+    restoreEnv("REPLIERS_ENABLED", originalRepliersEnv.REPLIERS_ENABLED);
+    restoreEnv(
+      "REPLIERS_PROVIDER_CALLS_ENABLED",
+      originalRepliersEnv.REPLIERS_PROVIDER_CALLS_ENABLED
+    );
+    restoreEnv("REPLIERS_API_BASE_URL", originalRepliersEnv.REPLIERS_API_BASE_URL);
+    restoreEnv("REPLIERS_API_KEY", originalRepliersEnv.REPLIERS_API_KEY);
+  }
+
   const repliersProvider = new RepliersPreviewProvider();
   const repliersListings = await repliersProvider.searchResponse(repliersQuery, {
     env: {
@@ -161,27 +259,7 @@ async function run() {
     },
     fetchImpl: async () => ({
       ok: true,
-      json: async () => ({
-        listings: [
-          {
-            id: "sample-1",
-            listPrice: 725000,
-            class: "condo",
-            photoCount: 40,
-            images: [
-              "area/IMG-N8418368_1.jpg",
-              { medium: "https://cdn.example.test/repliers/sample-condo-2.jpg" }
-            ],
-            address: { city: "Toronto", state: "ON", neighborhood: "Sample District" },
-            details: {
-              numBedrooms: 2,
-              numBathrooms: 2,
-              sqft: 850
-            },
-            status: "preview_sample"
-          }
-        ]
-      })
+      json: async () => mockRepliersResponseBody()
     })
   });
   const repliersContext = buildSafeListingContext(repliersListings, repliersQuery);
@@ -190,13 +268,16 @@ async function run() {
   assert.equal(repliersContext.source, "repliers_preview");
   assert.equal(repliersContext.providerStatus, "preview_ready");
   assert.equal(repliersContext.isLiveProviderData, false);
-  assert.equal(repliersContext.resultCount, 1);
+  assert.equal(repliersContext.resultCount, 3);
   assert.equal(repliersContext.providerGuidance.dataMode, "repliers_preview_sample_data");
   assert.equal(repliersContext.providerGuidance.instruction.includes("sample provider API data"), true);
   assert.equal(repliersContext.providerGuidance.instruction.includes("not live MLS"), true);
   assert.equal(repliersContext.results[0].sourceProvider, "repliers_preview");
   assert.equal(repliersContext.results[0].providerStatus, "preview_ready");
   assert.equal(repliersContext.results[0].isLiveProviderData, false);
+  assert.equal(Object.prototype.hasOwnProperty.call(repliersContext.results[0], "imageUrl"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(repliersContext.results[0], "description"), false);
+  assert.equal(repliersContext.results[0].imageCount, 40);
   assert.equal(repliersListings.results[0].imageUrl, "https://cdn.repliers.io/area/IMG-N8418368_1.jpg");
   assert.equal(repliersListings.results[0].imageCount, 40);
   assert.equal(repliersSerialized.includes("redacted-test-key"), false);
@@ -212,6 +293,13 @@ async function run() {
 
   assert.equal(repliersMockResponse.summary.includes("Using Repliers preview/sample listing data"), true);
   assert.equal(repliersMockResponse.summary.includes("not live MLS data"), true);
+  assert.equal(repliersMockResponse.summary.includes("Condo"), true);
+  assert.equal(repliersMockResponse.summary.includes("East End Townhome Preview"), true);
+  assert.equal(repliersMockResponse.summary.includes("West Side Detached Preview"), true);
+  assert.equal(JSON.stringify(repliersMockResponse).includes("$725,000"), true);
+  assert.equal(JSON.stringify(repliersMockResponse).includes("$695,000"), true);
+  assert.equal(JSON.stringify(repliersMockResponse).includes("$815,000"), true);
+  assert.equal(JSON.stringify(repliersMockResponse).includes("Sample District"), true);
   assert.equal(
     repliersMockResponse.keyInsights.some((item) =>
       item.includes("sample provider API data")
@@ -222,8 +310,36 @@ async function run() {
   assert.equal(repliersMockSerialized.includes("CREA"), false);
   assert.equal(repliersMockSerialized.includes("DDF"), false);
   assert.equal(repliersMockSerialized.includes("REALTOR"), false);
+  assert.equal(repliersMockSerialized.includes("Sample family home near parks and transit"), false);
   assert.equal(repliersMockSerialized.includes("live CREA listings are connected"), false);
   assert.equal(/MLS[-\s]?\d{4,}/i.test(repliersMockSerialized), false);
+
+  const rentalMockResponse = getMockToolResponse("rental", {
+    listingContext: repliersContext
+  });
+  assert.equal(
+    rentalMockResponse.keyInsights.some((item) =>
+      item.includes("No rental-specific preview listings were returned")
+    ),
+    true
+  );
+
+  const investmentMockResponse = getMockToolResponse("investment-planner", {
+    listingContext: repliersContext
+  });
+  assert.equal(JSON.stringify(investmentMockResponse).includes("compare price"), true);
+  assert.equal(JSON.stringify(investmentMockResponse).includes("ROI"), true);
+  assert.equal(JSON.stringify(investmentMockResponse).includes("illustrative"), true);
+
+  const analyzeMockResponse = getMockToolResponse("analyze", {
+    listingContext: repliersContext
+  });
+  assert.equal(JSON.stringify(analyzeMockResponse).includes("matching preview listing"), true);
+
+  const chatMockResponse = getMockToolResponse("chat", {
+    listingContext: repliersContext
+  });
+  assert.equal(JSON.stringify(chatMockResponse).includes("For listing-related questions"), true);
 
   const mockProviderResponse = getMockToolResponse("scout", {
     listingContext: context
@@ -243,3 +359,66 @@ run().catch((error) => {
   console.error(error.message);
   process.exit(1);
 });
+
+function restoreEnv(key, value) {
+  if (value === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = value;
+  }
+}
+
+function mockRepliersResponseBody() {
+  return {
+    listings: [
+      {
+        id: "sample-1",
+        title: "Downtown Condo Preview",
+        listPrice: 725000,
+        class: "condo",
+        photoCount: 40,
+        images: [
+          "area/IMG-N8418368_1.jpg",
+          { medium: "https://cdn.example.test/repliers/sample-condo-2.jpg" }
+        ],
+        address: { city: "Toronto", state: "ON", neighborhood: "Sample District" },
+        details: {
+          numBedrooms: 2,
+          numBathrooms: 2,
+          sqft: 850
+        },
+        status: "preview_sample"
+      },
+      {
+        id: "sample-2",
+        title: "East End Townhome Preview",
+        listPrice: 695000,
+        class: "townhome",
+        photoCount: 15,
+        images: ["area/IMG-N8418368_2.jpg"],
+        address: { city: "Toronto", state: "ON", neighborhood: "East End" },
+        details: {
+          numBedrooms: 3,
+          numBathrooms: 2,
+          sqft: 1180
+        },
+        status: "preview_sample"
+      },
+      {
+        id: "sample-3",
+        title: "West Side Detached Preview",
+        listPrice: 815000,
+        class: "detached",
+        photoCount: 22,
+        images: ["area/IMG-N8418368_3.jpg"],
+        address: { city: "Toronto", state: "ON", neighborhood: "West Side" },
+        details: {
+          numBedrooms: 4,
+          numBathrooms: 3,
+          sqft: 1680
+        },
+        status: "preview_sample"
+      }
+    ]
+  };
+}

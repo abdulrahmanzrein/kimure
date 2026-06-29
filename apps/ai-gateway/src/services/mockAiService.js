@@ -316,18 +316,25 @@ function getMockToolResponse(tool, payload = {}) {
   const selectedTool = tools[tool] || tools.chat;
   const listingContext = getSafeListingContext(payload);
   const providerNotice = getListingProviderNotice(listingContext);
+  const listingAdditions = getListingAwareAdditions(selectedTool.tool, listingContext);
 
   return createAiResponse({
     ...selectedTool,
-    summary: providerNotice
-      ? `${selectedTool.summary} ${providerNotice.summarySuffix}`
-      : selectedTool.summary,
-    keyInsights: providerNotice
-      ? [providerNotice.visibleNotice, ...selectedTool.keyInsights]
-      : selectedTool.keyInsights,
-    recommendations: providerNotice
-      ? [providerNotice.recommendation, ...selectedTool.recommendations]
-      : selectedTool.recommendations,
+    summary: [
+      selectedTool.summary,
+      providerNotice ? providerNotice.summarySuffix : null,
+      listingAdditions.summarySuffix
+    ].filter(Boolean).join(' '),
+    keyInsights: [
+      providerNotice ? providerNotice.visibleNotice : null,
+      ...listingAdditions.keyInsights,
+      ...selectedTool.keyInsights
+    ].filter(Boolean),
+    recommendations: [
+      providerNotice ? providerNotice.recommendation : null,
+      ...listingAdditions.recommendations,
+      ...selectedTool.recommendations
+    ].filter(Boolean),
     reportData: {
       ...selectedTool.reportData,
       listingContext: listingContext || undefined,
@@ -364,7 +371,9 @@ function getSafeListingContext(payload) {
       dataMode: stringOrNull(providerGuidance.dataMode),
       instruction: stringOrNull(providerGuidance.instruction),
       label: stringOrNull(providerGuidance.label)
-    }
+    },
+    query: toSafeListingQuery(context.query),
+    results: results.slice(0, 6).map(toSafeListingSummary).filter(Boolean)
   };
 }
 
@@ -400,8 +409,33 @@ function getListingProviderNotice(listingContext) {
   if (
     listingContext.source === 'repliers_preview' ||
     listingContext.providerStatus === 'preview_ready' ||
+    listingContext.providerStatus === 'preview_disabled' ||
+    listingContext.providerStatus === 'preview_not_configured' ||
+    listingContext.providerStatus === 'preview_error' ||
     listingContext.providerGuidance.dataMode === 'repliers_preview_sample_data'
   ) {
+    if (listingContext.providerStatus !== 'preview_ready') {
+      return {
+        summarySuffix:
+          'Repliers preview data is selected but unavailable in this environment. Kimure did not substitute mock listings for this response.',
+        visibleNotice:
+          'Repliers preview is unavailable right now, so no Repliers listing results were ranked.',
+        recommendation:
+          'Check Repliers preview configuration, then rerun the marketplace tool to rank returned preview listings.'
+      };
+    }
+
+    if (!listingContext.results.length) {
+      return {
+        summarySuffix:
+          'Repliers preview data is selected, but no preview listing results were returned for this search. This is not live MLS data.',
+        visibleNotice:
+          'No Repliers preview listings were available to rank for the selected filters.',
+        recommendation:
+          'Adjust location, budget, property type, or intent filters and rerun the Repliers preview search.'
+      };
+    }
+
     return {
       summarySuffix:
         'Using Repliers preview/sample listing data for sandbox reasoning. This is not live MLS data.',
@@ -415,8 +449,249 @@ function getListingProviderNotice(listingContext) {
   return null;
 }
 
+function getListingAwareAdditions(tool, listingContext) {
+  if (!listingContext) {
+    return emptyListingAdditions();
+  }
+
+  const listings = Array.isArray(listingContext.results) ? listingContext.results : [];
+
+  if (!listings.length) {
+    if (tool === 'rental') {
+      return {
+        summarySuffix: 'No rental-specific preview listings were returned with the selected provider context.',
+        keyInsights: [
+          'No returned preview listing can be ranked as a rental match from the current provider context.'
+        ],
+        recommendations: [
+          'Refine location, monthly budget, and rental needs, then rerun the rental search with provider context.'
+        ]
+      };
+    }
+
+    return emptyListingAdditions();
+  }
+
+  if (tool === 'scout') return buildScoutListingAdditions(listings, listingContext);
+  if (tool === 'rental') return buildRentalListingAdditions(listings);
+  if (tool === 'investment-planner') return buildInvestmentListingAdditions(listings);
+  if (tool === 'analyze' || tool === 'valuate') return buildPropertyReviewListingAdditions(listings);
+  if (tool === 'chat') return buildChatListingAdditions(listings);
+
+  return emptyListingAdditions();
+}
+
+function buildScoutListingAdditions(listings, listingContext) {
+  const ranked = listings.slice(0, 3);
+
+  return {
+    summarySuffix:
+      `Ranked preview matches: ${ranked.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
+    keyInsights: ranked.map((listing, index) =>
+      `#${index + 1} ${formatListingSummary(listing)} — ${buildFitReason(listing, listingContext)}`
+    ),
+    recommendations: [
+      `Start with ${ranked[0].title} as the strongest preview match, then compare the other returned sample listings against budget, location, property type, and fit signals.`,
+      'Rank or compare only these returned preview listings; do not treat them as live availability.'
+    ]
+  };
+}
+
+function buildRentalListingAdditions(listings) {
+  const rentalListings = listings.filter(isRentalLikeListing).slice(0, 3);
+
+  if (!rentalListings.length) {
+    return {
+      summarySuffix:
+        'Returned preview listings do not appear rental-specific, so rental fit should stay directional.',
+      keyInsights: [
+        'No rental-specific preview listings were returned; the current provider context appears better suited to purchase/investment comparison.'
+      ],
+      recommendations: [
+        'Rerun with rental-oriented filters such as lease, monthly budget, bedrooms, transit, and pet needs before ranking rental options.'
+      ]
+    };
+  }
+
+  return {
+    summarySuffix:
+      `Rental-oriented preview matches: ${rentalListings.map((listing, index) => `#${index + 1} ${listing.title}`).join('; ')}.`,
+    keyInsights: rentalListings.map((listing, index) =>
+      `#${index + 1} ${formatListingSummary(listing)} — rental fit should be checked against monthly budget, location needs, and listed property features.`
+    ),
+    recommendations: [
+      `Review ${rentalListings[0].title} first, then compare monthly cost, commute fit, and needs against the remaining returned preview listings.`
+    ]
+  };
+}
+
+function buildInvestmentListingAdditions(listings) {
+  const compared = listings.slice(0, 3);
+
+  return {
+    summarySuffix:
+      `Investment preview comparison uses ${compared.length} returned sample listing${compared.length === 1 ? '' : 's'} by price, type, size, and fit signals.`,
+    keyInsights: compared.map((listing, index) =>
+      `#${index + 1} ${formatListingSummary(listing)} — compare price, ${listing.propertyType || listing.type || 'property type'}, ${listing.propertySize || 'size unavailable'}, and signals: ${formatSignals(listing)}.`
+    ),
+    recommendations: [
+      'Use the lowest-risk preview candidate as a baseline, then stress-test carrying costs, rent assumptions, repairs, and financing before treating any deal as investable.',
+      'Do not infer ROI from preview listings alone; any return discussion here is illustrative until verified operating data is available.'
+    ]
+  };
+}
+
+function buildPropertyReviewListingAdditions(listings) {
+  const listing = listings[0];
+
+  return {
+    summarySuffix:
+      `A matching preview listing is available for context: ${formatListingSummary(listing)}.`,
+    keyInsights: [
+      `Use ${listing.title} as the comparison anchor from the returned preview context, focusing on price, type, size, and location summary.`
+    ],
+    recommendations: [
+      'Validate condition, fees, comparable sales, and availability through an approved listing workflow before acting.'
+    ]
+  };
+}
+
+function buildChatListingAdditions(listings) {
+  const top = listings.slice(0, 3);
+
+  return {
+    summarySuffix:
+      `For listing-related questions, use these returned preview listings as context: ${top.map((listing) => listing.title).join('; ')}.`,
+    keyInsights: top.map((listing, index) => `#${index + 1} ${formatListingSummary(listing)}.`),
+    recommendations: [
+      'Ask a follow-up with budget, location, property type, and must-have criteria to compare the returned preview listings more precisely.'
+    ]
+  };
+}
+
+function emptyListingAdditions() {
+  return {
+    summarySuffix: null,
+    keyInsights: [],
+    recommendations: []
+  };
+}
+
+function toSafeListingSummary(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+
+  return {
+    id: stringOrNull(value.id),
+    title: stringOrNull(value.title) || 'Preview listing',
+    price: numberOrNull(value.price),
+    priceLabel: stringOrNull(value.priceLabel),
+    location: stringOrNull(value.location),
+    neighbourhood: stringOrNull(value.neighbourhood),
+    addressSummary: stringOrNull(value.addressSummary),
+    propertyType: stringOrNull(value.propertyType) || stringOrNull(value.type),
+    bedrooms: numberOrNull(value.bedrooms),
+    bathrooms: numberOrNull(value.bathrooms),
+    squareFeet: numberOrNull(value.squareFeet),
+    propertySize: stringOrNull(value.propertySize),
+    tags: arrayOfStrings(value.tags),
+    matchSignals: arrayOfStrings(value.matchSignals),
+    providerStatus: stringOrNull(value.providerStatus),
+    sourceProvider: stringOrNull(value.sourceProvider),
+    isLiveProviderData: value.isLiveProviderData === true,
+    imageCount: numberOrNull(value.imageCount)
+  };
+}
+
+function toSafeListingQuery(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return {
+    location: stringOrNull(value.location),
+    type: stringOrNull(value.type),
+    maxPrice: numberOrNull(value.maxPrice),
+    bedrooms: numberOrNull(value.bedrooms),
+    intent: stringOrNull(value.intent),
+    provider: stringOrNull(value.provider)
+  };
+}
+
+function formatListingSummary(listing) {
+  const specs = [
+    listing.priceLabel || formatMoney(listing.price),
+    listing.propertyType,
+    formatBedsBaths(listing),
+    listing.propertySize,
+    listing.location,
+    listing.neighbourhood || listing.addressSummary
+  ].filter(Boolean);
+
+  return `${listing.title} (${specs.join(' • ')})`;
+}
+
+function buildFitReason(listing, listingContext) {
+  const query = listingContext && listingContext.query && typeof listingContext.query === 'object'
+    ? listingContext.query
+    : {};
+  const maxPrice = numberOrNull(query.maxPrice);
+  const reasons = [];
+
+  if (maxPrice && listing.price && listing.price <= maxPrice) reasons.push('within the stated budget');
+  if (listing.location && query.location && String(listing.location).toLowerCase().includes(String(query.location).toLowerCase())) {
+    reasons.push('aligned with the target location');
+  }
+  if (listing.propertyType) reasons.push(`matches ${listing.propertyType} property context`);
+  if (listing.imageCount) reasons.push(`${listing.imageCount} preview image${listing.imageCount === 1 ? '' : 's'} available`);
+
+  return reasons.length ? reasons.join(', ') : 'fits the returned provider context for comparison';
+}
+
+function isRentalLikeListing(listing) {
+  const text = [
+    listing.title,
+    listing.propertyType,
+    listing.location,
+    listing.addressSummary,
+    ...listing.tags,
+    ...listing.matchSignals
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return text.includes('rent') || text.includes('lease') || (listing.price && listing.price < 10000);
+}
+
+function formatSignals(listing) {
+  const signals = listing.tags.length ? listing.tags : listing.matchSignals;
+  return signals.length ? signals.slice(0, 3).join(', ') : 'no extra fit signals returned';
+}
+
+function formatBedsBaths(listing) {
+  const parts = [];
+  if (listing.bedrooms) parts.push(`${listing.bedrooms} bed`);
+  if (listing.bathrooms) parts.push(`${listing.bathrooms} bath`);
+  return parts.join(' / ');
+}
+
+function formatMoney(value) {
+  if (!value) return null;
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency',
+    currency: 'CAD',
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
 function stringOrNull(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function numberOrNull(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function arrayOfStrings(value) {
+  return Array.isArray(value)
+    ? value.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim())
+    : [];
 }
 
 module.exports = {

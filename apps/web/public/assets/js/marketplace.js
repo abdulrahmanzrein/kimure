@@ -117,6 +117,13 @@
     });
   }
 
+  function formatAiProviderContextLabel(value) {
+    if (value === "repliers_preview") return "Repliers preview";
+    if (value === "mock_provider") return "Sample provider";
+    if (value === "crea_ddf_pending_access") return "Provider pending access";
+    return formatBlockedReason(value || "selected provider");
+  }
+
   function truncateText(value, maxLength) {
     var text = String(value || "").trim();
     if (!text) return "";
@@ -440,7 +447,16 @@
     var provider = getSelectedListingsProvider();
     return {
       source: "marketplace_ai_tools",
-      listingProvider: provider || "mock_provider"
+      listingProvider: provider || "mock_provider",
+      provider: provider || "mock_provider"
+    };
+  }
+
+  function selectedListingProviderFields() {
+    var provider = getSelectedListingsProvider() || "mock_provider";
+    return {
+      provider: provider,
+      listingProvider: provider
     };
   }
 
@@ -458,9 +474,12 @@
     var question = textValue(formToRead, "question");
     var listingProvider = getSelectedListingsProvider();
     var metadata = marketplaceAiMetadata();
+    var selectedProviderFields = selectedListingProviderFields();
 
     if (tool === "scout") {
       return {
+        provider: selectedProviderFields.provider,
+        listingProvider: selectedProviderFields.listingProvider,
         question: "Find matching properties for this marketplace search.",
         filters: {
           location: location,
@@ -475,6 +494,8 @@
 
     if (tool === "analyze") {
       return {
+        provider: selectedProviderFields.provider,
+        listingProvider: selectedProviderFields.listingProvider,
         question: "Analyze this property for fit, risk, and investment reasoning.",
         listing: {
           address: address,
@@ -489,6 +510,8 @@
 
     if (tool === "rental") {
       return {
+        provider: selectedProviderFields.provider,
+        listingProvider: selectedProviderFields.listingProvider,
         question: "Find rental fit based on this user profile.",
         filters: {
           location: location,
@@ -503,6 +526,8 @@
 
     if (tool === "valuate") {
       return {
+        provider: selectedProviderFields.provider,
+        listingProvider: selectedProviderFields.listingProvider,
         question: "Estimate a directional property value range.",
         property: {
           address: address,
@@ -516,6 +541,8 @@
 
     if (tool === "investment-planner") {
       return {
+        provider: selectedProviderFields.provider,
+        listingProvider: selectedProviderFields.listingProvider,
         question: "Create a property investment planning snapshot.",
         goals: goals,
         financials: {
@@ -530,6 +557,8 @@
     }
 
     return {
+      provider: selectedProviderFields.provider,
+      listingProvider: selectedProviderFields.listingProvider,
       question: question,
       message: question,
       context: {
@@ -678,6 +707,15 @@
       appendText(resultEl, "p", "mp-ai-fallback-note", "AI recommendation generated from available platform signals.");
     }
     appendText(resultEl, "h4", "mp-ai-result-title", response.summary || "Kimure returned an AI result.");
+    var listingContext = safeObject(reportData.listingContext);
+    if (listingContext.source) {
+      appendText(
+        resultEl,
+        "p",
+        "mp-ai-context-note",
+        "AI provider context: " + formatAiProviderContextLabel(listingContext.source)
+      );
+    }
 
     var meta = [];
     if (typeof response.score === "number" && Number.isFinite(response.score)) meta.push("Score " + response.score);

@@ -22,7 +22,9 @@ const listingsPreviewJs = sliceBetween(
   "marketplace-listings-preview",
   "mpProviderListingsForm",
   "mpProviderSelector",
+  '<select name="provider" id="mpProviderSelector">',
   "Sample provider",
+  '<option value="repliers_preview">Repliers preview data</option>',
   "Repliers preview data",
   "Provider-backed listing data can be connected as approved access is configured",
   "Repliers preview data is sample data for integration testing",
@@ -51,12 +53,21 @@ const listingsPreviewJs = sliceBetween(
   "truncateText",
   "mp-provider-description",
   "Preview details",
+  "mp-ai-context-note",
+  "AI provider context:",
+  "formatAiProviderContextLabel",
+  "Repliers preview",
   "Repliers preview is not configured or returned no sample listings",
   "No live MLS listing data is being displayed",
   "getSelectedListingsProvider",
+  'document.getElementById("mpProviderSelector")',
+  "selectedListingProviderFields",
   "marketplaceAiMetadata",
   'listingProvider: provider || "mock_provider"',
+  'provider: provider || "mock_provider"',
   "var listingProvider = getSelectedListingsProvider()",
+  "provider: selectedProviderFields.provider",
+  "listingProvider: selectedProviderFields.listingProvider",
   "provider: listingProvider || undefined",
   'response.providerStatus === "pending_access"',
   'response.source === "crea_ddf_pending_access"',
@@ -71,6 +82,7 @@ assert.equal(css.includes(".mp-provider-image"), true);
 assert.equal(css.includes("aspect-ratio: 16 / 10"), true);
 assert.equal(css.includes(".mp-provider-photo"), true);
 assert.equal(css.includes(".mp-provider-preview-cta"), true);
+assert.equal(css.includes(".mp-ai-context-note"), true);
 assert.equal(listingsPreviewJs.includes("innerHTML"), false, "listings preview code must not use innerHTML");
 assert.equal(listingsPreviewJs.includes("textContent"), true, "listings preview code should render dynamic values with textContent");
 assert.equal(listingsPreviewJs.includes("appendNode(body, \"p\", \"mp-provider-description\", truncateText"), true);
