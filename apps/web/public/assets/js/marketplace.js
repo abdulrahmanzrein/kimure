@@ -108,7 +108,8 @@
   }
 
   function formatProviderLabel(value) {
-    return String(value || "mock_provider").replace(/_/g, " ");
+    if (value === "mock_provider") return "Provider-ready context";
+    return String(value || "provider_ready").replace(/_/g, " ");
   }
 
   function formatBlockedReason(value) {
@@ -236,7 +237,7 @@
 
     return {
       primary: "PROVIDER READY",
-      secondary: "PREVIEW CARD"
+      secondary: "CONTEXT READY"
     };
   }
 
@@ -285,7 +286,7 @@
     var titleWrap = appendNode(top, "div");
 
     appendNode(titleWrap, "p", "mp-provider-price", listing.priceLabel || formatMoney(listing.price, listing));
-    appendNode(titleWrap, "h3", null, listing.title || "Sample listing");
+    appendNode(titleWrap, "h3", null, listing.title || "Provider listing");
 
     appendNode(body, "p", "mp-provider-location", listing.location || "Location unavailable");
     appendNode(body, "p", "mp-provider-address", listing.neighbourhood || listing.addressSummary || "Address summary unavailable");
@@ -311,7 +312,7 @@
       });
     }
 
-    appendNode(body, "button", "mp-provider-preview-cta", "Preview details").setAttribute("type", "button");
+    appendNode(body, "button", "mp-provider-preview-cta", "View listing").setAttribute("type", "button");
 
     var actions = appendNode(card, "div", "mp-provider-card-actions");
 
@@ -418,10 +419,10 @@
       if (!results.length) {
         emptyEl.textContent = responseMode === "production"
           ? "No provider listings match those filters yet."
-          : "No preview listings match those filters yet.";
+          : "No provider listings match those filters yet.";
       }
     }
-    setProviderStatus(statusEl, "ready", response.disclaimer || "Sample listings are shown from Kimure's provider-ready listings contract.");
+    setProviderStatus(statusEl, "ready", response.disclaimer || "Provider listings are shown from Kimure's listings contract.");
     renderProviderFilterSummary(filters, results.length);
 
     results.forEach(function (listing) {

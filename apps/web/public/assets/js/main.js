@@ -97,7 +97,7 @@ const I18N = {
     "nav.overview": "Overview",
     "nav.features": "Features",
     "nav.how": "How It Works",
-    "nav.mobileSoon": "Mobile app — coming soon",
+    "nav.mobileSoon": "Mobile app",
     "nav.solutions": "Solutions",
     "nav.byIndustry": "By industry",
     "nav.realestate": "Real Estate",
@@ -133,7 +133,7 @@ const I18N = {
     "hero.sub": "Kimure is the world's first unified AI brokerage platform for real estate, rural land, agricultural assets, and financial services. Buy, sell, rent, invest, and finance — intelligently.",
     "hero.explore": "Explore the Platform",
     "hero.startFree": "Get Started Free",
-    "hero.bookDemo": "Book a Demo",
+    "hero.bookDemo": "Watch overview",
     "hero.phase": "Phase",
     "hero.phaseVal": "Canada → US → Global",
     "hero.core": "Core",
@@ -154,9 +154,9 @@ const I18N = {
     "mock.fitScore": "Fit Score",
     "mock.roi": "ROI Projection",
     "mock.strong": "Strong",
-    "mock.mortgage": "Mortgage Pre-Approval",
-    "mock.eligible": "Eligible",
-    "mock.in24h": "in 24 hrs",
+    "mock.mortgage": "Mortgage Readiness",
+    "mock.eligible": "Ready",
+    "mock.in24h": "estimate",
     "mock.options": "Options",
     "mock.compareLenders": "Compare lenders",
     "mock.riskFlags": "Risk Flags",
@@ -179,23 +179,23 @@ const I18N = {
     "tile4t": "Transaction Hub",
     "tile4p": "Documents, e-signatures, regulatory workflows, and secure closing.",
     "mp.title": "Marketplace Intelligence",
-    "mp.sub": "Buy, sell, lease, and invest in verified real estate, rural land, and agricultural assets with AI-guided navigation.",
+    "mp.sub": "Kimure helps users explore provider-backed listing workflows, financial readiness, and AI-guided property decisions from one account.",
     "mp.placeholder": "Search by location, ROI, or property type",
     "mp.search": "Search",
     "mp.explore": "Explore Marketplace",
-    "mp.verified": "Verified",
-    "mp.viewDetails": "View Details →",
-    "mp.listing1": "Urban • 3 Bed • Canada",
-    "mp.listing2": "Rural Land • 48 Acres",
-    "mp.listing3": "Agricultural • Lease Option",
-    "mp.p1t": "Verified Listings Only",
-    "mp.p1p": "Identity checks, document validation, and fraud prevention.",
-    "mp.p2t": "AI-Powered Search & Match",
-    "mp.p2p": "Discovery based on goals, budget, intent signals, and risk appetite.",
-    "mp.p3t": "Secure Contracts & Workflows",
-    "mp.p3p": "E-signatures, compliance checks, and transaction tracking.",
-    "mp.p4t": "Lender & Investor Network",
-    "mp.p4p": "Pre-qualification, affordability, ROI projections, approvals.",
+    "mp.verified": "Provider signal",
+    "mp.viewDetails": "Explore Marketplace →",
+    "mp.listing1": "Provider search workflow",
+    "mp.listing2": "AI matching workflow",
+    "mp.listing3": "Readiness workflow",
+    "mp.p1t": "Provider-backed marketplace search",
+    "mp.p1p": "Explore listing workflows through approved provider connections when access is configured.",
+    "mp.p2t": "AI property matching",
+    "mp.p2p": "Turn goals, budget, location, and risk signals into practical property match guidance.",
+    "mp.p3t": "Mortgage/readiness calculator",
+    "mp.p3p": "Estimate buying power, payment range, and readiness using saved account inputs.",
+    "mp.p4t": "Credit readiness / financial profile",
+    "mp.p4p": "Keep readiness signals, financial profile details, and AI insights connected to your account.",
     "mp.catTitle": "Buy, sell, rent, and invest",
     "mp.catLead": "The same listing cards as featured above, grouped by how you want to participate. Use search to filter every section.",
     "mp.intentEmpty": "No listings match your search in this section.",
@@ -298,7 +298,7 @@ const I18N = {
     "home.p3t": "Agricultural Assets",
     "home.p3d": "Assess farm infrastructure, crop potential, and agri-finance options.",
     "home.p4t": "Financial Brokerage",
-    "home.p4d": "Mortgage simulation, loan pre-qualification, and insurance matching.",
+    "home.p4d": "Mortgage simulation, readiness planning, and insurance matching.",
     "home.p5t": "AI Inspection & Valuation",
     "home.p5d": "Inspector AI delivers instant property condition reports and valuations.",
     "home.p6t": "CRM & Growth Engine",
@@ -314,7 +314,7 @@ const I18N = {
     "home.whoColRole": "User type",
     "home.whoColHelp": "How Kimure helps",
     "home.who1r": "First-Time Homebuyers",
-    "home.who1h": "AI guidance, affordability simulation, mortgage pre-qualification.",
+    "home.who1h": "AI guidance, affordability simulation, and mortgage readiness planning.",
     "home.who2r": "Property Investors",
     "home.who2h": "ROI forecasting, portfolio dashboards, risk intelligence.",
     "home.who3r": "Real Estate Agents",
@@ -324,7 +324,7 @@ const I18N = {
     "home.who5r": "Landlords & Property Managers",
     "home.who5h": "Tenant screening, rental hub, e-signature contracts.",
     "home.who6r": "Mortgage Seekers",
-    "home.who6h": "Lender comparison, pre-qualification, rate simulation.",
+    "home.who6h": "Lender comparison, readiness planning, and rate simulation.",
     "home.who7r": "Developers & Builders",
     "home.who7h": "Building project listings, construction finance, pre-sale management.",
     "home.who8r": "Agricultural Investors",
@@ -332,7 +332,7 @@ const I18N = {
     "home.testH": "Testimonials",
     "home.test1q": "\"Kimure found me productive farmland I never would have found on my own. The soil report was incredibly detailed.\"",
     "home.test1m": "— Marie T., Agricultural Investor, Ontario",
-    "home.test2q": "\"From pre-qualification to closing, the platform kept every step organized. The AI matching saved weeks of searching.\"",
+    "home.test2q": "\"From readiness planning to closing, the platform kept every step organized. The AI matching saved weeks of searching.\"",
     "home.test2m": "— Jordan K., First-Time Buyer",
     "home.test3q": "\"Our team finally has one CRM that ties listings, leads, and compliance together without juggling five tools.\"",
     "home.test3m": "— Samira R., Brokerage Lead",
@@ -347,11 +347,11 @@ const I18N = {
     "home.blog3c": "Building Projects",
     "home.blogRead": "Read more",
     "home.partnersH": "Partners & Trusted By",
-    "home.partnersP": "Lender partners, real estate board affiliations, technology partners, and regulatory bodies.",
+    "home.partnersP": "Built for trusted integrations across lending, listings, credit data, legal workflows, and property intelligence.",
     "home.footerCtaH": "Ready to Transform Your Property Journey?",
     "home.footerCtaSub": "Join thousands of buyers, sellers, investors, and professionals already using Kimure.",
     "home.footerCta1": "Login / Sign up",
-    "home.footerCta2": "Book a Demo",
+    "home.footerCta2": "Watch overview",
     "home.footerCta3": "Talk to an Expert",
     "social.facebook": "Facebook",
     "social.linkedin": "LinkedIn",
@@ -463,7 +463,7 @@ const I18N = {
     "pl.tile2t": "Valuation & intelligence",
     "pl.tile2p": "Market valuation, ROI projections, risk signals, and geospatial context—all in one place for faster decisions.",
     "pl.tile3t": "Finance & lending",
-    "pl.tile3p": "Pre-qualification, affordability checks, lender comparison, and agricultural credit pathways built into the flow.",
+    "pl.tile3p": "Readiness checks, affordability planning, lender comparison, and agricultural credit pathways built into the flow.",
     "pl.tile4t": "Closing & compliance",
     "pl.tile4p": "Document management, e-sign, regulatory checks, and partner integrations with lawyers, notaries, and authorities.",
     "pl.visionLbl": "Built for scale",
@@ -542,7 +542,7 @@ const I18N = {
     "mp.val3l2": "ROI simulation for investors",
     "mp.val4h": "Financial Brokerage Layer",
     "mp.val4l1": "Mortgage and agricultural credit brokerage",
-    "mp.val4l2": "Borrower pre-qualification, automated financial scoring",
+    "mp.val4l2": "Borrower readiness signals and automated financial scoring",
     "mp.val4l3": "Connections to banks, fintechs, insurers",
     "mp.val5h": "Agricultural & Rural Land Brokerage",
     "mp.val5l1": "Productivity & profitability evaluation",
@@ -664,7 +664,7 @@ const I18N = {
     "nav.overview": "Aperçu",
     "nav.features": "Fonctionnalités",
     "nav.how": "Fonctionnement",
-    "nav.mobileSoon": "Application mobile — bientôt",
+    "nav.mobileSoon": "Application mobile",
     "nav.solutions": "Solutions",
     "nav.byIndustry": "Par secteur",
     "nav.realestate": "Immobilier",
@@ -721,9 +721,9 @@ const I18N = {
     "mock.fitScore": "Score d’adéquation",
     "mock.roi": "Projection de ROI",
     "mock.strong": "Forte",
-    "mock.mortgage": "Préapprobation hypothécaire",
-    "mock.eligible": "Éligible",
-    "mock.in24h": "sous 24 h",
+    "mock.mortgage": "Préparation hypothécaire",
+    "mock.eligible": "Prêt",
+    "mock.in24h": "estimation",
     "mock.options": "Options",
     "mock.compareLenders": "Comparer les prêteurs",
     "mock.riskFlags": "Indicateurs de risque",
@@ -746,23 +746,23 @@ const I18N = {
     "tile4t": "Hub transactionnel",
     "tile4p": "Documents, signatures électroniques, flux réglementaires et clôture sécurisée.",
     "mp.title": "Intelligence marketplace",
-    "mp.sub": "Achetez, vendez, louez et investissez dans de l’immobilier, des terres rurales et des actifs agricoles vérifiés, guidés par l’IA.",
+    "mp.sub": "Kimure aide les utilisateurs à explorer les flux d’annonces fournisseurs, la préparation financière et les décisions immobilières guidées par l’IA depuis un seul compte.",
     "mp.placeholder": "Recherche par lieu, ROI ou type de bien",
     "mp.search": "Rechercher",
     "mp.explore": "Explorer le marketplace",
-    "mp.verified": "Vérifié",
-    "mp.viewDetails": "Voir les détails →",
-    "mp.listing1": "Urbain • 3 ch. • Canada",
-    "mp.listing2": "Terre rurale • 48 acres",
-    "mp.listing3": "Agricole • Option de location",
-    "mp.p1t": "Annonces vérifiées uniquement",
-    "mp.p1p": "Vérifications d’identité, validation documentaire et prévention de la fraude.",
-    "mp.p2t": "Recherche et appariement IA",
-    "mp.p2p": "Découverte selon objectifs, budget, signaux d’intention et profil de risque.",
-    "mp.p3t": "Contrats et flux sécurisés",
-    "mp.p3p": "Signatures électroniques, contrôles de conformité et suivi des transactions.",
-    "mp.p4t": "Réseau prêteurs et investisseurs",
-    "mp.p4p": "Préqualification, accessibilité, projections de ROI et approbations.",
+    "mp.verified": "Signal fournisseur",
+    "mp.viewDetails": "Explorer le marketplace →",
+    "mp.listing1": "Flux de recherche fournisseur",
+    "mp.listing2": "Flux d’appariement IA",
+    "mp.listing3": "Flux de préparation",
+    "mp.p1t": "Recherche marketplace avec fournisseurs",
+    "mp.p1p": "Explorez les flux d’annonces via des connexions fournisseurs approuvées lorsque l’accès est configuré.",
+    "mp.p2t": "Appariement immobilier IA",
+    "mp.p2p": "Transformez objectifs, budget, lieu et signaux de risque en orientation immobilière pratique.",
+    "mp.p3t": "Calculateur hypothèque/préparation",
+    "mp.p3p": "Estimez capacité d’achat, mensualité et préparation avec les données de compte enregistrées.",
+    "mp.p4t": "Préparation crédit / profil financier",
+    "mp.p4p": "Gardez les signaux de préparation, le profil financier et les insights IA connectés au compte.",
     "mp.catTitle": "Acheter, vendre, louer et investir",
     "mp.catLead": "Les mêmes cartes que les annonces vedettes, regroupées selon votre intention. La recherche filtre chaque section.",
     "mp.intentEmpty": "Aucune annonce ne correspond à votre recherche dans cette section.",
@@ -915,7 +915,7 @@ const I18N = {
     "home.blog3d": "28 févr. 2026",
     "home.blogRead": "Lire la suite",
     "home.partnersH": "Partenaires et confiance",
-    "home.partnersP": "Partenaires prêteurs, affiliations aux chambres immobilières, partenaires technologiques et organismes de réglementation.",
+    "home.partnersP": "Conçu pour des intégrations de confiance entre prêt, annonces, données crédit, flux juridiques et intelligence immobilière.",
     "home.footerCtaH": "Prêt à transformer votre parcours immobilier ?",
     "home.footerCtaSub": "Rejoignez des milliers d'acheteurs, vendeurs, investisseurs et professionnels qui utilisent déjà Kimure.",
     "home.footerCta1": "Connexion / Inscription",
@@ -1031,7 +1031,7 @@ const I18N = {
     "pl.tile2t": "Valorisation et intelligence",
     "pl.tile2p": "Valeur de marché, projections de ROI, risques et contexte géospatial — au même endroit pour décider vite.",
     "pl.tile3t": "Finance et prêt",
-    "pl.tile3p": "Préqualification, accessibilité, comparaison de prêteurs et parcours de crédit agricole intégrés au flux.",
+    "pl.tile3p": "Préparation, accessibilité, comparaison de prêteurs et parcours de crédit agricole intégrés au flux.",
     "pl.tile4t": "Clôture et conformité",
     "pl.tile4p": "Documents, signatures électroniques, contrôles réglementaires et intégrations partenaires (avocats, notaires, autorités).",
     "pl.visionLbl": "Conçu pour l’échelle",
@@ -1110,7 +1110,7 @@ const I18N = {
     "mp.val3l2": "Simulation de ROI pour investisseurs",
     "mp.val4h": "Couche financière de courtage",
     "mp.val4l1": "Courtage hypothécaire et crédit agricole",
-    "mp.val4l2": "Préqualification emprunteur, scoring automatisé",
+    "mp.val4l2": "Signaux de préparation emprunteur et scoring automatisé",
     "mp.val4l3": "Connexions banques, fintechs, assureurs",
     "mp.val5h": "Courtage terres rurales et agricoles",
     "mp.val5l1": "Évaluation productivité et rentabilité",
@@ -1648,6 +1648,8 @@ if (statCard) animateStat(statCard);
 (function () {
   var signOutBtn = null;
   var dashboardLink = null;
+  var creditLink = null;
+  var mortgageLink = null;
 
   function t(key, fallback) {
     var d = window.KIMURE_I18N_DICT;
@@ -1702,10 +1704,44 @@ if (statCard) animateStat(statCard);
     return dashboardLink;
   }
 
+  function ensureCreditLink() {
+    var navActions = document.querySelector(".nav-actions");
+    if (!navActions) return null;
+    if (creditLink) return creditLink;
+
+    creditLink = document.createElement("a");
+    creditLink.href = "credit-profile.html";
+    creditLink.className = "btn btn-outline js-auth-credit";
+    creditLink.textContent = "Credit readiness";
+    creditLink.hidden = true;
+
+    var primaryLogin = navActions.querySelector(".js-early-access");
+    navActions.insertBefore(creditLink, primaryLogin || null);
+    return creditLink;
+  }
+
+  function ensureMortgageLink() {
+    var navActions = document.querySelector(".nav-actions");
+    if (!navActions) return null;
+    if (mortgageLink) return mortgageLink;
+
+    mortgageLink = document.createElement("a");
+    mortgageLink.href = "mortgage.html";
+    mortgageLink.className = "btn btn-outline js-auth-mortgage";
+    mortgageLink.textContent = "Mortgage";
+    mortgageLink.hidden = true;
+
+    var primaryLogin = navActions.querySelector(".js-early-access");
+    navActions.insertBefore(mortgageLink, primaryLogin || null);
+    return mortgageLink;
+  }
+
   function updateAuthUI(user) {
     var loginBtns = document.querySelectorAll(".js-early-access");
     var outBtn = ensureSignOutButton();
     var dashLink = ensureDashboardLink();
+    var readinessLink = ensureCreditLink();
+    var calculatorLink = ensureMortgageLink();
 
     loginBtns.forEach(function (btn) {
       if (user) {
@@ -1742,6 +1778,14 @@ if (statCard) animateStat(statCard);
     if (dashLink) {
       dashLink.hidden = !user;
       dashLink.textContent = t("nav.dashboard", "Dashboard");
+    }
+
+    if (readinessLink) {
+      readinessLink.hidden = !user;
+    }
+
+    if (calculatorLink) {
+      calculatorLink.hidden = !user;
     }
   }
 

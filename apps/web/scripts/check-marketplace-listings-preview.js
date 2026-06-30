@@ -27,9 +27,13 @@ const listingsPreviewJs = sliceBetween(
   "Preview access",
   "Marketplace AI uses selected listing provider context when available",
   "preview data clearly labeled",
-  "provider-ready Repliers integration",
+  "Provider listings",
+  "Marketplace Listings",
+  "Repliers provider integration",
   "not live MLS data",
-  "No listings match those filters yet"
+  "Search listings",
+  "No listings match those filters yet",
+  "Explore Kimure categories"
 ].forEach((required) => {
   assert.equal(html.includes(required), true, `${required} is missing from marketplace.html`);
 });
@@ -49,7 +53,7 @@ const listingsPreviewJs = sliceBetween(
   "INTERNAL LISTING",
   "TEAM-CONTROLLED",
   "PROVIDER READY",
-  "PREVIEW CARD",
+  "CONTEXT READY",
   "getListingDisplayMode",
   "getListingBadgeLabels",
   "mp-provider-image",
@@ -64,7 +68,7 @@ const listingsPreviewJs = sliceBetween(
   "mp-provider-photo-count",
   "truncateText",
   "mp-provider-description",
-  "Preview details",
+  "View listing",
   "mp-ai-context-note",
   "AI provider context:",
   "formatAiProviderContextLabel",
@@ -105,6 +109,11 @@ assert.equal(html.includes("DDF"), false);
 assert.equal(html.includes("REALTOR"), false);
 assert.equal(html.includes("Sample provider"), false);
 assert.equal(html.includes("mock provider"), false);
+assert.equal(html.includes("Marketplace Category Preview"), false);
+assert.equal(html.includes("Preview card"), false);
+assert.equal(html.includes("Sample fit"), false);
+assert.equal(html.includes("Sample ROI view"), false);
+assert.equal(html.includes("sample UI content"), false);
 assert.equal(html.includes('select name="provider"'), false);
 assert.equal(listingsPreviewJs.includes("mock_provider"), false);
 assert.equal(listingsPreviewJs.includes("crea_ddf"), false);

@@ -36,7 +36,7 @@
             <a href="platform.html#platform-overview" class="nav-dropdown-link" role="menuitem" data-i18n="nav.overview">Overview</a>
             <a href="platform.html#platform-features" class="nav-dropdown-link" role="menuitem" data-i18n="nav.features">Features</a>
             <a href="platform.html#platform-how-it-works" class="nav-dropdown-link" role="menuitem" data-i18n="nav.how">How It Works</a>
-            <span class="nav-dropdown-link is-muted" role="menuitem" data-i18n="nav.mobileSoon">Mobile app — coming soon</span>
+            <span class="nav-dropdown-link is-muted" role="menuitem" data-i18n="nav.mobileSoon">Mobile app</span>
           </div>
         </div>
         <div class="nav-dropdown">
@@ -106,7 +106,7 @@
               Buy, sell, lease, and invest in real estate, rural land, and agricultural assets with AI-guided navigation and provider-ready marketplace tools.
             </p>
             <form class="mp-search-bar" id="mpSearchForm" role="search" data-i18n-aria-label="aria.searchListings" aria-label="Search listings">
-              <input type="search" id="mpSearchInput" name="q" placeholder="Search by location, sample signal, or property type" autocomplete="off" />
+              <input type="search" id="mpSearchInput" name="q" placeholder="Search by location, readiness signal, or property type" autocomplete="off" />
               <button type="submit" data-i18n="mp.search">Search</button>
             </form>
           </div>
@@ -266,11 +266,11 @@
           <div>
             <div class="tag">
               <span class="tag-dot"></span>
-              <span>Provider-ready preview</span>
+              <span>Provider listings</span>
             </div>
-            <h2 class="mp-listings-title" id="marketplaceListingsPreviewTitle">Marketplace Listings Preview</h2>
+            <h2 class="mp-listings-title" id="marketplaceListingsPreviewTitle">Marketplace Listings</h2>
             <p class="mp-provider-listings-note">
-              Browse listings from Kimure's provider-ready Repliers integration. Current access is preview-only, so results remain labeled as preview data and are not live MLS data.
+              Browse listings from Kimure's Repliers provider integration. Current Repliers access is preview-mode and not live MLS data, so results remain clearly labeled.
             </p>
           </div>
         </div>
@@ -309,7 +309,7 @@
               <option value="rural land">Rural land</option>
             </select>
           </label>
-          <button type="submit" class="btn btn-primary">Search preview</button>
+          <button type="submit" class="btn btn-primary">Search listings</button>
         </form>
 
         <div class="mp-provider-status" id="mpProviderListingsStatus" aria-live="polite"></div>
@@ -318,12 +318,12 @@
         <div class="mp-provider-empty" id="mpProviderListingsEmpty" hidden>No listings match those filters yet.</div>
       </section>
 
-      <section class="mp-listings mp-listings--featured" id="browse-listings" aria-label="Marketplace category preview">
+      <section class="mp-listings mp-listings--featured" id="browse-listings" aria-label="Explore Kimure categories">
         <div class="mp-listings-head" id="mp-featured">
           <div>
-            <h2 class="mp-listings-title">Marketplace Category Preview</h2>
+            <h2 class="mp-listings-title">Explore Kimure categories</h2>
             <p class="mp-sample-listings-note">
-              These category cards are sample UI content. Live provider listings will come from the listings provider integration once licensed access is connected.
+              Use these category pathways to browse the marketplace by intent. Provider listing results above remain the primary search experience.
             </p>
           </div>
         </div>
@@ -333,13 +333,13 @@
               <img src="assets/images/listings/urban-apartment.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge">Preview card</span>
-              <span class="badge gold-badge">Sample fit</span>
+              <span class="badge">Residential</span>
+              <span class="badge gold-badge">Fit signal</span>
             </div>
             <div class="mp-listing-info">
-              <div class="mp-listing-price">$860K</div>
+              <div class="mp-listing-price">Residential search</div>
               <div class="mp-listing-meta" data-i18n="mp.listing1">Urban • 3 Bed • Canada</div>
-              <a class="mp-listing-cta" href="#listing-1">Preview details →</a>
+              <a class="mp-listing-cta" href="#marketplace-listings-preview">Explore category →</a>
             </div>
           </article>
 
@@ -348,13 +348,13 @@
               <img src="assets/images/listings/rural-land.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge">Preview card</span>
-              <span class="badge gold-badge">Sample ROI view</span>
+              <span class="badge">Land</span>
+              <span class="badge gold-badge">ROI view</span>
             </div>
             <div class="mp-listing-info">
-              <div class="mp-listing-price">$1.42M</div>
+              <div class="mp-listing-price">Land search</div>
               <div class="mp-listing-meta" data-i18n="mp.listing2">Rural Land • 48 Acres</div>
-              <a class="mp-listing-cta" href="#listing-2">Preview details →</a>
+              <a class="mp-listing-cta" href="#marketplace-listings-preview">Explore category →</a>
             </div>
           </article>
 
@@ -363,13 +363,13 @@
               <img src="assets/images/listings/farmland.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge">Preview card</span>
-              <span class="badge gold-badge">Sample fit</span>
+              <span class="badge">Agricultural</span>
+              <span class="badge gold-badge">Lease fit</span>
             </div>
             <div class="mp-listing-info">
-              <div class="mp-listing-price">$320K</div>
+              <div class="mp-listing-price">Agricultural search</div>
               <div class="mp-listing-meta" data-i18n="mp.listing3">Agricultural • Lease Option</div>
-              <a class="mp-listing-cta" href="#listing-3">Preview details →</a>
+              <a class="mp-listing-cta" href="#marketplace-listings-preview">Explore category →</a>
             </div>
           </article>
 
@@ -378,13 +378,13 @@
               <img src="assets/images/listings/commercial.jpg" alt="" width="800" height="533" loading="lazy" decoding="async" />
             </div>
             <div class="mp-listing-top">
-              <span class="badge">Preview card</span>
-              <span class="badge gold-badge">Sample ROI view</span>
+              <span class="badge">Commercial</span>
+              <span class="badge gold-badge">Income view</span>
             </div>
             <div class="mp-listing-info">
               <div class="mp-listing-price">$2.1M</div>
               <div class="mp-listing-meta" data-i18n="mp.listing4">Commercial • Toronto • Canada</div>
-              <a class="mp-listing-cta" href="#listing-4">Preview details →</a>
+              <a class="mp-listing-cta" href="#marketplace-listings-preview">Explore category →</a>
             </div>
           </article>
         </div>
@@ -392,7 +392,7 @@
 
       <div class="mp-intent-hub" id="mp-categories" data-i18n-aria-label="aria.mpBrowseCategories" aria-label="Marketplace categories">
         <h2 class="mp-category-browse-title" data-i18n="mp.catTitle">Buy, sell, rent, and invest</h2>
-        <p class="mp-category-browse-lead">Sample category cards grouped by how you want to participate. Use search to filter every preview section.</p>
+        <p class="mp-category-browse-lead">Category pathways grouped by how you want to participate. Use search to filter marketplace sections.</p>
 
         <section class="mp-listings mp-listings--intent" id="mp-intent-buy" data-i18n-aria-label="aria.mpIntentBuy" aria-label="Buy listings">
           <div class="mp-listings-head">
@@ -459,7 +459,7 @@
             <h3 data-i18n="mp.val4h">Financial Brokerage Layer</h3>
             <ul>
               <li data-i18n="mp.val4l1">Mortgage and agricultural credit brokerage</li>
-              <li data-i18n="mp.val4l2">Borrower pre-qualification, automated financial scoring</li>
+              <li data-i18n="mp.val4l2">Borrower readiness signals and automated financial scoring</li>
               <li data-i18n="mp.val4l3">Connections to banks, fintechs, insurers</li>
             </ul>
           </div>
@@ -512,7 +512,7 @@
       <div class="social" data-i18n-aria-label="aria.social" aria-label="Social links">
         <a href="https://www.facebook.com/kimunturealestate" target="_blank" rel="noopener noreferrer" title="Facebook" data-i18n-title="social.facebook">f</a>
         <a href="https://www.linkedin.com/company/kimureal/" target="_blank" rel="noopener noreferrer" title="LinkedIn" data-i18n-title="social.linkedin">in</a>
-        <a href="#" title="Email" data-i18n-title="social.email">@</a>
+        <a href="about.html#contact" title="Email" data-i18n-title="social.email">@</a>
       </div>
     </footer>
 
@@ -544,7 +544,7 @@
         </div>
       </div>
       <div class="early-access-success" id="authLoginSuccess" aria-live="polite" hidden>
-        <p class="early-access-success-text" data-i18n="auth.loginSuccess">You're signed in (demo).</p>
+        <p class="early-access-success-text" data-i18n="auth.loginSuccess">You're signed in.</p>
         <button type="button" class="btn btn-outline early-access-close-btn" id="earlyAccessCloseAfter" data-i18n="earlyAccess.closeBtn">Close</button>
       </div>
     </div>

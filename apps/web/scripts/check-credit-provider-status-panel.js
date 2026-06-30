@@ -58,7 +58,7 @@ const sandboxPayload = sliceBetween(
   "creditSandboxVerifyButton",
   "Sandbox only",
   "Requires a signed-in session",
-  "fake sandbox identity",
+  "sandbox test identity",
   "Do not enter real SIN/SSN",
   "personal credit data for this check",
   "No live Equifax call is made by the browser",

@@ -42,6 +42,10 @@ const main = read("public/assets/js/main.js");
   "ensureDashboardLink",
   "dashboard.html",
   "js-auth-dashboard",
+  "js-auth-credit",
+  "js-auth-mortgage",
+  "credit-profile.html",
+  "mortgage.html",
   "nav.dashboard",
   "dashLink.hidden = !user"
 ].forEach((required) => {
