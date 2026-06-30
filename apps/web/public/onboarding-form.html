@@ -262,6 +262,14 @@
           <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="short" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Short-term profit</span></label>
           <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="long" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Long-term investment</span></label>
           <label class="onb-check onb-pick"><input type="checkbox" name="return_goal" value="rental" class="onb-pick-input visually-hidden" /><span class="onb-pick-ui" aria-hidden="true"></span><span class="onb-pick-text">Rental income</span></label>
+          <div class="onb-calculator-panel">
+            <p class="onb-calculator-eyebrow">Smart Calculator</p>
+            <h3>AI Mortgage Calculator</h3>
+            <p class="onb-calculator-copy">Run a directional mortgage and readiness estimate using your onboarding answers, available funds, rental income goal, and target budget. This stays on Step 9 and does not replace the normal Next button.</p>
+            <button type="button" class="btn btn-primary" id="onbCalculatorRun">Run AI Calculator</button>
+            <p class="onb-ai-status" id="onbCalculatorStatus" role="status" aria-live="polite" hidden></p>
+            <div class="onb-ai-result-card" id="onbCalculatorResult" hidden></div>
+          </div>
         </div>
 
         <div class="onb-form-step" data-step="10" aria-hidden="true">

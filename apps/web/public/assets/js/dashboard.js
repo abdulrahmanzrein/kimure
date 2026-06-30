@@ -6,6 +6,7 @@
 
   var stateMessage = document.getElementById("dashboardStateMessage");
   var currentUser = null;
+  var currentDashboard = null;
 
   function safeObject(value) {
     return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -96,6 +97,212 @@
       list.appendChild(item);
     });
     container.appendChild(list);
+  }
+
+  function appendText(parent, tagName, className, text) {
+    if (!parent || !text) return null;
+    var node = document.createElement(tagName);
+    if (className) node.className = className;
+    node.textContent = text;
+    parent.appendChild(node);
+    return node;
+  }
+
+  function buildDashboardCalculatorPayload(data) {
+    var dashboard = safeObject(data);
+    var financial = safeObject(dashboard.financialProfile);
+    var onboarding = safeObject(dashboard.onboarding);
+    var onboardingFinancials = safeObject(onboarding.financialInputs);
+    var locations = Array.isArray(onboarding.locationPreferences) ? onboarding.locationPreferences : [];
+    var propertyTypes = Array.isArray(onboarding.propertyPreferences) ? onboarding.propertyPreferences : [];
+    var targetPrice = safeNumber(financial.targetPurchasePrice) || safeNumber(onboarding.budgetMax);
+    var downPayment = safeNumber(financial.downPayment) ||
+      safeNumber(financial.savings) ||
+      safeNumber(onboardingFinancials.availableFunds);
+    var availableFunds = safeNumber(financial.savings) ||
+      safeNumber(financial.downPayment) ||
+      safeNumber(onboardingFinancials.availableFunds);
+
+    return {
+      goal: safeText(onboarding.intent, "") || safeText(financial.riskTolerance, ""),
+      targetPurchasePrice: targetPrice,
+      downPayment: downPayment,
+      availableFunds: availableFunds,
+      location: safeText(financial.targetLocation, "") || locations[0] || "",
+      timeline: safeText(financial.timeline, "") || safeText(onboarding.timeline, ""),
+      propertyType: propertyTypes[0] || "",
+      employmentType: safeText(financial.employmentStatus, ""),
+      employmentStability: safeText(financial.employmentStability, ""),
+      income: {
+        annualGross: safeNumber(financial.annualIncome)
+      },
+      debt: {
+        monthlyPayments: safeNumber(financial.monthlyDebt)
+      },
+      assumptions: {
+        interestRate: 5.25,
+        amortizationYears: 25
+      },
+      context: {
+        source: "dashboard_ai_calculator",
+        firstTimeBuyer: financial.firstTimeBuyer === true,
+        riskTolerance: safeText(financial.riskTolerance, ""),
+        onboardingGoal: safeText(onboarding.intent, ""),
+        propertyInterests: propertyTypes,
+        onboardingRecommendationSummary: safeText(safeObject(dashboard.aiInsights && dashboard.aiInsights[0]).summary, "")
+      }
+    };
+  }
+
+  function findMissingCalculatorInputs(payload) {
+    var missing = [];
+    if (!safeNumber(payload.income && payload.income.annualGross)) missing.push("annual income");
+    if (!safeNumber(payload.debt && payload.debt.monthlyPayments)) missing.push("monthly debt payments");
+    if (!safeNumber(payload.downPayment)) missing.push("down payment or available funds");
+    if (!safeNumber(payload.targetPurchasePrice)) missing.push("target purchase price or budget range");
+    if (!safeText(payload.location, "")) missing.push("target location");
+    return missing;
+  }
+
+  function setCalculatorStatus(message, type) {
+    var status = document.getElementById("dashboardCalculatorStatus");
+    if (!status) return;
+    status.textContent = message || "";
+    status.classList.remove("is-error", "is-success");
+    if (type) status.classList.add(type);
+  }
+
+  function setCalculatorLoading(loading) {
+    var button = document.getElementById("dashboardCalculatorRun");
+    if (!button) return;
+    button.disabled = loading;
+    button.textContent = loading ? "Running calculator…" : "Run AI Calculator";
+  }
+
+  function normalizeCalculatorResult(response) {
+    var source = safeObject(response);
+    var reportData = safeObject(source.reportData);
+    var range = safeObject(reportData.estimatedBudgetRange);
+    var scenarios = Array.isArray(reportData.loanScenarios) ? reportData.loanScenarios : [];
+    var payments = scenarios
+      .map(function (scenario) { return safeNumber(safeObject(scenario).estimatedMonthlyPayment); })
+      .filter(function (value) { return value !== null; });
+    var paymentRange = payments.length
+      ? formatMoney(Math.min.apply(Math, payments)) + "–" + formatMoney(Math.max.apply(Math, payments)) + "/mo"
+      : "Not enough data";
+    var affordability = safeText(range.conservative, "") && safeText(range.stretch, "")
+      ? safeText(range.conservative, "") + "–" + safeText(range.stretch, "")
+      : safeText(range.target, "Not enough data");
+
+    return {
+      summary: safeText(source.summary, "Kimure generated a directional calculator estimate."),
+      score: safeNumber(source.score),
+      riskLevel: safeText(source.riskLevel, "unknown"),
+      affordabilityRange: affordability,
+      paymentRange: paymentRange,
+      downPaymentInsight: "Saved available funds/down payment: " + formatMoney(safeNumber(safeObject(currentDashboard || {}).financialProfile && safeObject(currentDashboard.financialProfile).downPayment) || safeNumber(safeObject(currentDashboard || {}).financialProfile && safeObject(currentDashboard.financialProfile).savings)) + ".",
+      rentalInvestmentSignal: "Dashboard estimate uses saved financial and onboarding profile fields. Add rental-income goals in onboarding for an investment-focused signal.",
+      keyAssumptions: [
+        "Interest-rate assumption: 5.25%.",
+        "Amortization assumption: 25 years.",
+        "Missing income, debt, down payment, or target-price fields are called out instead of guessed."
+      ],
+      risks: safeList(reportData.warningFlags)
+        .concat(safeList(reportData.missingFields).map(function (field) {
+          return "Missing input: " + field;
+        })),
+      keyInsights: safeList(source.keyInsights),
+      recommendations: safeList(source.recommendations),
+      nextSteps: safeList(reportData.nextBestActions),
+      disclaimer: "Estimate only. Not financial, mortgage, legal, tax, or approval advice."
+    };
+  }
+
+  function renderCalculatorResult(response) {
+    var container = document.getElementById("dashboardCalculatorResult");
+    if (!container) return;
+    var result = normalizeCalculatorResult(response);
+    container.replaceChildren();
+
+    appendText(container, "h3", "", "AI calculator estimate");
+    appendText(container, "p", "", result.summary);
+
+    var metrics = document.createElement("div");
+    metrics.className = "dashboard-calculator-metrics";
+    [
+      ["Readiness", result.score === null ? "—" : String(result.score)],
+      ["Risk", humanize(result.riskLevel, "Unknown")],
+      ["Payment", result.paymentRange],
+      ["Affordability", result.affordabilityRange]
+    ].forEach(function (item) {
+      var metric = document.createElement("div");
+      appendText(metric, "span", "", item[0]);
+      appendText(metric, "strong", "", item[1]);
+      metrics.appendChild(metric);
+    });
+    container.appendChild(metrics);
+
+    var sections = document.createElement("div");
+    sections.className = "dashboard-calculator-sections";
+    [
+      ["Affordability / buying power estimate", result.affordabilityRange],
+      ["Estimated monthly payment range", result.paymentRange],
+      ["Down payment / available funds insight", result.downPaymentInsight],
+      ["Rental / investment signal", result.rentalInvestmentSignal]
+    ].forEach(function (item) {
+      var section = document.createElement("section");
+      appendText(section, "h4", "", item[0]);
+      appendText(section, "p", "", item[1]);
+      sections.appendChild(section);
+    });
+    container.appendChild(sections);
+
+    appendCalculatorList(container, "Key assumptions", result.keyAssumptions);
+    appendCalculatorList(container, "Risks / missing information", result.risks);
+    appendCalculatorList(container, "Key signals", result.keyInsights);
+    appendCalculatorList(container, "Next actions", result.nextSteps);
+    appendCalculatorList(container, "Recommendations", result.recommendations);
+    appendText(container, "p", "dashboard-muted", result.disclaimer);
+    container.hidden = false;
+  }
+
+  function appendCalculatorList(container, title, values) {
+    if (!values.length) return;
+    appendText(container, "h4", "", title);
+    var list = document.createElement("ul");
+    values.slice(0, 4).forEach(function (value) {
+      appendText(list, "li", "", value);
+    });
+    container.appendChild(list);
+  }
+
+  async function runDashboardCalculator() {
+    if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.requestMortgage) {
+      setCalculatorStatus("The Kimure API client is not available on this page.", "is-error");
+      return;
+    }
+
+    var payload = buildDashboardCalculatorPayload(currentDashboard || {});
+    var missing = findMissingCalculatorInputs(payload);
+
+    setCalculatorLoading(true);
+    setCalculatorStatus(
+      missing.length
+        ? "Running with available account data. Missing: " + missing.join(", ") + "."
+        : "Running calculator with your saved account inputs.",
+      ""
+    );
+
+    var result = await window.KIMURE_AUTH.requestMortgage(payload);
+    setCalculatorLoading(false);
+
+    if (!result.ok) {
+      setCalculatorStatus(result.message || "Calculator estimate could not be generated right now.", "is-error");
+      return;
+    }
+
+    renderCalculatorResult(result.data);
+    setCalculatorStatus("Calculator estimate complete. Review the directional result below.", "is-success");
   }
 
   function renderNextActions(data) {
@@ -277,6 +484,7 @@
 
   function renderDashboard(data) {
     var dashboard = safeObject(data);
+    currentDashboard = dashboard;
     stateTitle.textContent = "Dashboard ready";
     stateMessage.textContent = "Only sanitized account and AI summary fields are shown here.";
 
@@ -324,6 +532,13 @@
     }
 
     renderDashboard(dashboard);
+  }
+
+  var calculatorButton = document.getElementById("dashboardCalculatorRun");
+  if (calculatorButton) {
+    calculatorButton.addEventListener("click", function () {
+      runDashboardCalculator();
+    });
   }
 
   loadDashboard();

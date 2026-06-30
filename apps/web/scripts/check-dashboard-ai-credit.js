@@ -12,6 +12,9 @@ const main = read("public/assets/js/main.js");
   "dashboardStateTitle",
   "dashboardAccountCard",
   "dashboardOnboardingCard",
+  "dashboardCalculatorCard",
+  "dashboardCalculatorRun",
+  "dashboardCalculatorResult",
   "dashboardProfileName",
   "dashboardOnboardingGoal",
   "dashboardCreditCard",
@@ -48,6 +51,17 @@ const main = read("public/assets/js/main.js");
 [
   "renderProfile",
   "renderOnboarding",
+  "buildDashboardCalculatorPayload",
+  "runDashboardCalculator",
+  "requestMortgage",
+  "AI calculator estimate",
+  "Affordability / buying power estimate",
+  "Estimated monthly payment range",
+  "Down payment / available funds insight",
+  "Rental / investment signal",
+  "Key assumptions",
+  "Risks / missing information",
+  "Estimate only. Not financial, mortgage, legal, tax, or approval advice.",
   "normalizeOnboardingFallback",
   "fetchOnboardingProfile",
   "Not added yet",
@@ -78,6 +92,8 @@ const main = read("public/assets/js/main.js");
   "creditMortgageHandoff",
   "request_payload",
   "response_payload",
+  "rawProviderPayload",
+  "rawModelPayload",
   "GEMINI_API_KEY",
   "THIRDSTREAM_API_KEY",
   "EQUIFAX_API_KEY"
@@ -85,6 +101,16 @@ const main = read("public/assets/js/main.js");
   assert.equal(html.includes(forbidden), false, `${forbidden} should not appear in dashboard HTML`);
   assert.equal(js.includes(forbidden), false, `${forbidden} should not appear in dashboard JS`);
   assert.equal(main.includes(forbidden), false, `${forbidden} should not appear in main nav JS`);
+});
+
+[
+  "pre-approval",
+  "preapproval",
+  "guaranteed financing",
+  "guaranteed lender acceptance"
+].forEach((forbidden) => {
+  assert.equal(html.includes(forbidden), false, `${forbidden} should not appear in dashboard HTML`);
+  assert.equal(js.includes(forbidden), false, `${forbidden} should not appear in dashboard JS`);
 });
 
 console.log("Dashboard AI credit browser checks passed.");
