@@ -316,6 +316,39 @@
         <div class="mp-provider-filter-summary" id="mpProviderFilterSummary"></div>
         <div class="mp-provider-grid" id="mpProviderListingsGrid"></div>
         <div class="mp-provider-empty" id="mpProviderListingsEmpty" hidden>No listings match those filters yet.</div>
+
+        <div class="mp-listing-modal" id="mpListingModal" aria-hidden="true" hidden>
+          <div class="mp-listing-modal-backdrop" data-listing-modal-close></div>
+          <article class="mp-listing-modal-panel" role="dialog" aria-modal="true" aria-labelledby="mpListingModalTitle">
+            <button type="button" class="mp-listing-modal-close" id="mpListingModalClose" aria-label="Close listing details">×</button>
+            <div class="mp-listing-modal-grid">
+              <div class="mp-listing-modal-image" id="mpListingModalImage"></div>
+              <div class="mp-listing-modal-content">
+                <div class="mp-listing-modal-badges" id="mpListingModalBadges"></div>
+                <p class="mp-listing-modal-price" id="mpListingModalPrice"></p>
+                <h3 id="mpListingModalTitle"></h3>
+                <p class="mp-listing-modal-location" id="mpListingModalLocation"></p>
+                <div class="mp-listing-modal-specs" id="mpListingModalSpecs"></div>
+                <p class="mp-listing-modal-description" id="mpListingModalDescription"></p>
+                <div class="mp-listing-modal-signals" id="mpListingModalSignals"></div>
+                <p class="mp-listing-modal-safety" id="mpListingModalSafety"></p>
+              </div>
+            </div>
+            <div class="mp-listing-modal-ai">
+              <div>
+                <p class="mp-listing-modal-kicker">Kimure AI actions</p>
+                <h4>Use this listing as context</h4>
+                <p>Send the selected normalized listing into Kimure AI without retyping property details.</p>
+              </div>
+              <div class="mp-listing-modal-actions">
+                <button type="button" class="btn btn-primary" data-listing-ai-action="analyze">Analyze with AI</button>
+                <button type="button" class="btn btn-outline" data-listing-ai-action="investment-planner">Check investment fit</button>
+                <button type="button" class="btn btn-outline" data-listing-ai-action="mortgage">Run affordability check</button>
+              </div>
+              <div class="mp-ai-result mp-listing-modal-result" id="mpListingModalAiResult" aria-live="polite"></div>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="mp-listings mp-listings--featured" id="browse-listings" aria-label="Explore Kimure categories">

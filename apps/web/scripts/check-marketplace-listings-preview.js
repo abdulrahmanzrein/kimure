@@ -33,7 +33,14 @@ const listingsPreviewJs = sliceBetween(
   "not live MLS data",
   "Search listings",
   "No listings match those filters yet",
-  "Explore Kimure categories"
+  "Explore Kimure categories",
+  "mpListingModal",
+  "mpListingModalTitle",
+  "mpListingModalImage",
+  "mpListingModalAiResult",
+  "Analyze with AI",
+  "Check investment fit",
+  "Run affordability check"
 ].forEach((required) => {
   assert.equal(html.includes(required), true, `${required} is missing from marketplace.html`);
 });
@@ -86,7 +93,25 @@ const listingsPreviewJs = sliceBetween(
   "listingProvider: selectedProviderFields.listingProvider",
   "provider: listingProvider || undefined",
   "formatBlockedReason",
-  "Loading listings"
+  "Loading listings",
+  "normalizeSelectedListing",
+  "selectedListingForAi",
+  "openListingModal",
+  "closeListingModal",
+  "renderListingModal",
+  "initListingDetailModal",
+  "runSelectedListingAi",
+  "selectedListingAiPayload",
+  "selectedListingContext",
+  "selectedListing: listing",
+  "var filters = getProviderListingsFilterState()",
+  "filters: filters",
+  "card.addEventListener(\"click\"",
+  "card.addEventListener(\"keydown\"",
+  "data-listing-ai-action",
+  "Preview access — not live MLS data.",
+  "Provider listing context.",
+  "Generating listing insight"
 ].forEach((required) => {
   assert.equal(js.includes(required), true, `${required} is missing from marketplace.js`);
 });
@@ -96,12 +121,23 @@ assert.equal(css.includes(".mp-provider-image"), true);
 assert.equal(css.includes("aspect-ratio: 16 / 10"), true);
 assert.equal(css.includes(".mp-provider-photo"), true);
 assert.equal(css.includes(".mp-provider-preview-cta"), true);
+assert.equal(css.includes(".mp-listing-modal"), true);
+assert.equal(css.includes(".mp-listing-modal-panel"), true);
+assert.equal(css.includes(".mp-listing-modal-actions"), true);
+assert.equal(css.includes("body.mp-listing-modal-open"), true);
 assert.equal(css.includes(".mp-ai-context-note"), true);
 assert.equal(css.includes(".mp-provider-pill"), true);
 assert.equal(css.includes(".mp-provider-filter-summary"), true);
 assert.equal(listingsPreviewJs.includes("innerHTML"), false, "listings preview code must not use innerHTML");
 assert.equal(listingsPreviewJs.includes("textContent"), true, "listings preview code should render dynamic values with textContent");
 assert.equal(listingsPreviewJs.includes("appendNode(body, \"p\", \"mp-provider-description\", truncateText"), true);
+const aiListingContext = sliceBetween(
+  js,
+  "function selectedListingForAi",
+  "function renderProviderListingCard"
+);
+assert.equal(aiListingContext.includes("imageUrl"), false, "AI selected listing context must not include imageUrl");
+assert.equal(aiListingContext.includes("raw"), false, "AI selected listing context must not include raw payload markers");
 assert.equal(js.includes("isLiveProviderData: true"), false);
 assert.equal(html.includes("crea_ddf"), false);
 assert.equal(html.includes("CREA"), false);

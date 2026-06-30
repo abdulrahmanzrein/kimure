@@ -4,6 +4,8 @@
   var form = document.getElementById("mpSearchForm");
   var input = document.getElementById("mpSearchInput");
   var featuredGrid = document.getElementById("mpFeaturedGrid");
+  var selectedMarketplaceListing = null;
+  var lastListingModalTrigger = null;
 
   var blocks = [
     { mode: "buy", grid: document.getElementById("mpGridBuy"), emptyEl: document.getElementById("mpEmptyBuy") },
@@ -131,6 +133,71 @@
     return text.slice(0, maxLength - 1).trim() + "…";
   }
 
+  function safeListingText(value, fallback) {
+    var text = String(value || "").trim();
+    return text || fallback || "";
+  }
+
+  function listingSpecs(listing) {
+    var specs = [];
+    if (Number(listing.bedrooms) > 0) specs.push(String(listing.bedrooms) + " bed");
+    if (Number(listing.bathrooms) > 0) specs.push(String(listing.bathrooms) + " bath");
+    if (listing.propertySize) specs.push(String(listing.propertySize));
+    if (!specs.length && listing.type) specs.push(String(listing.type));
+    return specs;
+  }
+
+  function normalizeSelectedListing(listing) {
+    var safe = listing && typeof listing === "object" ? listing : {};
+    var signals = Array.isArray(safe.tags) && safe.tags.length
+      ? safe.tags
+      : Array.isArray(safe.matchSignals) ? safe.matchSignals : [];
+
+    return {
+      title: safeListingText(safe.title, "Selected provider listing"),
+      price: Number.isFinite(Number(safe.price)) ? Number(safe.price) : null,
+      priceLabel: safeListingText(safe.priceLabel, ""),
+      location: safeListingText(safe.location, ""),
+      addressSummary: safeListingText(safe.addressSummary, ""),
+      neighbourhood: safeListingText(safe.neighbourhood, ""),
+      bedrooms: Number.isFinite(Number(safe.bedrooms)) ? Number(safe.bedrooms) : null,
+      bathrooms: Number.isFinite(Number(safe.bathrooms)) ? Number(safe.bathrooms) : null,
+      sqft: safeListingText(safe.propertySize, ""),
+      propertyType: safeListingText(safe.type, ""),
+      listingStatus: safeListingText(safe.listingStatus, ""),
+      descriptionExcerpt: truncateText(safe.description, 260),
+      sourceProvider: safeListingText(safe.sourceProvider, "repliers_preview"),
+      providerStatus: safeListingText(safe.providerStatus, "preview_ready"),
+      isLiveProviderData: safe.isLiveProviderData === true,
+      matchSignals: signals.slice(0, 6).map(function (signal) { return String(signal); }),
+      imageUrl: typeof safe.imageUrl === "string" ? safe.imageUrl : "",
+      imageAlt: safeListingText(safe.imageAlt, safe.title || "Property image"),
+      imageCount: Number.isFinite(Number(safe.imageCount)) ? Number(safe.imageCount) : 0
+    };
+  }
+
+  function selectedListingForAi(listing) {
+    var safe = normalizeSelectedListing(listing);
+    return {
+      title: safe.title,
+      price: safe.price,
+      priceLabel: safe.priceLabel,
+      location: safe.location,
+      addressSummary: safe.addressSummary,
+      neighbourhood: safe.neighbourhood,
+      bedrooms: safe.bedrooms,
+      bathrooms: safe.bathrooms,
+      sqft: safe.sqft,
+      propertyType: safe.propertyType,
+      listingStatus: safe.listingStatus,
+      descriptionExcerpt: safe.descriptionExcerpt,
+      sourceProvider: safe.sourceProvider,
+      providerStatus: safe.providerStatus,
+      isLiveProviderData: safe.isLiveProviderData,
+      matchSignals: safe.matchSignals
+    };
+  }
+
   function buildProviderListingsQuery(formToRead) {
     var params = new URLSearchParams();
     var provider = textValue(formToRead, "provider") || "repliers_preview";
@@ -243,6 +310,9 @@
 
   function renderProviderListingCard(grid, listing) {
     var card = appendNode(grid, "article", "mp-provider-card");
+    card.tabIndex = 0;
+    card.setAttribute("role", "button");
+    card.setAttribute("aria-label", "View listing details");
     var badges = getListingBadgeLabels(listing);
     var imageUrl = typeof listing.imageUrl === "string" && listing.imageUrl ? listing.imageUrl : "";
     var imageWrap = appendNode(card, "div", "mp-provider-image");
@@ -291,11 +361,7 @@
     appendNode(body, "p", "mp-provider-location", listing.location || "Location unavailable");
     appendNode(body, "p", "mp-provider-address", listing.neighbourhood || listing.addressSummary || "Address summary unavailable");
 
-    var meta = [];
-    if (Number(listing.bedrooms) > 0) meta.push(String(listing.bedrooms) + " bed");
-    if (Number(listing.bathrooms) > 0) meta.push(String(listing.bathrooms) + " bath");
-    if (listing.propertySize) meta.push(String(listing.propertySize));
-    if (!meta.length && listing.type) meta.push(String(listing.type));
+    var meta = listingSpecs(listing);
     appendNode(body, "p", "mp-provider-meta", meta.join(" • ") || "Property details unavailable");
 
     if (listing.description) {
@@ -312,14 +378,30 @@
       });
     }
 
-    appendNode(body, "button", "mp-provider-preview-cta", "View listing").setAttribute("type", "button");
+    var detailBtn = appendNode(body, "button", "mp-provider-preview-cta", "View listing");
+    detailBtn.setAttribute("type", "button");
+    detailBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      openListingModal(listing, detailBtn);
+    });
+
+    card.addEventListener("click", function (event) {
+      if (event.target && event.target.closest("button, a")) return;
+      openListingModal(listing, card);
+    });
+    card.addEventListener("keydown", function (event) {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openListingModal(listing, card);
+    });
 
     var actions = appendNode(card, "div", "mp-provider-card-actions");
 
     var saveBtn = document.createElement("button");
     saveBtn.className = "btn btn-outline mp-save-btn";
     saveBtn.textContent = "Save listing";
-    saveBtn.addEventListener("click", function () {
+    saveBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
       saveListing(listing.id, listing.title, saveBtn);
     });
     actions.appendChild(saveBtn);
@@ -327,10 +409,197 @@
     var contactBtn = document.createElement("button");
     contactBtn.className = "btn btn-primary mp-contact-btn";
     contactBtn.textContent = "Contact agent";
-    contactBtn.addEventListener("click", function () {
+    contactBtn.addEventListener("click", function (event) {
+      event.stopPropagation();
       contactAgent(listing.id, listing.title || "this listing", contactBtn);
     });
     actions.appendChild(contactBtn);
+  }
+
+  function renderModalImage(container, listing) {
+    clearNode(container);
+    if (!container) return;
+    if (listing.imageUrl) {
+      var image = appendNode(container, "img", "mp-listing-modal-photo");
+      image.src = listing.imageUrl;
+      image.alt = listing.imageAlt || listing.title || "Selected listing image";
+      image.loading = "lazy";
+      image.decoding = "async";
+      image.addEventListener("error", function () {
+        clearNode(container);
+        container.classList.add("has-placeholder");
+        appendNode(container, "span", "mp-provider-image-placeholder", "Preview image");
+      }, { once: true });
+    } else {
+      container.classList.add("has-placeholder");
+      appendNode(container, "span", "mp-provider-image-placeholder", "Preview image");
+    }
+    if (listing.imageCount > 1) {
+      appendNode(container, "span", "mp-provider-photo-count", String(listing.imageCount) + " photos");
+    }
+  }
+
+  function renderListingModal(listing) {
+    var titleEl = document.getElementById("mpListingModalTitle");
+    var priceEl = document.getElementById("mpListingModalPrice");
+    var locationEl = document.getElementById("mpListingModalLocation");
+    var specsEl = document.getElementById("mpListingModalSpecs");
+    var descriptionEl = document.getElementById("mpListingModalDescription");
+    var signalsEl = document.getElementById("mpListingModalSignals");
+    var badgesEl = document.getElementById("mpListingModalBadges");
+    var safetyEl = document.getElementById("mpListingModalSafety");
+    var imageEl = document.getElementById("mpListingModalImage");
+    var resultEl = document.getElementById("mpListingModalAiResult");
+    var badges = getListingBadgeLabels(listing);
+
+    if (imageEl) {
+      imageEl.classList.remove("has-placeholder");
+      renderModalImage(imageEl, listing);
+    }
+    if (badgesEl) {
+      clearNode(badgesEl);
+      appendNode(badgesEl, "span", "mp-provider-badge", badges.primary);
+      appendNode(badgesEl, "span", "mp-provider-badge mp-provider-badge--mock", badges.secondary);
+    }
+    if (priceEl) priceEl.textContent = listing.priceLabel || formatMoney(listing.price, listing);
+    if (titleEl) titleEl.textContent = listing.title;
+    if (locationEl) locationEl.textContent = [listing.location, listing.neighbourhood || listing.addressSummary].filter(Boolean).join(" · ") || "Location unavailable";
+    if (descriptionEl) descriptionEl.textContent = listing.descriptionExcerpt || "No description was provided for this listing.";
+    if (specsEl) {
+      clearNode(specsEl);
+      listingSpecs({
+        bedrooms: listing.bedrooms,
+        bathrooms: listing.bathrooms,
+        propertySize: listing.sqft,
+        type: listing.propertyType
+      }).forEach(function (spec) {
+        appendNode(specsEl, "span", "mp-listing-modal-spec", spec);
+      });
+      if (!specsEl.children.length) appendNode(specsEl, "span", "mp-listing-modal-spec", "Details unavailable");
+    }
+    if (signalsEl) {
+      clearNode(signalsEl);
+      listing.matchSignals.slice(0, 6).forEach(function (signal) {
+        appendNode(signalsEl, "span", "mp-provider-signal", signal);
+      });
+    }
+    if (safetyEl) {
+      safetyEl.textContent = getListingDisplayMode(listing) === "preview"
+        ? "Preview access — not live MLS data."
+        : "Provider listing context.";
+    }
+    if (resultEl) {
+      setResultState(resultEl, "", "");
+    }
+  }
+
+  function openListingModal(listing, trigger) {
+    var modal = document.getElementById("mpListingModal");
+    var closeBtn = document.getElementById("mpListingModalClose");
+    if (!modal) return;
+    selectedMarketplaceListing = normalizeSelectedListing(listing);
+    lastListingModalTrigger = trigger || document.activeElement;
+    renderListingModal(selectedMarketplaceListing);
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("mp-listing-modal-open");
+    if (closeBtn) closeBtn.focus();
+  }
+
+  function closeListingModal() {
+    var modal = document.getElementById("mpListingModal");
+    if (!modal) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("mp-listing-modal-open");
+    selectedMarketplaceListing = null;
+    if (lastListingModalTrigger && typeof lastListingModalTrigger.focus === "function") {
+      lastListingModalTrigger.focus();
+    }
+    lastListingModalTrigger = null;
+  }
+
+  function selectedListingAiPayload(tool) {
+    var listing = selectedListingForAi(selectedMarketplaceListing);
+    var filters = getProviderListingsFilterState();
+    var metadata = marketplaceAiMetadata();
+    metadata.selectedListingContext = true;
+
+    var basePayload = {
+      provider: listing.sourceProvider || "repliers_preview",
+      listingProvider: listing.sourceProvider || "repliers_preview",
+      selectedListing: listing,
+      listingContext: {
+        source: listing.sourceProvider || "repliers_preview",
+        providerStatus: listing.providerStatus || "preview_ready",
+        isLiveProviderData: listing.isLiveProviderData === true,
+        selectedListing: listing,
+        filters: filters
+      },
+      filters: filters,
+      metadata: metadata,
+      context: {
+        source: "marketplace_listing_detail_modal",
+        selectedListing: listing
+      }
+    };
+
+    if (tool === "mortgage") {
+      basePayload.question = "Run a directional affordability check for this selected listing.";
+      basePayload.targetPurchasePrice = listing.price;
+      basePayload.location = listing.location;
+      basePayload.propertyType = listing.propertyType;
+      basePayload.context.selectedListingPurpose = "affordability_check";
+      return basePayload;
+    }
+
+    if (tool === "investment-planner") {
+      basePayload.question = "Check investment fit for this selected listing.";
+      basePayload.goals = ["investment fit", listing.propertyType].filter(Boolean);
+      basePayload.financials = {
+        targetPurchasePrice: listing.price
+      };
+      return basePayload;
+    }
+
+    basePayload.question = "Analyze this selected provider listing for fit, risk, and next steps.";
+    basePayload.listing = {
+      address: listing.addressSummary || listing.location,
+      price: listing.price,
+      details: [listing.propertyType, listing.sqft, listing.descriptionExcerpt].filter(Boolean).join(" · "),
+      provider: listing.sourceProvider
+    };
+    return basePayload;
+  }
+
+  async function runSelectedListingAi(tool, button) {
+    var resultEl = document.getElementById("mpListingModalAiResult");
+    if (!selectedMarketplaceListing) {
+      setResultState(resultEl, "error", "Select a listing before running AI analysis.");
+      return;
+    }
+    var originalText = button ? button.textContent : "";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Analyzing...";
+    }
+    setResultState(resultEl, "loading", "Generating listing insight...");
+
+    var labels = {
+      analyze: "Listing AI analysis",
+      "investment-planner": "Investment fit check",
+      mortgage: "Affordability check"
+    };
+    var response = await requestMarketplaceAi(tool, selectedListingAiPayload(tool));
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+    if (!response.ok) {
+      setResultState(resultEl, "error", response.message || "AI analysis could not be generated right now. Please try again.");
+      return;
+    }
+    renderAiResult(resultEl, labels[tool] || "Listing AI analysis", response.data);
   }
 
   async function saveListing(listingId, listingTitle, btn) {
@@ -472,6 +741,33 @@
     });
 
     runSearch();
+  }
+
+  function initListingDetailModal() {
+    var modal = document.getElementById("mpListingModal");
+    if (!modal) return;
+
+    var closeBtn = document.getElementById("mpListingModalClose");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeListingModal);
+    }
+
+    modal.querySelectorAll("[data-listing-modal-close]").forEach(function (element) {
+      element.addEventListener("click", closeListingModal);
+    });
+
+    modal.querySelectorAll("[data-listing-ai-action]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var tool = button.getAttribute("data-listing-ai-action");
+        if (!tool) return;
+        runSelectedListingAi(tool, button);
+      });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape" || modal.hidden) return;
+      closeListingModal();
+    });
   }
 
   async function getAccessToken() {
@@ -860,6 +1156,7 @@
   }
 
   setQueryFromUrl();
+  initListingDetailModal();
   initProviderListingsPreview();
   initAiWorkspaceTabs();
   initAiTools();
