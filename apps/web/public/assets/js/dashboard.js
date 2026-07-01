@@ -4,6 +4,33 @@
   var stateTitle = document.getElementById("dashboardStateTitle");
   if (!stateTitle) return;
 
+  // Role-based redirect: if the logged-in user is a partner or admin, send them
+  // to their own dashboard instead of the individual one.
+  (async function redirectByRole() {
+    if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.getSupabaseClient) return;
+    var client = window.KIMURE_AUTH.getSupabaseClient();
+    if (!client) return;
+    var sessRes = await client.auth.getSession();
+    var session = sessRes.data && sessRes.data.session;
+    if (!session || !session.access_token) return;
+
+    var cfg = window.KIMURE_SUPABASE_CONFIG;
+    var apiBase = (cfg && cfg.apiBaseUrl) ? cfg.apiBaseUrl : "http://localhost:3001/api";
+
+    try {
+      var res = await fetch(apiBase + "/users/me", {
+        headers: { "Authorization": "Bearer " + session.access_token }
+      });
+      var me = await res.json();
+
+      if (me.role === "partner") {
+        window.location.replace("partner-dashboard.html");
+      } else if (me.role === "admin") {
+        window.location.replace("admin-dashboard.html");
+      }
+    } catch (err) { /* stay on individual dashboard */ }
+  })();
+
   var stateMessage = document.getElementById("dashboardStateMessage");
   var currentUser = null;
   var currentDashboard = null;

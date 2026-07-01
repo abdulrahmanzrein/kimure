@@ -129,8 +129,10 @@
     var email = form.querySelector("#onb-email");
     var password = form.querySelector("#onb-password");
     var fullName = form.querySelector("#onb-fullname");
+    var roleInput = form.querySelector('input[name="role"]:checked');
     var emailValue = email ? email.value.trim() : "";
     var passwordValue = password ? password.value : "";
+    var roleValue = roleInput ? roleInput.value : "individual";
 
     setButtonLoading(nextButton, true, "Creating account...");
 
@@ -162,12 +164,26 @@
       currentUser = user;
     }
 
+    // Save the picked role. If we got a session right away (email confirmation
+    // off), apply it now. Otherwise stash it in localStorage so it can be
+    // applied on first login after the user confirms their email.
+    if (roleValue && roleValue !== "individual") {
+      try {
+        window.localStorage.setItem("kimure.pendingRole", roleValue);
+      } catch (err) { /* storage may be unavailable */ }
+
+      if (session && session.access_token) {
+        await applyPendingRole(session.access_token);
+      }
+    }
+
     return {
       ok: true,
       needsEmailConfirmation: needsEmailConfirmation,
       email: emailValue,
       user: user,
-      session: session
+      session: session,
+      role: roleValue
     };
   }
 
@@ -623,6 +639,34 @@
   }
 
   // Log in an existing user with email + password.
+  // Reads the picked role from localStorage (set during signup) and PATCHes
+  // the user's profile. Clears storage on success. Safe to call multiple times.
+  async function applyPendingRole(accessToken) {
+    var pending;
+    try {
+      pending = window.localStorage.getItem("kimure.pendingRole");
+    } catch (err) {
+      pending = null;
+    }
+    if (!pending) return;
+
+    try {
+      var res = await fetch(getApiBaseUrl() + "/users/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + accessToken
+        },
+        body: JSON.stringify({ role: pending })
+      });
+      if (res.ok) {
+        try { window.localStorage.removeItem("kimure.pendingRole"); } catch (e) {}
+      }
+    } catch (err) {
+      // Non-fatal — will retry on next login.
+    }
+  }
+
   async function signIn(email, password) {
     var client = getSupabaseClient();
     if (!client) {
@@ -668,6 +712,11 @@
         clearCreditAssessmentReference();
       } else {
         getCreditAssessmentReference();
+        // If a role was picked at signup but couldn't be applied (email
+        // confirmation on), apply it now that we have a valid session.
+        if (event === "SIGNED_IN" && session && session.access_token) {
+          applyPendingRole(session.access_token);
+        }
       }
       document.dispatchEvent(
         new CustomEvent("kimure-auth-changed", {

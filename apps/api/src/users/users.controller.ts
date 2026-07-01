@@ -1,4 +1,4 @@
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Patch, Req, UseGuards } from "@nestjs/common";
 import { AuthenticatedRequest, SupabaseAuthGuard } from "../auth/supabase-auth.guard";
 import { UsersService } from "./users.service";
 
@@ -22,5 +22,23 @@ export class UsersController {
     }
 
     return profile;
+  }
+
+  // PATCH /api/users/me
+  // Updates fields on the user's profile. Right now we only allow `role`.
+  // Called by the frontend right after signup so the user picks their role.
+  @Patch("me")
+  async updateMe(
+    @Body() body: { role?: string },
+    @Req() request: AuthenticatedRequest
+  ) {
+    const userId = request.user!.id;
+    const token = request.headers.authorization!.replace("Bearer ", "");
+
+    if (body.role) {
+      return this.users.updateRole(userId, token, body.role);
+    }
+
+    return { error: "Nothing to update" };
   }
 }

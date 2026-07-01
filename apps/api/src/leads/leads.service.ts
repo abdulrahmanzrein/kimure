@@ -4,6 +4,8 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 @Injectable()
 export class LeadsService {
+  private serviceClient?: SupabaseClient;
+
   constructor(private readonly config: ConfigService) {}
 
   // Returns all leads the user has submitted.
@@ -19,7 +21,7 @@ export class LeadsService {
   }
 
   // Creates a lead when a user clicks "Contact agent".
-  // listing_id is optional — leads table allows null there.
+  // Auto-assigns to a random partner so partners see the lead in their dashboard.
   async createLead(
     userId: string,
     accessToken: string,
@@ -27,8 +29,17 @@ export class LeadsService {
     intentData: Record<string, unknown>
   ) {
     const client = this.getSupabaseClient(accessToken);
-    const row: Record<string, unknown> = { user_id: userId, intent_data: intentData };
+    const row: Record<string, unknown> = {
+      user_id: userId,
+      intent_data: intentData
+    };
     if (listingId) row.listing_id = listingId;
+
+    // Auto-assign: pick a random partner from the DB.
+    // Needs the service role key because the individual user's token can't
+    // read the partners table (RLS lets each partner see only their own row).
+    const partnerId = await this.pickRandomPartnerId();
+    if (partnerId) row.partner_id = partnerId;
 
     const { data, error } = await client
       .from("leads")
@@ -39,6 +50,22 @@ export class LeadsService {
     return data;
   }
 
+  // Returns the id of a random partner, or null if no partners exist or the
+  // service role key isn't configured.
+  private async pickRandomPartnerId(): Promise<string | null> {
+    const service = this.getServiceClient();
+    if (!service) return null;
+
+    const { data, error } = await service
+      .from("partners")
+      .select("id")
+      .limit(100);
+    if (error || !data || !data.length) return null;
+
+    const pick = data[Math.floor(Math.random() * data.length)];
+    return pick.id;
+  }
+
   private getSupabaseClient(accessToken: string): SupabaseClient {
     const url = this.config.get<string>("SUPABASE_URL")!;
     const publishableKey = this.config.get<string>("SUPABASE_PUBLISHABLE_KEY")!;
@@ -46,5 +73,16 @@ export class LeadsService {
       auth: { autoRefreshToken: false, persistSession: false },
       global: { headers: { Authorization: `Bearer ${accessToken}` } }
     });
+  }
+
+  private getServiceClient(): SupabaseClient | null {
+    if (this.serviceClient) return this.serviceClient;
+    const url = this.config.get<string>("SUPABASE_URL");
+    const serviceRoleKey = this.config.get<string>("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url || !serviceRoleKey) return null;
+    this.serviceClient = createClient(url, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+    return this.serviceClient;
   }
 }

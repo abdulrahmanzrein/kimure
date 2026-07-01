@@ -20,6 +20,8 @@ import { SavedPropertiesController } from "./saved-properties/saved-properties.c
 import { SavedPropertiesService } from "./saved-properties/saved-properties.service";
 import { LeadsController } from "./leads/leads.controller";
 import { LeadsService } from "./leads/leads.service";
+import { PartnersController } from "./partners/partners.controller";
+import { PartnersService } from "./partners/partners.service";
 
 // A tiny public route used to confirm that the API is running.
 @Controller("health")
@@ -49,7 +51,8 @@ class HealthController {
     UsersController,
     OnboardingController,
     SavedPropertiesController,
-    LeadsController
+    LeadsController,
+    PartnersController
   ],
   providers: [
     AiGatewayService,
@@ -63,7 +66,8 @@ class HealthController {
     UsersService,
     OnboardingService,
     SavedPropertiesService,
-    LeadsService
+    LeadsService,
+    PartnersService
   ]
 })
 export class AppModule {}

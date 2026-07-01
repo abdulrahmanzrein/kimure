@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partner Dashboard — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+  <style>
+    /* ── Partner CRM styles ───────────────────────────────── */
+    .pd-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+    .pd-stat { padding: 18px 20px; border-radius: 12px; border: 1px solid var(--border, #E5E7EB); background: rgba(255,255,255,.04); }
+    .pd-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted, #6B7280); font-weight: 700; margin-bottom: 6px; }
+    .pd-stat-value { font-size: 28px; font-weight: 800; }
+    .pd-stat.new .pd-stat-value { color: #3b82f6; }
+    .pd-stat.contacted .pd-stat-value { color: #f59e0b; }
+    .pd-stat.negotiation .pd-stat-value { color: #f97316; }
+    .pd-stat.closed .pd-stat-value { color: #10b981; }
+
+    .pd-filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .pd-filter { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border, #E5E7EB); background: transparent; font-size: 13px; font-weight: 600; cursor: pointer; color: inherit; }
+    .pd-filter.is-active { background: var(--gold, #9F8049); color: #fff; border-color: var(--gold, #9F8049); }
+
+    .pd-lead-list { display: flex; flex-direction: column; gap: 14px; }
+    .pd-lead { display: grid; grid-template-columns: 120px 1fr auto; gap: 16px; padding: 16px; border: 1px solid var(--border, #E5E7EB); border-radius: 12px; background: rgba(255,255,255,.03); }
+    .pd-lead-photo { width: 120px; height: 100px; border-radius: 8px; background: #F3F4F6; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #9CA3AF; }
+    .pd-lead-photo img { width: 100%; height: 100%; object-fit: cover; }
+
+    .pd-lead-body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    .pd-lead-title { font-size: 15px; font-weight: 700; }
+    .pd-lead-price { font-size: 13px; color: var(--gold, #9F8049); font-weight: 600; }
+    .pd-lead-meta { font-size: 12px; color: var(--muted, #6B7280); display: flex; gap: 12px; flex-wrap: wrap; }
+    .pd-lead-contact { font-size: 13px; margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border, #E5E7EB); display: flex; gap: 16px; flex-wrap: wrap; }
+    .pd-lead-contact span { display: inline-flex; gap: 4px; align-items: center; }
+    .pd-lead-contact strong { font-weight: 600; }
+
+    .pd-lead-goals { font-size: 12px; color: var(--muted, #6B7280); margin-top: 4px; }
+    .pd-lead-goals strong { color: var(--text, #111827); font-weight: 600; }
+
+    .pd-lead-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 180px; }
+    .pd-status-badge { padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #fff; }
+    .pd-status-select { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border, #E5E7EB); font-size: 12px; background: transparent; color: inherit; cursor: pointer; }
+
+    .pd-lead-time { font-size: 11px; color: var(--muted, #6B7280); }
+
+    @media (max-width: 720px) {
+      .pd-stats { grid-template-columns: repeat(2, 1fr); }
+      .pd-lead { grid-template-columns: 1fr; }
+      .pd-lead-photo { width: 100%; height: 180px; }
+      .pd-lead-actions { align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav dashboard-nav" aria-label="Primary navigation">
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+        <a href="partner-setup.html" class="nav-link">Business profile</a>
+      </nav>
+      <div class="actions">
+        <button class="btn btn-outline" id="pd-signout" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main class="dashboard-page">
+      <header class="dashboard-intro">
+        <p class="dashboard-eyebrow">Partner CRM</p>
+        <h1 id="pd-title">Lead inbox</h1>
+        <p id="pd-subtitle">Manage qualified leads and move them through your pipeline.</p>
+      </header>
+
+      <section class="pd-stats">
+        <div class="pd-stat new">
+          <div class="pd-stat-label">New</div>
+          <div class="pd-stat-value" id="pd-count-new">0</div>
+        </div>
+        <div class="pd-stat contacted">
+          <div class="pd-stat-label">Contacted</div>
+          <div class="pd-stat-value" id="pd-count-contacted">0</div>
+        </div>
+        <div class="pd-stat negotiation">
+          <div class="pd-stat-label">Negotiation</div>
+          <div class="pd-stat-value" id="pd-count-negotiation">0</div>
+        </div>
+        <div class="pd-stat closed">
+          <div class="pd-stat-label">Closed</div>
+          <div class="pd-stat-value" id="pd-count-closed">0</div>
+        </div>
+      </section>
+
+      <div class="pd-filters" id="pd-filters">
+        <button class="pd-filter is-active" data-filter="all">All</button>
+        <button class="pd-filter" data-filter="new">New</button>
+        <button class="pd-filter" data-filter="contacted">Contacted</button>
+        <button class="pd-filter" data-filter="negotiation">Negotiation</button>
+        <button class="pd-filter" data-filter="closed_won">Won</button>
+        <button class="pd-filter" data-filter="closed_lost">Lost</button>
+      </div>
+
+      <section class="dashboard-state-card" id="pd-state" aria-live="polite">
+        <div>
+          <p class="dashboard-eyebrow">Status</p>
+          <h2 id="pd-state-title">Loading your leads…</h2>
+          <p id="pd-state-msg">Kimure is fetching your assigned leads.</p>
+        </div>
+      </section>
+
+      <div class="pd-lead-list" id="pd-lead-list"></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (async function () {
+      var stateTitle = document.getElementById("pd-state-title");
+      var stateMsg   = document.getElementById("pd-state-msg");
+      var stateCard  = document.getElementById("pd-state");
+      var listEl     = document.getElementById("pd-lead-list");
+      var filtersEl  = document.getElementById("pd-filters");
+      var signOutBtn = document.getElementById("pd-signout");
+      var allLeads = [];
+      var activeFilter = "all";
+      var token = null;
+
+      signOutBtn.addEventListener("click", function () {
+        if (window.KIMURE_AUTH && window.KIMURE_AUTH.signOut) window.KIMURE_AUTH.signOut();
+        window.location.href = "index.html";
+      });
+
+      function apiBase() {
+        var cfg = window.KIMURE_SUPABASE_CONFIG;
+        return (cfg && cfg.apiBaseUrl) ? cfg.apiBaseUrl : "http://localhost:3001/api";
+      }
+
+      async function getToken() {
+        if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.getSupabaseClient) return null;
+        var c = window.KIMURE_AUTH.getSupabaseClient();
+        if (!c) return null;
+        var res = await c.auth.getSession();
+        return res.data && res.data.session ? res.data.session.access_token : null;
+      }
+
+      function fmtMoney(n) {
+        var num = Number(n);
+        if (!Number.isFinite(num)) return "";
+        return new Intl.NumberFormat("en-CA", { style: "currency", currency: "CAD", maximumFractionDigits: 0 }).format(num);
+      }
+
+      function fmtRange(min, max) {
+        var mn = Number(min), mx = Number(max);
+        if (Number.isFinite(mn) && Number.isFinite(mx)) return fmtMoney(mn) + " – " + fmtMoney(mx);
+        if (Number.isFinite(mn)) return "from " + fmtMoney(mn);
+        if (Number.isFinite(mx)) return "up to " + fmtMoney(mx);
+        return "";
+      }
+
+      function timeAgo(iso) {
+        if (!iso) return "";
+        var diff = Date.now() - new Date(iso).getTime();
+        var mins = Math.floor(diff / 60000);
+        if (mins < 1) return "just now";
+        if (mins < 60) return mins + "m ago";
+        var hrs = Math.floor(mins / 60);
+        if (hrs < 24) return hrs + "h ago";
+        var days = Math.floor(hrs / 24);
+        return days + "d ago";
+      }
+
+      var STATUS_COLORS = {
+        new: "#3b82f6", contacted: "#f59e0b", negotiation: "#f97316",
+        closed_won: "#10b981", closed_lost: "#ef4444"
+      };
+
+      function statusBadge(status) {
+        var color = STATUS_COLORS[status] || "#6b7280";
+        var label = String(status || "new").replace(/_/g, " ");
+        var b = document.createElement("span");
+        b.className = "pd-status-badge";
+        b.style.background = color;
+        b.textContent = label;
+        return b;
+      }
+
+      async function updateStatus(leadId, newStatus, selectEl) {
+        selectEl.disabled = true;
+        try {
+          var res = await fetch(apiBase() + "/partners/me/leads/" + leadId + "/status", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+            body: JSON.stringify({ status: newStatus })
+          });
+          if (res.ok) {
+            var lead = allLeads.find(function (l) { return l.id === leadId; });
+            if (lead) lead.status = newStatus;
+            render();
+          }
+        } catch (e) { /* keep UI as-is */ }
+        selectEl.disabled = false;
+      }
+
+      function renderLead(lead) {
+        var user = lead.user || {};
+        var goals = lead.goals || {};
+        var d = lead.intent_data || {};
+
+        var card = document.createElement("article");
+        card.className = "pd-lead";
+
+        // Photo
+        var photo = document.createElement("div");
+        photo.className = "pd-lead-photo";
+        if (d.listing_image) {
+          var img = document.createElement("img");
+          img.src = d.listing_image;
+          img.alt = d.listing_title || "";
+          img.onerror = function () { photo.innerHTML = "🏠"; };
+          photo.appendChild(img);
+        } else {
+          photo.textContent = "🏠";
+        }
+        card.appendChild(photo);
+
+        // Body
+        var body = document.createElement("div");
+        body.className = "pd-lead-body";
+
+        var title = document.createElement("div");
+        title.className = "pd-lead-title";
+        title.textContent = d.listing_title || "Untitled listing";
+        body.appendChild(title);
+
+        var priceLine = [];
+        if (d.listing_price) priceLine.push(fmtMoney(d.listing_price));
+        if (d.listing_location) priceLine.push(d.listing_location);
+        if (priceLine.length) {
+          var pr = document.createElement("div");
+          pr.className = "pd-lead-price";
+          pr.textContent = priceLine.join(" · ");
+          body.appendChild(pr);
+        }
+
+        var meta = document.createElement("div");
+        meta.className = "pd-lead-meta";
+        if (d.listing_type) { var t = document.createElement("span"); t.textContent = d.listing_type; meta.appendChild(t); }
+        if (d.listing_bedrooms) { var bd = document.createElement("span"); bd.textContent = "🛏 " + d.listing_bedrooms; meta.appendChild(bd); }
+        if (d.listing_bathrooms) { var bt = document.createElement("span"); bt.textContent = "🚿 " + d.listing_bathrooms; meta.appendChild(bt); }
+        if (meta.children.length) body.appendChild(meta);
+
+        var contact = document.createElement("div");
+        contact.className = "pd-lead-contact";
+        var name = user.name || "Anonymous user";
+        contact.innerHTML =
+          '<span><strong>' + name + '</strong></span>' +
+          (user.email ? '<span>✉ <a href="mailto:' + user.email + '" style="color:inherit">' + user.email + '</a></span>' : '') +
+          (user.phone ? '<span>📞 ' + user.phone + '</span>' : '') +
+          (user.city ? '<span>📍 ' + user.city + '</span>' : '');
+        body.appendChild(contact);
+
+        if (goals && (goals.intent || goals.budget_min || goals.budget_max || goals.timeline)) {
+          var g = document.createElement("div");
+          g.className = "pd-lead-goals";
+          var parts = [];
+          if (goals.intent) parts.push('<strong>Intent:</strong> ' + goals.intent);
+          var budget = fmtRange(goals.budget_min, goals.budget_max);
+          if (budget) parts.push('<strong>Budget:</strong> ' + budget);
+          if (goals.timeline) parts.push('<strong>Timeline:</strong> ' + goals.timeline);
+          g.innerHTML = parts.join(" · ");
+          body.appendChild(g);
+        }
+
+        card.appendChild(body);
+
+        // Actions column
+        var actions = document.createElement("div");
+        actions.className = "pd-lead-actions";
+        actions.appendChild(statusBadge(lead.status));
+
+        var select = document.createElement("select");
+        select.className = "pd-status-select";
+        ["new", "contacted", "negotiation", "closed_won", "closed_lost"].forEach(function (s) {
+          var opt = document.createElement("option");
+          opt.value = s;
+          opt.textContent = "Move to: " + s.replace(/_/g, " ");
+          if (s === lead.status) opt.selected = true;
+          select.appendChild(opt);
+        });
+        select.addEventListener("change", function () {
+          updateStatus(lead.id, select.value, select);
+        });
+        actions.appendChild(select);
+
+        var time = document.createElement("div");
+        time.className = "pd-lead-time";
+        time.textContent = timeAgo(lead.created_at);
+        actions.appendChild(time);
+
+        card.appendChild(actions);
+        return card;
+      }
+
+      function render() {
+        // Counts
+        var counts = { new: 0, contacted: 0, negotiation: 0, closed: 0 };
+        allLeads.forEach(function (l) {
+          if (l.status === "new") counts.new++;
+          else if (l.status === "contacted") counts.contacted++;
+          else if (l.status === "negotiation") counts.negotiation++;
+          else if (l.status === "closed_won" || l.status === "closed_lost") counts.closed++;
+        });
+        document.getElementById("pd-count-new").textContent = counts.new;
+        document.getElementById("pd-count-contacted").textContent = counts.contacted;
+        document.getElementById("pd-count-negotiation").textContent = counts.negotiation;
+        document.getElementById("pd-count-closed").textContent = counts.closed;
+
+        // Filter
+        var filtered = activeFilter === "all"
+          ? allLeads
+          : allLeads.filter(function (l) { return l.status === activeFilter; });
+
+        listEl.innerHTML = "";
+        if (!allLeads.length) {
+          stateCard.style.display = "";
+          stateTitle.textContent = "No leads yet";
+          stateMsg.textContent = "When a user requests contact from a listing, it will appear here.";
+          return;
+        }
+        if (!filtered.length) {
+          stateCard.style.display = "";
+          stateTitle.textContent = "No leads in this filter";
+          stateMsg.textContent = "Try another status.";
+          return;
+        }
+        stateCard.style.display = "none";
+        filtered.forEach(function (l) { listEl.appendChild(renderLead(l)); });
+      }
+
+      // Filter buttons
+      filtersEl.querySelectorAll(".pd-filter").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          filtersEl.querySelectorAll(".pd-filter").forEach(function (b) { b.classList.remove("is-active"); });
+          btn.classList.add("is-active");
+          activeFilter = btn.getAttribute("data-filter");
+          render();
+        });
+      });
+
+      // Boot
+      token = await getToken();
+      if (!token) {
+        stateTitle.textContent = "Please sign in";
+        stateMsg.textContent = "You need to sign in as a partner to view this page.";
+        return;
+      }
+
+      try {
+        var meRes = await fetch(apiBase() + "/users/me", { headers: { "Authorization": "Bearer " + token } });
+        var me = await meRes.json();
+        if (me.role !== "partner") {
+          stateTitle.textContent = "Not a partner account";
+          stateMsg.textContent = "This dashboard is only for partner accounts.";
+          return;
+        }
+      } catch (e) { return; }
+
+      try {
+        var pRes = await fetch(apiBase() + "/partners/me", { headers: { "Authorization": "Bearer " + token } });
+        var partner = await pRes.json();
+        if (!partner || !partner.business_name) {
+          window.location.href = "partner-setup.html";
+          return;
+        }
+        document.getElementById("pd-title").textContent = partner.business_name + " — Lead inbox";
+      } catch (e) {
+        window.location.href = "partner-setup.html";
+        return;
+      }
+
+      try {
+        var lRes = await fetch(apiBase() + "/partners/me/leads", { headers: { "Authorization": "Bearer " + token } });
+        allLeads = await lRes.json();
+        if (!Array.isArray(allLeads)) allLeads = [];
+        render();
+      } catch (e) {
+        stateTitle.textContent = "Could not load leads";
+        stateMsg.textContent = "Please refresh the page.";
+      }
+    })();
+  </script>
+</body>
+</html>

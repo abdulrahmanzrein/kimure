@@ -411,7 +411,7 @@
     contactBtn.textContent = "Contact agent";
     contactBtn.addEventListener("click", function (event) {
       event.stopPropagation();
-      contactAgent(listing.id, listing.title || "this listing", contactBtn);
+      contactAgent(listing, contactBtn);
     });
     actions.appendChild(contactBtn);
   }
@@ -625,7 +625,7 @@
     }
   }
 
-  async function contactAgent(listingId, listingTitle, btn) {
+  async function contactAgent(listing, btn) {
     var token = await getAccessToken();
     if (!token) {
       btn.textContent = "Sign in first";
@@ -639,7 +639,18 @@
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
         body: JSON.stringify({
-          intent_data: { source: "marketplace", listing_title: listingTitle, listing_id: listingId }
+          intent_data: {
+            source: "marketplace",
+            listing_id: listing.id,
+            listing_title: listing.title || "this listing",
+            listing_price: listing.price,
+            listing_location: listing.location,
+            listing_address: listing.addressSummary,
+            listing_image: listing.imageUrl || "",
+            listing_type: listing.type,
+            listing_bedrooms: listing.bedrooms,
+            listing_bathrooms: listing.bathrooms
+          }
         })
       });
       btn.textContent = res.ok ? "Agent contacted!" : "Contact agent";

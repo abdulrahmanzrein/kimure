@@ -1,6 +1,12 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+
+// The only roles a user is allowed to self-assign.
+// TODO: before production, remove "admin" from this list and only allow
+// promotion via an invite flow.
+const ALLOWED_ROLES = ["individual", "partner", "admin"] as const;
+type AllowedRole = (typeof ALLOWED_ROLES)[number];
 
 @Injectable()
 export class UsersService {
@@ -24,6 +30,28 @@ export class UsersService {
     }
 
     return data; // {id, role, full_name, phone, country, city, kyc_status, created_at, updated_at}
+  }
+
+  // Update the logged-in user's role. Called right after signup so the user's
+  // profile reflects the role they picked in the UI (individual / partner / admin).
+  async updateRole(userId: string, accessToken: string, role: string) {
+    if (!ALLOWED_ROLES.includes(role as AllowedRole)) {
+      throw new BadRequestException(`Invalid role: ${role}`);
+    }
+
+    const client = this.getSupabaseClient(accessToken);
+    const { data, error } = await client
+      .from("profiles")
+      .update({ role })
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      return { error: error.message };
+    }
+
+    return data;
   }
 
   // Build a Supabase client that acts as the logged-in user.

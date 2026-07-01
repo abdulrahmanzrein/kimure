@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Partner Setup — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav dashboard-nav" aria-label="Primary navigation">
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+      </nav>
+    </header>
+
+    <main class="dashboard-page">
+      <header class="dashboard-intro">
+        <p class="dashboard-eyebrow">Partner setup</p>
+        <h1>Set up your business profile</h1>
+        <p>
+          Tell us about your business so we can match you with the right leads
+          on Kimure. You can update these details later from your dashboard.
+        </p>
+      </header>
+
+      <section class="dashboard-state-card" id="setupStateCard" aria-live="polite">
+        <div>
+          <p class="dashboard-eyebrow">Status</p>
+          <h2 id="setupStateTitle">Checking your account…</h2>
+          <p id="setupStateMessage">Kimure is preparing your partner profile form.</p>
+        </div>
+      </section>
+
+      <section class="dashboard-grid" id="setupFormWrap" style="display:none">
+        <article class="dashboard-card dashboard-card-wide">
+          <div class="dashboard-card-head">
+            <div>
+              <p class="dashboard-eyebrow">Business profile</p>
+              <h2>Your business</h2>
+            </div>
+          </div>
+
+          <form id="partnerSetupForm" class="onb-form" novalidate>
+            <div class="onb-field">
+              <label for="ps-businessName">Business name</label>
+              <input type="text" id="ps-businessName" name="business_name" placeholder="Sunshine Realty Ltd." required />
+            </div>
+
+            <div class="onb-field">
+              <label for="ps-partnerType">Partner type</label>
+              <select id="ps-partnerType" name="partner_type" required>
+                <option value="agent">Agent</option>
+                <option value="broker">Broker</option>
+                <option value="lender">Lender</option>
+                <option value="operator">Operator</option>
+              </select>
+            </div>
+
+            <div id="ps-error" class="onb-error" style="display:none;color:#ffb4a8;margin:10px 0"></div>
+
+            <button type="submit" class="btn btn-primary" id="ps-submit">Save &amp; continue →</button>
+          </form>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (async function () {
+      var stateTitle = document.getElementById("setupStateTitle");
+      var stateMsg = document.getElementById("setupStateMessage");
+      var formWrap = document.getElementById("setupFormWrap");
+      var form = document.getElementById("partnerSetupForm");
+      var submitBtn = document.getElementById("ps-submit");
+      var errorEl = document.getElementById("ps-error");
+
+      function getApiBase() {
+        var cfg = window.KIMURE_SUPABASE_CONFIG;
+        return (cfg && cfg.apiBaseUrl) ? cfg.apiBaseUrl : "http://localhost:3001/api";
+      }
+
+      async function getToken() {
+        if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.getSupabaseClient) return null;
+        var client = window.KIMURE_AUTH.getSupabaseClient();
+        if (!client) return null;
+        var res = await client.auth.getSession();
+        return res.data && res.data.session ? res.data.session.access_token : null;
+      }
+
+      var token = await getToken();
+      if (!token) {
+        stateTitle.textContent = "Please sign in";
+        stateMsg.textContent = "You need to be signed in as a partner to set up your business profile.";
+        return;
+      }
+
+      // Check the user's role
+      try {
+        var meRes = await fetch(getApiBase() + "/users/me", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        var me = await meRes.json();
+        if (me.role !== "partner") {
+          stateTitle.textContent = "Not a partner account";
+          stateMsg.textContent = "This page is only for partner accounts. Your role is: " + (me.role || "unknown") + ".";
+          return;
+        }
+      } catch (err) {
+        stateTitle.textContent = "Could not verify account";
+        stateMsg.textContent = "There was an error checking your account. Please refresh and try again.";
+        return;
+      }
+
+      // If they already have a business profile, prefill and let them update
+      try {
+        var partnerRes = await fetch(getApiBase() + "/partners/me", {
+          headers: { "Authorization": "Bearer " + token }
+        });
+        var partner = await partnerRes.json();
+        if (partner && partner.business_name) {
+          document.getElementById("ps-businessName").value = partner.business_name;
+          document.getElementById("ps-partnerType").value = partner.partner_type || "agent";
+          stateTitle.textContent = "Update your business profile";
+          stateMsg.textContent = "You've already set this up. Edit and save to make changes.";
+          submitBtn.textContent = "Update →";
+        } else {
+          stateTitle.textContent = "Set up your business profile";
+          stateMsg.textContent = "Fill in your business details to activate your partner account.";
+        }
+      } catch (err) {
+        stateTitle.textContent = "Set up your business profile";
+        stateMsg.textContent = "Fill in your business details to activate your partner account.";
+      }
+
+      formWrap.style.display = "";
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Saving…";
+
+        var body = {
+          business_name: document.getElementById("ps-businessName").value.trim(),
+          partner_type: document.getElementById("ps-partnerType").value
+        };
+
+        try {
+          var res = await fetch(getApiBase() + "/partners/me", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+          });
+          var data = await res.json();
+          if (!res.ok || data.error) {
+            throw new Error(data.error || data.message || "Save failed");
+          }
+          window.location.href = "partner-dashboard.html";
+        } catch (err) {
+          errorEl.textContent = err.message || "Could not save. Please try again.";
+          errorEl.style.display = "";
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Save & continue →";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
