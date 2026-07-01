@@ -3,4 +3,3 @@ node_modules
 out
 next-dev.*.log
 npm-debug.log*
-public/supabase-config.js
