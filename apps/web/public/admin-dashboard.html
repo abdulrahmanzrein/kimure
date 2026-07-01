@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Kimure</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/dashboard.css" />
+  <style>
+    .ad-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+    .ad-stat { padding: 20px; border-radius: 12px; border: 1px solid var(--border, #E5E7EB); background: rgba(255,255,255,.04); }
+    .ad-stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted, #6B7280); font-weight: 700; margin-bottom: 6px; }
+    .ad-stat-value { font-size: 32px; font-weight: 800; margin-bottom: 6px; }
+    .ad-stat-detail { font-size: 12px; color: var(--muted, #6B7280); display: flex; gap: 12px; flex-wrap: wrap; }
+    .ad-stat-detail span { display: inline-flex; gap: 4px; }
+    .ad-stat-detail strong { color: var(--text, #111827); font-weight: 600; }
+
+    .ad-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border, #E5E7EB); }
+    .ad-tab { padding: 12px 18px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--muted, #6B7280); }
+    .ad-tab.is-active { color: var(--gold, #9F8049); border-bottom-color: var(--gold, #9F8049); }
+
+    .ad-panel { display: none; }
+    .ad-panel.is-active { display: block; }
+
+    .ad-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ad-table th { text-align: left; padding: 10px 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; color: var(--muted, #6B7280); border-bottom: 1px solid var(--border, #E5E7EB); }
+    .ad-table td { padding: 12px; border-bottom: 1px solid rgba(0,0,0,.05); vertical-align: middle; }
+    .ad-table tr:hover td { background: rgba(159,128,73,.04); }
+    .ad-table select { padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border, #E5E7EB); background: transparent; color: inherit; font-size: 12px; }
+
+    .ad-badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+    .ad-badge-yes { background: #D1FAE5; color: #065F46; }
+    .ad-badge-no { background: #FEE2E2; color: #991B1B; }
+
+    .ad-btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; border: 1px solid var(--gold, #9F8049); background: var(--gold, #9F8049); color: #fff; cursor: pointer; font-weight: 600; }
+    .ad-btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+    .ad-btn-sm.is-outline { background: transparent; color: var(--gold, #9F8049); }
+  </style>
+</head>
+
+<body class="page theme-dark">
+  <div class="wrap">
+    <header class="topbar">
+      <div class="topbar-start">
+        <a class="brand" href="index.html">
+          <img src="assets/images/logo.png" alt="Kimure logo" class="brand-logo" />
+        </a>
+      </div>
+      <nav class="nav dashboard-nav" aria-label="Primary navigation">
+        <a href="marketplace.html" class="nav-link">Marketplace</a>
+      </nav>
+      <div class="actions">
+        <button class="btn btn-outline" id="ad-signout" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main class="dashboard-page">
+      <header class="dashboard-intro">
+        <p class="dashboard-eyebrow">Admin</p>
+        <h1>Platform administration</h1>
+        <p>Manage users, approve partners, and monitor platform activity.</p>
+      </header>
+
+      <section class="dashboard-state-card" id="ad-state" aria-live="polite">
+        <div>
+          <p class="dashboard-eyebrow">Status</p>
+          <h2 id="ad-state-title">Loading admin data…</h2>
+          <p id="ad-state-msg">Kimure is fetching platform data.</p>
+        </div>
+      </section>
+
+      <section class="ad-stats" id="ad-stats" style="display:none">
+        <div class="ad-stat">
+          <div class="ad-stat-label">Total users</div>
+          <div class="ad-stat-value" id="ad-users-total">0</div>
+          <div class="ad-stat-detail">
+            <span><strong id="ad-users-individual">0</strong> individual</span>
+            <span><strong id="ad-users-partner">0</strong> partner</span>
+            <span><strong id="ad-users-admin">0</strong> admin</span>
+          </div>
+        </div>
+        <div class="ad-stat">
+          <div class="ad-stat-label">Partners</div>
+          <div class="ad-stat-value" id="ad-partners-total">0</div>
+          <div class="ad-stat-detail">
+            <span><strong id="ad-partners-verified">0</strong> verified</span>
+            <span><strong id="ad-partners-pending">0</strong> pending</span>
+          </div>
+        </div>
+        <div class="ad-stat">
+          <div class="ad-stat-label">Leads</div>
+          <div class="ad-stat-value" id="ad-leads-total">0</div>
+          <div class="ad-stat-detail">
+            <span><strong id="ad-leads-new">0</strong> new</span>
+            <span><strong id="ad-leads-active">0</strong> active</span>
+            <span><strong id="ad-leads-closed">0</strong> closed</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="ad-tabs" id="ad-tabs" style="display:none">
+        <button class="ad-tab is-active" data-tab="users">Users</button>
+        <button class="ad-tab" data-tab="partners">Partners</button>
+      </div>
+
+      <section class="ad-panel is-active" id="ad-panel-users">
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>City</th>
+              <th>Joined</th>
+              <th>Change role</th>
+            </tr>
+          </thead>
+          <tbody id="ad-users-body"></tbody>
+        </table>
+      </section>
+
+      <section class="ad-panel" id="ad-panel-partners">
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th>Business</th>
+              <th>Type</th>
+              <th>Owner</th>
+              <th>Email</th>
+              <th>Verified</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="ad-partners-body"></tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="assets/js/auth.js"></script>
+  <script src="assets/js/main.js"></script>
+  <script>
+    (async function () {
+      var stateEl = document.getElementById("ad-state");
+      var stateTitle = document.getElementById("ad-state-title");
+      var stateMsg = document.getElementById("ad-state-msg");
+      var statsEl = document.getElementById("ad-stats");
+      var tabsEl = document.getElementById("ad-tabs");
+      var usersBody = document.getElementById("ad-users-body");
+      var partnersBody = document.getElementById("ad-partners-body");
+      var signOutBtn = document.getElementById("ad-signout");
+      var token = null;
+
+      signOutBtn.addEventListener("click", function () {
+        if (window.KIMURE_AUTH && window.KIMURE_AUTH.signOut) window.KIMURE_AUTH.signOut();
+        window.location.href = "index.html";
+      });
+
+      function apiBase() {
+        var cfg = window.KIMURE_SUPABASE_CONFIG;
+        return (cfg && cfg.apiBaseUrl) ? cfg.apiBaseUrl : "http://localhost:3001/api";
+      }
+
+      async function getToken() {
+        if (!window.KIMURE_AUTH || !window.KIMURE_AUTH.getSupabaseClient) return null;
+        var c = window.KIMURE_AUTH.getSupabaseClient();
+        if (!c) return null;
+        var res = await c.auth.getSession();
+        return res.data && res.data.session ? res.data.session.access_token : null;
+      }
+
+      function fmtDate(iso) {
+        if (!iso) return "—";
+        try {
+          return new Date(iso).toLocaleDateString("en-CA", { year: "numeric", month: "short", day: "numeric" });
+        } catch (e) { return iso; }
+      }
+
+      function apiFetch(path, opts) {
+        opts = opts || {};
+        opts.headers = Object.assign({ "Authorization": "Bearer " + token }, opts.headers || {});
+        if (opts.body && !opts.headers["Content-Type"]) opts.headers["Content-Type"] = "application/json";
+        return fetch(apiBase() + path, opts);
+      }
+
+      // Tab switching
+      document.querySelectorAll(".ad-tab").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".ad-tab").forEach(function (b) { b.classList.remove("is-active"); });
+          document.querySelectorAll(".ad-panel").forEach(function (p) { p.classList.remove("is-active"); });
+          btn.classList.add("is-active");
+          document.getElementById("ad-panel-" + btn.getAttribute("data-tab")).classList.add("is-active");
+        });
+      });
+
+      async function loadStats() {
+        var res = await apiFetch("/admin/stats");
+        if (!res.ok) return;
+        var s = await res.json();
+        document.getElementById("ad-users-total").textContent = s.users.total;
+        document.getElementById("ad-users-individual").textContent = s.users.by_role.individual || 0;
+        document.getElementById("ad-users-partner").textContent = s.users.by_role.partner || 0;
+        document.getElementById("ad-users-admin").textContent = s.users.by_role.admin || 0;
+        document.getElementById("ad-partners-total").textContent = s.partners.total;
+        document.getElementById("ad-partners-verified").textContent = s.partners.verified;
+        document.getElementById("ad-partners-pending").textContent = s.partners.pending;
+        document.getElementById("ad-leads-total").textContent = s.leads.total;
+        document.getElementById("ad-leads-new").textContent = s.leads.by_status.new || 0;
+        var active = (s.leads.by_status.contacted || 0) + (s.leads.by_status.negotiation || 0);
+        document.getElementById("ad-leads-active").textContent = active;
+        var closed = (s.leads.by_status.closed_won || 0) + (s.leads.by_status.closed_lost || 0);
+        document.getElementById("ad-leads-closed").textContent = closed;
+      }
+
+      async function updateRole(userId, newRole, selectEl) {
+        selectEl.disabled = true;
+        try {
+          var res = await apiFetch("/admin/users/" + userId + "/role", {
+            method: "PATCH",
+            body: JSON.stringify({ role: newRole })
+          });
+          if (res.ok) loadStats();
+        } catch (e) {}
+        selectEl.disabled = false;
+      }
+
+      async function loadUsers() {
+        var res = await apiFetch("/admin/users");
+        if (!res.ok) return;
+        var users = await res.json();
+        usersBody.innerHTML = "";
+        users.forEach(function (u) {
+          var tr = document.createElement("tr");
+          tr.innerHTML =
+            "<td>" + (u.full_name || "<em style='color:#9CA3AF'>No name</em>") + "</td>" +
+            "<td>" + (u.email || "—") + "</td>" +
+            "<td>" + (u.role || "individual") + "</td>" +
+            "<td>" + (u.city || "—") + "</td>" +
+            "<td>" + fmtDate(u.created_at) + "</td>" +
+            "<td></td>";
+          var actionCell = tr.querySelector("td:last-child");
+          var sel = document.createElement("select");
+          ["individual", "partner", "admin", "support"].forEach(function (r) {
+            var o = document.createElement("option");
+            o.value = r; o.textContent = r;
+            if (r === u.role) o.selected = true;
+            sel.appendChild(o);
+          });
+          sel.addEventListener("change", function () {
+            updateRole(u.id, sel.value, sel);
+          });
+          actionCell.appendChild(sel);
+          usersBody.appendChild(tr);
+        });
+      }
+
+      async function toggleVerify(partnerId, currentlyVerified, btn) {
+        btn.disabled = true;
+        try {
+          var res = await apiFetch("/admin/partners/" + partnerId + "/verify", {
+            method: "PATCH",
+            body: JSON.stringify({ verified: !currentlyVerified })
+          });
+          if (res.ok) {
+            await loadPartners();
+            loadStats();
+          }
+        } catch (e) { btn.disabled = false; }
+      }
+
+      async function loadPartners() {
+        var res = await apiFetch("/admin/partners");
+        if (!res.ok) return;
+        var partners = await res.json();
+        partnersBody.innerHTML = "";
+        if (!partners.length) {
+          partnersBody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--muted, #6B7280)">No partners yet.</td></tr>';
+          return;
+        }
+        partners.forEach(function (p) {
+          var tr = document.createElement("tr");
+          var verifiedBadge = p.verified
+            ? '<span class="ad-badge ad-badge-yes">Verified</span>'
+            : '<span class="ad-badge ad-badge-no">Pending</span>';
+          tr.innerHTML =
+            "<td><strong>" + (p.business_name || "—") + "</strong></td>" +
+            "<td>" + (p.partner_type || "—") + "</td>" +
+            "<td>" + (p.owner.name || "—") + "</td>" +
+            "<td>" + (p.owner.email || "—") + "</td>" +
+            "<td>" + verifiedBadge + "</td>" +
+            "<td></td>";
+          var actionCell = tr.querySelector("td:last-child");
+          var btn = document.createElement("button");
+          btn.className = "ad-btn-sm" + (p.verified ? " is-outline" : "");
+          btn.textContent = p.verified ? "Revoke" : "Approve";
+          btn.addEventListener("click", function () {
+            toggleVerify(p.id, p.verified, btn);
+          });
+          actionCell.appendChild(btn);
+          partnersBody.appendChild(tr);
+        });
+      }
+
+      // Boot
+      token = await getToken();
+      if (!token) {
+        stateTitle.textContent = "Please sign in";
+        stateMsg.textContent = "You need to sign in as an admin to view this page.";
+        return;
+      }
+
+      try {
+        var meRes = await fetch(apiBase() + "/users/me", { headers: { "Authorization": "Bearer " + token } });
+        var me = await meRes.json();
+        if (me.role !== "admin") {
+          stateTitle.textContent = "Not an admin account";
+          stateMsg.textContent = "This dashboard is only for admin accounts. Your role: " + (me.role || "unknown");
+          return;
+        }
+      } catch (e) {
+        stateTitle.textContent = "Could not verify account";
+        stateMsg.textContent = "Please refresh the page.";
+        return;
+      }
+
+      stateEl.style.display = "none";
+      statsEl.style.display = "";
+      tabsEl.style.display = "";
+
+      await Promise.all([loadStats(), loadUsers(), loadPartners()]);
+    })();
+  </script>
+</body>
+</html>
