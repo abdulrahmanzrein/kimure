@@ -37,4 +37,10 @@ export class AdminController {
   setVerified(@Param("id") id: string, @Body() body: { verified: boolean }) {
     return this.admin.setPartnerVerified(id, body.verified === true);
   }
+
+  // GET /api/admin/ai-usage — totals, per-engine, per-day, and recent list.
+  @Get("ai-usage")
+  getAiUsage() {
+    return this.admin.getAiUsage();
+  }
 }

@@ -101,6 +101,7 @@
       <div class="ad-tabs" id="ad-tabs" style="display:none">
         <button class="ad-tab is-active" data-tab="users">Users</button>
         <button class="ad-tab" data-tab="partners">Partners</button>
+        <button class="ad-tab" data-tab="ai-usage">AI usage</button>
       </div>
 
       <section class="ad-panel is-active" id="ad-panel-users">
@@ -132,6 +133,49 @@
             </tr>
           </thead>
           <tbody id="ad-partners-body"></tbody>
+        </table>
+      </section>
+
+      <section class="ad-panel" id="ad-panel-ai-usage">
+        <div class="ad-stats" id="ad-ai-totals" style="display:grid">
+          <div class="ad-stat">
+            <div class="ad-stat-label">Total AI requests</div>
+            <div class="ad-stat-value" id="ad-ai-total">0</div>
+            <div class="ad-stat-detail"><span><strong id="ad-ai-rate">0%</strong> success rate</span></div>
+          </div>
+          <div class="ad-stat">
+            <div class="ad-stat-label">Success</div>
+            <div class="ad-stat-value" id="ad-ai-success" style="color:#10b981">0</div>
+          </div>
+          <div class="ad-stat">
+            <div class="ad-stat-label">Failed</div>
+            <div class="ad-stat-value" id="ad-ai-failed" style="color:#ef4444">0</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+          <div class="card" style="padding:20px;border:1px solid var(--border, #E5E7EB);border-radius:12px">
+            <h3 style="margin:0 0 14px;font-size:14px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted, #6B7280)">Requests by tool</h3>
+            <div id="ad-ai-by-engine"></div>
+          </div>
+          <div class="card" style="padding:20px;border:1px solid var(--border, #E5E7EB);border-radius:12px">
+            <h3 style="margin:0 0 14px;font-size:14px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted, #6B7280)">Last 7 days</h3>
+            <div id="ad-ai-by-day"></div>
+          </div>
+        </div>
+
+        <h3 style="margin:20px 0 12px;font-size:15px">Recent requests</h3>
+        <table class="ad-table">
+          <thead>
+            <tr>
+              <th>Tool</th>
+              <th>User</th>
+              <th>Status</th>
+              <th>Error</th>
+              <th>When</th>
+            </tr>
+          </thead>
+          <tbody id="ad-ai-recent-body"></tbody>
         </table>
       </section>
     </main>
@@ -329,8 +373,84 @@
       statsEl.style.display = "";
       tabsEl.style.display = "";
 
-      await Promise.all([loadStats(), loadUsers(), loadPartners()]);
+      await Promise.all([loadStats(), loadUsers(), loadPartners(), loadAiUsage()]);
     })();
+
+    async function loadAiUsage() {
+      var res = await fetch((window.KIMURE_SUPABASE_CONFIG?.apiBaseUrl || "http://localhost:3001/api") + "/admin/ai-usage", {
+        headers: { "Authorization": "Bearer " + (await getAiToken()) }
+      });
+      if (!res.ok) return;
+      var data = await res.json();
+
+      // Totals
+      document.getElementById("ad-ai-total").textContent = data.totals.total;
+      document.getElementById("ad-ai-success").textContent = data.totals.success;
+      document.getElementById("ad-ai-failed").textContent = data.totals.failed;
+      document.getElementById("ad-ai-rate").textContent = data.totals.success_rate + "%";
+
+      // By engine — simple bar list
+      var engineEl = document.getElementById("ad-ai-by-engine");
+      engineEl.innerHTML = "";
+      var entries = Object.entries(data.by_engine).sort(function (a, b) { return b[1] - a[1]; });
+      if (!entries.length) engineEl.innerHTML = '<p style="color:var(--muted, #6B7280);font-size:13px">No AI requests yet.</p>';
+      var max = Math.max.apply(null, entries.map(function (e) { return e[1]; }).concat([1]));
+      entries.forEach(function (e) {
+        var row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px";
+        row.innerHTML =
+          '<div style="width:120px">' + e[0] + '</div>' +
+          '<div style="flex:1;background:rgba(159,128,73,.15);border-radius:4px;height:16px;position:relative">' +
+            '<div style="background:var(--gold, #9F8049);height:100%;width:' + Math.round((e[1] / max) * 100) + '%;border-radius:4px"></div>' +
+          '</div>' +
+          '<div style="width:36px;text-align:right;font-weight:600">' + e[1] + '</div>';
+        engineEl.appendChild(row);
+      });
+
+      // By day — mini bar chart
+      var dayEl = document.getElementById("ad-ai-by-day");
+      dayEl.innerHTML = "";
+      var dayMax = Math.max.apply(null, data.by_day.map(function (d) { return d.count; }).concat([1]));
+      var barsWrap = document.createElement("div");
+      barsWrap.style.cssText = "display:flex;align-items:flex-end;gap:6px;height:100px;padding-bottom:20px;border-bottom:1px solid var(--border, #E5E7EB);position:relative";
+      data.by_day.forEach(function (d) {
+        var col = document.createElement("div");
+        col.style.cssText = "flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative";
+        var pct = Math.max(4, Math.round((d.count / dayMax) * 100));
+        col.innerHTML =
+          '<div style="background:var(--gold, #9F8049);width:100%;height:' + pct + '%;border-radius:3px 3px 0 0" title="' + d.count + ' requests"></div>' +
+          '<div style="position:absolute;bottom:-18px;font-size:10px;color:var(--muted, #6B7280);white-space:nowrap">' + d.date.slice(5) + '</div>';
+        barsWrap.appendChild(col);
+      });
+      dayEl.appendChild(barsWrap);
+
+      // Recent table
+      var recentEl = document.getElementById("ad-ai-recent-body");
+      recentEl.innerHTML = "";
+      if (!data.recent.length) {
+        recentEl.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted, #6B7280)">No AI requests logged yet.</td></tr>';
+        return;
+      }
+      data.recent.forEach(function (r) {
+        var tr = document.createElement("tr");
+        var when = r.created_at ? new Date(r.created_at).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+        var statusColor = r.status === "success" ? "#10b981" : "#ef4444";
+        tr.innerHTML =
+          "<td><strong>" + (r.engine || "—") + "</strong></td>" +
+          "<td>" + (r.user_email || "—") + "</td>" +
+          '<td><span style="color:' + statusColor + ';font-weight:700">' + (r.status || "—") + "</span></td>" +
+          '<td style="max-width:280px;font-size:12px;color:var(--muted, #6B7280)">' + (r.error_message || "—") + "</td>" +
+          "<td>" + when + "</td>";
+        recentEl.appendChild(tr);
+      });
+    }
+
+    async function getAiToken() {
+      var c = window.KIMURE_AUTH && window.KIMURE_AUTH.getSupabaseClient();
+      if (!c) return null;
+      var res = await c.auth.getSession();
+      return res.data && res.data.session ? res.data.session.access_token : null;
+    }
   </script>
 </body>
 </html>

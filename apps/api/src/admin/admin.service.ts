@@ -159,6 +159,72 @@ export class AdminService {
     };
   }
 
+  // AI usage summary for the admin dashboard.
+  async getAiUsage() {
+    const service = this.requireService();
+
+    // Pull the last 500 requests so we can compute counts + show recent list
+    const { data: requests } = await service
+      .from("ai_requests")
+      .select("id, user_id, engine, status, error_message, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    const rows = requests || [];
+    const total = rows.length;
+    const success = rows.filter((r) => r.status === "success").length;
+    const failed = rows.filter((r) => r.status === "failed").length;
+
+    // Count by engine
+    const byEngine: Record<string, number> = {};
+    rows.forEach((r) => {
+      const engine = r.engine || "unknown";
+      byEngine[engine] = (byEngine[engine] || 0) + 1;
+    });
+
+    // Requests per day for the last 7 days
+    const now = new Date();
+    const byDay: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      byDay.push({ date: iso, count: 0 });
+    }
+    rows.forEach((r) => {
+      const iso = (r.created_at || "").slice(0, 10);
+      const bucket = byDay.find((b) => b.date === iso);
+      if (bucket) bucket.count++;
+    });
+
+    // Recent 20 requests, enriched with email
+    const recent = rows.slice(0, 20);
+    const userIds = Array.from(new Set(recent.map((r) => r.user_id).filter(Boolean)));
+    const emailMap = new Map<string, string>();
+    await Promise.all(
+      userIds.map(async (id) => {
+        try {
+          const { data } = await service.auth.admin.getUserById(id);
+          if (data?.user?.email) emailMap.set(id, data.user.email);
+        } catch { /* skip */ }
+      })
+    );
+
+    return {
+      totals: { total, success, failed, success_rate: total ? Math.round((success / total) * 100) : 0 },
+      by_engine: byEngine,
+      by_day: byDay,
+      recent: recent.map((r) => ({
+        id: r.id,
+        engine: r.engine,
+        status: r.status,
+        error_message: r.error_message,
+        created_at: r.created_at,
+        user_email: emailMap.get(r.user_id) || null
+      }))
+    };
+  }
+
   private requireService(): SupabaseClient {
     if (this.serviceClient) return this.serviceClient;
     const url = this.config.get<string>("SUPABASE_URL");
