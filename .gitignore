@@ -10,6 +10,7 @@ out/
 .env
 .env.*
 !.env.example
+apps/web/public/supabase-config.js
 
 # Logs and editor files
 *.log
